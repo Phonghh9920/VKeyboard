@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent" android:layout_height="match_parent"
+              android:orientation="vertical">
+    <Button android:text="Manage on-screen keyboards"
+            android:id="@+id/main_manage_onscreen_keyboards"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"/>
+    <Button android:text="Choose input method"
+            android:id="@+id/main_choose_input_method_btn"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"/>
+    <Button android:text="Settings"
+            android:id="@+id/main_settings_btn"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"/>
+    <EditText android:text="You can test"
+              android:id="@+id/main_setup_edit_test"
+              android:layout_width="fill_parent"
+              android:gravity="center"
+              android:layout_height="fill_parent"/>
+    <TextView android:layout_height="wrap_content" android:id="@+id/main_description"
+              android:layout_width="wrap_content" />
+</LinearLayout>

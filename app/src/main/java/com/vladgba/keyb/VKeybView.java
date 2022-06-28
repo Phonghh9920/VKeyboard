@@ -34,7 +34,7 @@ public class VKeybView extends KeyboardView {
     private int horizontalTick = 30;
     private int verticalTick = 50;
     private boolean cursorMoved = false;
-    private int offset = 100;
+    private int offset = 70;
 
     public VKeybView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -60,13 +60,13 @@ public class VKeybView extends KeyboardView {
             canvas.save();
 
             // Positions for subsymbols
-            int x1 = key.height / 6;
-            int x2 = key.height / 2;
-            int x3 = key.height - x1;
+            int x1 = key.width / 6;
+            int x2 = key.width / 2;
+            int x3 = key.width - x1;
 
-            int y1 = key.width / 6;
-            int y2 = key.width / 2;
-            int y3 = key.width - y1;
+            int y1 = key.height / 6;
+            int y2 = key.height / 2;
+            int y3 = key.height - y1;
 
             int initdrawy = key.y;
             Rect rect = new Rect(
@@ -94,7 +94,7 @@ public class VKeybView extends KeyboardView {
             paint.setAntiAlias(true);
             paint.setTypeface(Typeface.MONOSPACE);
             paint.setTextAlign(Paint.Align.CENTER);
-            paint.setTextSize(56);
+            paint.setTextSize((float) (key.height/1.9));
             paint.setColor(res.getColor(R.color.textColor));
 
             if (key.label != null) {
@@ -106,7 +106,7 @@ public class VKeybView extends KeyboardView {
                         paint);
             }
 
-            paint.setTextSize(24);
+            paint.setTextSize((float) (key.height/4.5));
             paint.setColor(res.getColor(R.color.textColor));
 
             if (key.popupCharacters != null) {
@@ -238,12 +238,12 @@ public class VKeybView extends KeyboardView {
         if (this.relx < 0) return;
 
         while(true) { //Horizontal
-            if(curX - horizontalTick > this.relx) {
+            if(curY > 0 && curX - horizontalTick > this.relx) {
                 this.relx += horizontalTick;
                 super.getOnKeyboardActionListener().swipeRight();
                 continue;
             }
-            if(curX + horizontalTick < this.relx) {
+            if(curY > 0 && curX + horizontalTick < this.relx) {
                 this.relx -= horizontalTick;
                 super.getOnKeyboardActionListener().swipeLeft();
                 continue;
