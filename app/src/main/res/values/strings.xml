@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">AndroidCustomKeyboard</string>
+    <string name="sync_title">Sync-title</string>
+    <string name="sync_header">Sync-hdr</string>
+    <string name="attachment_summary_off">Attach-On</string>
+    <string name="attachment_summary_on">Attach-Off</string>
+    <string name="attachment_title">Attach-title</string>
+    <string name="reply_title">reply-title</string>
+    <string name="signature_title">sign-title</string>
+    <string name="messages_header">msgs-hdr</string>
+</resources>
