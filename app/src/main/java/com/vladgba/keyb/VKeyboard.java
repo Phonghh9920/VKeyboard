@@ -1,14 +1,17 @@
 package com.vladgba.keyb;
 
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
+import android.os.IBinder;
+import android.util.Log;
 import android.view.*;
 import android.view.inputmethod.InputConnection;
 
 public class VKeyboard extends InputMethodService implements KeyboardView.OnKeyboardActionListener {
-
     private KeyboardView keybViev;
     private boolean ctrlPressed = false;
     public static boolean shiftPressed = false;
@@ -18,7 +21,20 @@ public class VKeyboard extends InputMethodService implements KeyboardView.OnKeyb
     private Keyboard cyrillicKeybLandscape;
     private boolean isLatin = true;
     private boolean isPortrait = false;
+    IBinder mToken;
+    @Override
+    public AbstractInputMethodImpl onCreateInputMethodInterface() {
+        return new MyInputMethodImpl();
+    }
 
+    public class MyInputMethodImpl extends InputMethodImpl {
+        @Override
+        public void attachToken(IBinder token) {
+            super.attachToken(token);
+            Log.i("VKey", "attachToken " + token);
+            if (mToken == null) mToken = token;
+        }
+    }
     @Override
     public View onCreateInputView() {
         keybViev = (VKeybView)getLayoutInflater().inflate(R.layout.vkeybview,null);
@@ -37,7 +53,6 @@ public class VKeyboard extends InputMethodService implements KeyboardView.OnKeyb
         isLatin = !isLatin;
         setKeyb();
     }
-
     @Override
     public void onConfigurationChanged(Configuration cfg) {
         super.onConfigurationChanged(cfg);
@@ -47,7 +62,11 @@ public class VKeyboard extends InputMethodService implements KeyboardView.OnKeyb
             if (!this.isPortrait) updateOrientation(true);
         }
     }
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
+                                          String key) {
+        Resources res = getResources();
 
+    }
     private void updateOrientation(boolean b) {
         this.isPortrait = b;
         setKeyb();

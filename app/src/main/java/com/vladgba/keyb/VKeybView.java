@@ -30,7 +30,6 @@ public class VKeybView extends KeyboardView {
     private int rely = 0;
 
     /** Cursor **/
-    // Center G & H
     private int horizontalTick = 30;
     private int verticalTick = 50;
     private boolean cursorMoved = false;

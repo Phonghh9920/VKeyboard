@@ -5,18 +5,25 @@
         android:orientation="vertical"
         android:padding="10dp"
 >
-    <Button
-            android:text="Manage on-screen keyboards"
-            android:id="@+id/main_manage_onscreen_keyboards"
+    <LinearLayout
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-    />
-    <Button
-            android:text="Choose input method"
-            android:id="@+id/main_choose_input_method_btn"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-    />
+            android:orientation="horizontal">
+        <Button
+                android:text="Manage on-screen keyboards"
+                android:id="@+id/main_manage_onscreen_keyboards"
+                android:layout_width="0dp"
+                android:layout_height="fill_parent"
+                android:layout_weight="1"
+        />
+        <Button
+                android:text="Choose input method"
+                android:id="@+id/main_choose_input_method_btn"
+                android:layout_width="0dp"
+                android:layout_height="fill_parent"
+                android:layout_weight="1"
+        />
+    </LinearLayout>
     <Button
             android:text="Settings"
             android:id="@+id/main_settings_btn"
@@ -24,7 +31,7 @@
             android:layout_height="wrap_content"
     />
     <EditText
-            android:text="You can test"
+            android:text="You can test keyboard here"
             android:id="@+id/main_setup_edit_test"
             android:layout_width="fill_parent"
             android:gravity="center"

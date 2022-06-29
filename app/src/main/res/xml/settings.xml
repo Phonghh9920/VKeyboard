@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="General">
+        <SwitchPreference
+                android:defaultValue="false"
+                android:key="perm_notification"
+                android:summary="to launch the keyboard anywhere"
+                android:title="Permanent notification" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Keys">
+        <ListPreference
+                android:defaultValue="1"
+                android:dialogTitle="asd"
+                android:entries="@array/pref_volup"
+                android:entryValues="@array/pref_volup_val"
+                android:key="pref_list_test"
+                android:title="Volume up" />
+        <ListPreference
+                android:defaultValue="2"
+                android:dialogTitle="asd"
+                android:entries="@array/pref_voldown"
+                android:entryValues="@array/pref_voldown_val"
+                android:key="pref_list_test"
+                android:title="Volume down" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Swipe sensivity">
+        <SeekBarPreference
+                android:id="@+id/pref_hor_sens"
+                android:defaultValue="70"
+                android:key="HOR_SENS"
+                android:title="Horizontal (left/right)"
+        />
+        <SeekBarPreference
+                android:id="@+id/pref_ver_sens"
+                android:defaultValue="50"
+                android:key="VERT_SENS"
+                android:title="Vertical (up/down)"
+        />
+    </PreferenceCategory>
+
+</PreferenceScreen>
