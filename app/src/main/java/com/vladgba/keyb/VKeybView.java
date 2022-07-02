@@ -8,11 +8,10 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
-import android.inputmethodservice.Keyboard.Key;
-import android.inputmethodservice.KeyboardView;
 import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.view.*;
+import com.vladgba.keyb.Keyboard.Key;
 
 
 public class VKeybView extends KeyboardView {
@@ -20,12 +19,10 @@ public class VKeybView extends KeyboardView {
     private Drawable mOpKeybgDrawable;
     private Resources res;
     private Context context;
-
     private int savedX = 0;
     private int savedY = 0;
     private int charPos = 0;
     private boolean keyWait = false;
-
     private int relx = 0;
     private int rely = 0;
 
@@ -34,6 +31,7 @@ public class VKeybView extends KeyboardView {
     private int verticalTick = 50;
     private boolean cursorMoved = false;
     private int offset = 70;
+    private Key currentKey;
 
     public VKeybView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -205,7 +203,8 @@ public class VKeybView extends KeyboardView {
         }
         return 0;
     }
-    private void handleMove(int curX, int curY) {
+    private void checkMove(int curX, int curY) {
+
         if (!keyWait) return;
         charPos = detectPos(curX, curY);
 
@@ -226,17 +225,15 @@ public class VKeybView extends KeyboardView {
             if (textIndex == null || textIndex.charAt(0) == ' ' || textIndex.charAt(0) == 'H') return;
             createCustomKeyEvent(textIndex);
         }
-
     }
 
     private void handleCursor(int curX, int curY) {
         if (!cursorMoved && (curX - horizontalTick > savedX || curX + horizontalTick < savedX || curY - verticalTick > savedY || curY + verticalTick < savedY)) {
             cursorMoved = true;
         }
-
         if (this.relx < 0) return;
 
-        while(true) { //Horizontal
+        while(true) {
             if(curY > 0 && curX - horizontalTick > this.relx) {
                 this.relx += horizontalTick;
                 super.getOnKeyboardActionListener().swipeRight();
@@ -247,10 +244,6 @@ public class VKeybView extends KeyboardView {
                 super.getOnKeyboardActionListener().swipeLeft();
                 continue;
             }
-            break;
-        }
-
-        while(true) { // Vertical
             if(curY - verticalTick > this.rely) {
                 this.rely += verticalTick;
                 super.getOnKeyboardActionListener().swipeDown();
@@ -267,16 +260,13 @@ public class VKeybView extends KeyboardView {
 
     @Override
     public boolean onTouchEvent(MotionEvent me) {
-        final int pointerCount = me.getPointerCount();
         final int action = me.getAction();
-        boolean result = false;
-        final long now = me.getEventTime();
 
         switch(action) {
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
             case MotionEvent.ACTION_POINTER_UP:
-                handleMove((int) me.getX(0), (int) me.getY(0));
+                checkMove((int) me.getX(0), (int) me.getY(0));
                 this.relx = -1;
                 this.rely = -1;
                 cursorMoved = false;
@@ -289,7 +279,6 @@ public class VKeybView extends KeyboardView {
             case MotionEvent.ACTION_MOVE:
                 handleCursor((int) me.getX(0), (int) me.getY(0));
                 return false;
-                //break;
             default:
                 break;
         }
@@ -298,20 +287,18 @@ public class VKeybView extends KeyboardView {
         return true;
     }
 
-    /**
-     * Saves initial position of pointer
-     */
+    /** Saves initial position of pointer **/
     public void rememberPos(int curX, int curY) {
         int currentKeyIndex =  getKeyIndices(curX, curY, null);
-        Key currentKey = getKeyboard().getKeys().get(currentKeyIndex);
+        if (currentKeyIndex == -1) return;
+        currentKey = getKeyboard().getKeys().get(currentKeyIndex);
 
-
-        if (currentKey.popupCharacters == null) {
-            keyWait = false;
-        } else if (currentKey.popupCharacters.charAt(0) == 'H') {
+        if (currentKey.cursor) {
             keyWait = true;
             this.relx = curX;
             this.rely = curY;
+        } else if (currentKey.popupCharacters == null || currentKey.popupCharacters.length() == 0) {
+            keyWait = false;
         } else {
             this.relx = -1;
             this.rely = -1;
@@ -324,7 +311,10 @@ public class VKeybView extends KeyboardView {
 
     public int[] getFromString(CharSequence str) {
         if (str.length() > 1) {
-            return new int[] { str.charAt(0), str.charAt(1) }; // FIXME: Is it fix 2 length?
+            int[] out = new int[str.length()];
+            for(int j = 0; j < str.length(); j++)
+                out[j] = Character.getNumericValue(str.charAt(j));
+            return out; // FIXME: Is it fixes >1 length?
         } else {
             return new int[] { str.charAt(0) };
         }
