@@ -15,8 +15,9 @@ import com.vladgba.keyb.Keyboard.Key;
 
 
 public class VKeybView extends KeyboardView {
-    private Drawable mKeybgDrawable;
-    private Drawable mOpKeybgDrawable;
+    private Drawable keybgDrawable;
+    private Drawable opkeybgDrawable;
+    private Drawable curkeybgDrawable;
     private Resources res;
     private Context context;
     private int savedX = 0;
@@ -46,8 +47,9 @@ public class VKeybView extends KeyboardView {
     private void initResources(Context context) {
         this.context = context;
         res = context.getResources();
-        mKeybgDrawable = res.getDrawable(R.drawable.btn_keyboard_key);
-        mOpKeybgDrawable = res.getDrawable(R.drawable.btn_keyboard_opkey);
+        keybgDrawable = res.getDrawable(R.drawable.btn_keyboard_key);
+        opkeybgDrawable = res.getDrawable(R.drawable.btn_keyboard_opkey);
+        curkeybgDrawable = res.getDrawable(R.drawable.btn_keyboard_curkey);
     }
 
     @Override
@@ -78,7 +80,8 @@ public class VKeybView extends KeyboardView {
             int primaryCode = -1;
             if (null != key.codes && key.codes.length != 0) primaryCode = key.codes[0];
 
-            Drawable dr = primaryCode < 0 || key.codes[0] < 0 ? mOpKeybgDrawable : mKeybgDrawable;
+            Drawable dr = primaryCode < 0 || key.codes[0] < 0 ? opkeybgDrawable : keybgDrawable;
+            if (key.cursor) dr = curkeybgDrawable;
 
             if (null != dr) {
                 int[] state = key.getCurrentDrawableState();
@@ -106,8 +109,8 @@ public class VKeybView extends KeyboardView {
             paint.setTextSize((float) (key.height/4.5));
             paint.setColor(res.getColor(R.color.textColor));
 
-            if (key.popupCharacters != null) {
-                String str = String.valueOf(key.popupCharacters);
+            if (key.extChars != null) {
+                String str = String.valueOf(key.extChars);
                 viewChar(str, 0, x1, y1, canvas, key, paint);
                 viewChar(str, 1, x2, y1, canvas, key, paint);
                 viewChar(str, 2, x3, y1, canvas, key, paint);
@@ -124,7 +127,7 @@ public class VKeybView extends KeyboardView {
     }
 
     private void viewChar(String str, int pos, int ox, int oy, Canvas canvas, Key key, Paint paint) {
-        if (str.length() <= pos || str.charAt(0) == 'H' || str.charAt(pos) == 'H' || str.charAt(pos) == ' ') return;
+        if (str.length() <= pos || str.charAt(pos) == ' ') return;
         canvas.drawText(
                 String.valueOf(str.charAt(pos)),
                 key.x + ox,
@@ -135,13 +138,13 @@ public class VKeybView extends KeyboardView {
 
     private int getKeyIndices(int x, int y, int[] allKeys) {
         int MAX_NEARBY_KEYS = 12;
-        int[] mDistances = new int[MAX_NEARBY_KEYS];
+        int[] distances = new int[MAX_NEARBY_KEYS];
 
         final Key[] keys = getKeyboard().getKeys().toArray(new Key[0]);
         int primaryIndex = -1;
         int closestKey = -1;
         int closestKeyDist = 2;
-        java.util.Arrays.fill(mDistances, Integer.MAX_VALUE);
+        java.util.Arrays.fill(distances, Integer.MAX_VALUE);
         int [] nearestKeyIndices = getKeyboard().getNearestKeys(x, y);
         final int keyCount = nearestKeyIndices.length;
         for (int i = 0; i < keyCount; i++) {
@@ -161,13 +164,13 @@ public class VKeybView extends KeyboardView {
 
                 if (allKeys == null) continue;
 
-                for (int j = 0; j < mDistances.length; j++) {
-                    if (mDistances[j] > dist) {
-                        System.arraycopy(mDistances, j, mDistances, j + nCodes, mDistances.length - j - nCodes);
+                for (int j = 0; j < distances.length; j++) {
+                    if (distances[j] > dist) {
+                        System.arraycopy(distances, j, distances, j + nCodes, distances.length - j - nCodes);
                         System.arraycopy(allKeys, j, allKeys, j + nCodes, allKeys.length - j - nCodes);
                         for (int c = 0; c < nCodes; c++) {
                             allKeys[j + c] = key.codes[c];
-                            mDistances[j + c] = dist;
+                            distances[j + c] = dist;
                         }
                         break;
                     }
@@ -218,10 +221,10 @@ public class VKeybView extends KeyboardView {
 
         int currentKeyIndex =  getKeyIndices(this.savedX, this.savedY, null);
         Key currentKey = getKeyboard().getKeys().get(currentKeyIndex);
-        if (currentKey.popupCharacters == null) return;
-        int popSz = currentKey.popupCharacters.length();
+        if (currentKey.extChars == null) return;
+        int popSz = currentKey.extChars.length();
         if (popSz > 0 && popSz >= charPos) {
-            String textIndex = String.valueOf(currentKey.popupCharacters.charAt(charPos - 1));
+            String textIndex = String.valueOf(currentKey.extChars.charAt(charPos - 1));
             if (textIndex == null || textIndex.charAt(0) == ' ' || textIndex.charAt(0) == 'H') return;
             createCustomKeyEvent(textIndex);
         }
@@ -297,7 +300,7 @@ public class VKeybView extends KeyboardView {
             keyWait = true;
             this.relx = curX;
             this.rely = curY;
-        } else if (currentKey.popupCharacters == null || currentKey.popupCharacters.length() == 0) {
+        } else if (currentKey.extChars == null || currentKey.extChars.length() == 0) {
             keyWait = false;
         } else {
             this.relx = -1;

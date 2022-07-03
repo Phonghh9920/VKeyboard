@@ -8,7 +8,6 @@
     android:keyBackground="@drawable/btn_keyboard_key"
     android:keyTextColor="@color/black"
     android:layout_alignParentBottom="true"
-    android:popupLayout="@layout/popup_layout"
     android:keyPreviewLayout="@layout/key_preview"
 />
 

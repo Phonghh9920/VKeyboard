@@ -1,16 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <color name="keyboard_background_color">#000000</color>
     <color name="keyboard_divider">#002203</color>
-    <color name="keyboard_pressed">#1f1f1f</color>
-    <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
 
     <color name="textColor">#ffffff</color>
     <drawable name="keyboard_bg_color">#114422</drawable>
     <drawable name="key_normal_color">#000000</drawable>
-    <drawable name="key_opnormal_color">#001b10</drawable>
-    <drawable name="key_selected_color">#113311</drawable>
-    <drawable name="opkey_selected_color">#225522</drawable>
+    <drawable name="opkey_normal_color">#001b10</drawable>
+    <drawable name="curkey_normal_color">#000022</drawable>
 </resources>

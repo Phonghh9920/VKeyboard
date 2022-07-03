@@ -34,45 +34,42 @@ public class KeyboardView extends View implements View.OnClickListener {
     private static final int NOT_A_KEY = -1;
     private static final int[] KEY_DELETE = { Keyboard.KEYCODE_DELETE };
     private Keyboard keyb;
-    private PopupWindow mPopupKeyboard;
+    private PopupWindow popupKeyboard;
     private boolean keybOnScreen;
-    private Map<Key,View> mMiniKeyboardCache;
     private Key[] keys;
     private OnKeyboardActionListener keybActionListener;
     private static final int MSG_REPEAT = 3;
     private static final int MSG_LONGPRESS = 4;
     private static final int DEBOUNCE_TIME = 70;
     private int proximityThreshold;
-    private int mLastX;
-    private int mLastY;
-    private Paint mPaint;
-    private Rect mPadding;
+    private int lastX;
+    private int lastY;
+    private Paint paint;
     private long downTime;
     private long lastMoveTime;
     private int lastKey;
     private int lastCodeX;
     private int lastCodeY;
     private int currentKey = NOT_A_KEY;
-    private int downKey = NOT_A_KEY;
     private long lastKeyTime;
     private long currentKeyTime;
     private int[] keyIndices = new int[12];
     private GestureDetector gestureDetector;
     private int repeatKeyIndex = NOT_A_KEY;
     private boolean abortKey;
-    private int mOldPointerCount = 1;
-    private float mOldPointerX;
-    private float mOldPointerY;
-    private Drawable mKeyBackground;
+    private int oldPointerCount = 1;
+    private float oldPointerX;
+    private float oldPointerY;
+    private Drawable keyBackground;
     private static final int REPEAT_INTERVAL = 50;
     private static final int REPEAT_START_DELAY = 400;
     private static final int LONGPRESS_TIMEOUT = ViewConfiguration.getLongPressTimeout();
     private static int MAX_NEARBY_KEYS = 12;
     private int[] mDistances = new int[MAX_NEARBY_KEYS];
-    private int mLastSentIndex;
-    private int mTapCount;
-    private long mLastTapTime;
-    private boolean mInMultiTap;
+    private int lastSentIndex;
+    private int tapCount;
+    private long lastTapTime;
+    private boolean inMultiTap;
     private static final int MULTITAP_INTERVAL = 800;
     Handler handler;
 
@@ -85,17 +82,15 @@ public class KeyboardView extends View implements View.OnClickListener {
     public KeyboardView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         int keyTextSize = 0;
-        mKeyBackground = context.getDrawable(R.drawable.keyboard_bg_color);
-        mPopupKeyboard = new PopupWindow(context);
-        mPopupKeyboard.setBackgroundDrawable(null);
-        mPaint = new Paint();
-        mPaint.setAntiAlias(true);
-        mPaint.setTextSize(keyTextSize);
-        mPaint.setTextAlign(Align.CENTER);
-        mPaint.setAlpha(255);
-        mPadding = new Rect(0, 0, 0, 0);
-        mMiniKeyboardCache = new HashMap<Key,View>();
-        mKeyBackground.getPadding(mPadding);
+        keyBackground = context.getDrawable(R.drawable.keyboard_bg_color);
+        popupKeyboard = new PopupWindow(context);
+        popupKeyboard.setBackgroundDrawable(null);
+        paint = new Paint();
+        paint.setAntiAlias(true);
+        paint.setTextSize(keyTextSize);
+        paint.setTextAlign(Align.CENTER);
+        paint.setAlpha(255);
+        keyBackground.getPadding(new Rect(0, 0, 0, 0));
         resetMultiTap();
     }
     protected void onAttachedToWindow() {
@@ -143,7 +138,6 @@ public class KeyboardView extends View implements View.OnClickListener {
         requestLayout();
         invalidateAllKeys();
         computeProximityThreshold(keyboard);
-        mMiniKeyboardCache.clear();
         abortKey = true;
     }
 
@@ -203,7 +197,6 @@ public class KeyboardView extends View implements View.OnClickListener {
                 primaryIndex = nearestKeyIndices[i];
             }
             if (isInside && key.codes[0] > 32) {
-                // Find insertion point
                 final int nCodes = key.codes.length;
                 if (dist < closestKeyDist) {
                     closestKeyDist = dist;
@@ -212,7 +205,6 @@ public class KeyboardView extends View implements View.OnClickListener {
                 if (allKeys == null) continue;
                 for (int j = 0; j < mDistances.length; j++) {
                     if (mDistances[j] > dist) {
-                        // Make space for nCodes codes
                         System.arraycopy(mDistances, j, mDistances, j + nCodes,
                                 mDistances.length - j - nCodes);
                         System.arraycopy(allKeys, j, allKeys, j + nCodes,
@@ -240,20 +232,17 @@ public class KeyboardView extends View implements View.OnClickListener {
             int[] codes = new int[MAX_NEARBY_KEYS];
             Arrays.fill(codes, NOT_A_KEY);
             getKeyIndices(x, y, codes);
-            // Multi-tap
-            if (mInMultiTap) {
-                if (mTapCount != -1) {
-                    keybActionListener.onKey(Keyboard.KEYCODE_DELETE, KEY_DELETE);
-                } else {
-                    mTapCount = 0;
-                }
-                code = key.codes[mTapCount];
+
+            if (inMultiTap) {
+                if (tapCount != -1) keybActionListener.onKey(Keyboard.KEYCODE_DELETE, KEY_DELETE);
+                else tapCount = 0;
+                code = key.codes[tapCount];
             }
             keybActionListener.onKey(code, codes);
             keybActionListener.onRelease(code);
         }
-        mLastSentIndex = index;
-        mLastTapTime = eventTime;
+        lastSentIndex = index;
+        lastTapTime = eventTime;
     }
 
     public void invalidateAllKeys() {
@@ -279,9 +268,9 @@ public class KeyboardView extends View implements View.OnClickListener {
     public boolean onTouchEvent(MotionEvent me) {
         final int pointerCount = me.getPointerCount();
         final int action = me.getAction();
-        boolean result = false;
+        boolean result;
         final long now = me.getEventTime();
-        if (pointerCount != mOldPointerCount) {
+        if (pointerCount != oldPointerCount) {
             if (pointerCount == 1) {
                 MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN,
                         me.getX(), me.getY(), me.getMetaState());
@@ -292,20 +281,20 @@ public class KeyboardView extends View implements View.OnClickListener {
                 }
             } else {
                 MotionEvent up = MotionEvent.obtain(now, now, MotionEvent.ACTION_UP,
-                        mOldPointerX, mOldPointerY, me.getMetaState());
+                        oldPointerX, oldPointerY, me.getMetaState());
                 result = onModifiedTouchEvent(up, true);
                 up.recycle();
             }
         } else {
             if (pointerCount == 1) {
                 result = onModifiedTouchEvent(me, false);
-                mOldPointerX = me.getX();
-                mOldPointerY = me.getY();
+                oldPointerX = me.getX();
+                oldPointerY = me.getY();
             } else {
                 result = true;
             }
         }
-        mOldPointerCount = pointerCount;
+        oldPointerCount = pointerCount;
         return result;
     }
     private boolean onModifiedTouchEvent(MotionEvent me, boolean possiblePoly) {
@@ -315,8 +304,7 @@ public class KeyboardView extends View implements View.OnClickListener {
         final long eventTime = me.getEventTime();
         int keyIndex = getKeyIndices(touchX, touchY, null);
         // Ignore all motion events until a DOWN.
-        if (abortKey
-                && action != MotionEvent.ACTION_DOWN && action != MotionEvent.ACTION_CANCEL) {
+        if (abortKey && action != MotionEvent.ACTION_DOWN && action != MotionEvent.ACTION_CANCEL) {
             return true;
         }
         if (gestureDetector.onTouchEvent(me)) {
@@ -336,7 +324,6 @@ public class KeyboardView extends View implements View.OnClickListener {
                 currentKeyTime = 0;
                 lastKey = NOT_A_KEY;
                 currentKey = keyIndex;
-                downKey = keyIndex;
                 downTime = me.getEventTime();
                 lastMoveTime = downTime;
                 checkMultiTap(eventTime, keyIndex);
@@ -371,10 +358,9 @@ public class KeyboardView extends View implements View.OnClickListener {
                         } else if (repeatKeyIndex == NOT_A_KEY) {
                             resetMultiTap();
                             lastKey = currentKey;
-                            lastCodeX = mLastX;
-                            lastCodeY = mLastY;
-                            lastKeyTime =
-                                    currentKeyTime + eventTime - lastMoveTime;
+                            lastCodeX = lastX;
+                            lastCodeY = lastY;
+                            lastKeyTime = currentKeyTime + eventTime - lastMoveTime;
                             currentKey = keyIndex;
                             currentKeyTime = 0;
                         }
@@ -422,21 +408,20 @@ public class KeyboardView extends View implements View.OnClickListener {
                 invalidateKey(currentKey);
                 break;
         }
-        mLastX = touchX;
-        mLastY = touchY;
+        lastX = touchX;
+        lastY = touchY;
         return true;
     }
 
     private boolean repeatKey() {
         if (repeatKeyIndex == -1) return false;
         Key key = keys[repeatKeyIndex];
-        detectAndSendKey(currentKey, key.x, key.y, mLastTapTime);
+        detectAndSendKey(currentKey, key.x, key.y, lastTapTime);
         return true;
     }
     public void closing() {
         removeMessages();
         dismissPopupKeyboard();
-        mMiniKeyboardCache.clear();
     }
     private void removeMessages() {
     }
@@ -446,130 +431,33 @@ public class KeyboardView extends View implements View.OnClickListener {
         closing();
     }
     private void dismissPopupKeyboard() {
-        if (false && mPopupKeyboard.isShowing()) {
-            mPopupKeyboard.dismiss();
+        if (false && popupKeyboard.isShowing()) {
+            popupKeyboard.dismiss();
             keybOnScreen = false;
             invalidateAllKeys();
         }
     }
     private void resetMultiTap() {
-        mLastSentIndex = NOT_A_KEY;
-        mTapCount = 0;
-        mLastTapTime = -1;
-        mInMultiTap = false;
+        lastSentIndex = NOT_A_KEY;
+        tapCount = 0;
+        lastTapTime = -1;
+        inMultiTap = false;
     }
     private void checkMultiTap(long eventTime, int keyIndex) {
         if (keyIndex == NOT_A_KEY) return;
         Key key = keys[keyIndex];
         if (key.codes.length > 1) {
-            mInMultiTap = true;
-            if (eventTime < mLastTapTime + MULTITAP_INTERVAL
-                    && keyIndex == mLastSentIndex) {
-                mTapCount = (mTapCount + 1) % key.codes.length;
+            inMultiTap = true;
+            if (eventTime < lastTapTime + MULTITAP_INTERVAL && keyIndex == lastSentIndex) {
+                tapCount = (tapCount + 1) % key.codes.length;
                 return;
             } else {
-                mTapCount = -1;
+                tapCount = -1;
                 return;
             }
         }
-        if (eventTime > mLastTapTime + MULTITAP_INTERVAL || keyIndex != mLastSentIndex) {
+        if (eventTime > lastTapTime + MULTITAP_INTERVAL || keyIndex != lastSentIndex) {
             resetMultiTap();
-        }
-    }
-    private static class SwipeTracker {
-        static final int NUM_PAST = 4;
-        static final int LONGEST_PAST_TIME = 200;
-        final float mPastX[] = new float[NUM_PAST];
-        final float mPastY[] = new float[NUM_PAST];
-        final long mPastTime[] = new long[NUM_PAST];
-        float mYVelocity;
-        float mXVelocity;
-        public void clear() {
-            mPastTime[0] = 0;
-        }
-        public void addMovement(MotionEvent ev) {
-            long time = ev.getEventTime();
-            final int N = ev.getHistorySize();
-            for (int i=0; i<N; i++) {
-                addPoint(ev.getHistoricalX(i), ev.getHistoricalY(i),
-                        ev.getHistoricalEventTime(i));
-            }
-            addPoint(ev.getX(), ev.getY(), time);
-        }
-        private void addPoint(float x, float y, long time) {
-            int drop = -1;
-            int i;
-            final long[] pastTime = mPastTime;
-            for (i=0; i<NUM_PAST; i++) {
-                if (pastTime[i] == 0) {
-                    break;
-                } else if (pastTime[i] < time-LONGEST_PAST_TIME) {
-                    drop = i;
-                }
-            }
-            if (i == NUM_PAST && drop < 0) {
-                drop = 0;
-            }
-            if (drop == i) drop--;
-            final float[] pastX = mPastX;
-            final float[] pastY = mPastY;
-            if (drop >= 0) {
-                final int start = drop+1;
-                final int count = NUM_PAST-drop-1;
-                System.arraycopy(pastX, start, pastX, 0, count);
-                System.arraycopy(pastY, start, pastY, 0, count);
-                System.arraycopy(pastTime, start, pastTime, 0, count);
-                i -= (drop+1);
-            }
-            pastX[i] = x;
-            pastY[i] = y;
-            pastTime[i] = time;
-            i++;
-            if (i < NUM_PAST) {
-                pastTime[i] = 0;
-            }
-        }
-        public void computeCurrentVelocity(int units) {
-            computeCurrentVelocity(units, Float.MAX_VALUE);
-        }
-        public void computeCurrentVelocity(int units, float maxVelocity) {
-            final float[] pastX = mPastX;
-            final float[] pastY = mPastY;
-            final long[] pastTime = mPastTime;
-            final float oldestX = pastX[0];
-            final float oldestY = pastY[0];
-            final long oldestTime = pastTime[0];
-            float accumX = 0;
-            float accumY = 0;
-            int N=0;
-            while (N < NUM_PAST) {
-                if (pastTime[N] == 0) {
-                    break;
-                }
-                N++;
-            }
-            for (int i=1; i < N; i++) {
-                final int dur = (int)(pastTime[i] - oldestTime);
-                if (dur == 0) continue;
-                float dist = pastX[i] - oldestX;
-                float vel = (dist/dur) * units;   // pixels/frame.
-                if (accumX == 0) accumX = vel;
-                else accumX = (accumX + vel) * .5f;
-                dist = pastY[i] - oldestY;
-                vel = (dist/dur) * units;   // pixels/frame.
-                if (accumY == 0) accumY = vel;
-                else accumY = (accumY + vel) * .5f;
-            }
-            mXVelocity = accumX < 0.0f ? Math.max(accumX, -maxVelocity)
-                    : Math.min(accumX, maxVelocity);
-            mYVelocity = accumY < 0.0f ? Math.max(accumY, -maxVelocity)
-                    : Math.min(accumY, maxVelocity);
-        }
-        public float getXVelocity() {
-            return mXVelocity;
-        }
-        public float getYVelocity() {
-            return mYVelocity;
         }
     }
 }

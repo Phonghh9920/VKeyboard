@@ -13,7 +13,6 @@ import java.io.FileReader;
 import java.io.IOException;
 
 public class VKeyboard extends InputMethodService implements VKeybView.OnKeyboardActionListener {
-
     private VKeybView keybViev;
     private boolean ctrlPressed = false;
     public static boolean shiftPressed = false;
@@ -88,6 +87,10 @@ public class VKeyboard extends InputMethodService implements VKeybView.OnKeyboar
         else keybViev.setKeyboard(this.isPortrait ? cyrillicKeybPortrait : cyrillicKeybLandscape);
     }
 
+    private void forceLatin() {
+        keybViev.setKeyboard(this.isPortrait ? latinKeybPortrait : latinKeybLandscape);
+    }
+
     @Override
     public void onPress(int i) {
     }
@@ -103,6 +106,7 @@ public class VKeyboard extends InputMethodService implements VKeybView.OnKeyboar
             case KeyEvent.KEYCODE_VOLUME_UP:
                 if (keybViev.isShown()) {
                     ctrlPressed = true;
+                    forceLatin();
                     super.onKeyDown(KeyEvent.KEYCODE_CTRL_LEFT, event);
                     return true;
                 }
@@ -112,6 +116,8 @@ public class VKeyboard extends InputMethodService implements VKeybView.OnKeyboar
                     shiftPressed = true;
                     latinKeybPortrait.setShifted(shiftPressed);
                     cyrillicKeybPortrait.setShifted(shiftPressed);
+                    latinKeybLandscape.setShifted(shiftPressed);
+                    cyrillicKeybLandscape.setShifted(shiftPressed);
                     keybViev.invalidateAllKeys();
                     return true;
                 }
@@ -126,6 +132,7 @@ public class VKeyboard extends InputMethodService implements VKeybView.OnKeyboar
             case KeyEvent.KEYCODE_VOLUME_UP:
                 if (keybViev.isShown()) {
                     ctrlPressed = false;
+                    setKeyb();
                     super.onKeyUp(KeyEvent.KEYCODE_CTRL_LEFT, event);
                     return true;
                 }
@@ -135,6 +142,8 @@ public class VKeyboard extends InputMethodService implements VKeybView.OnKeyboar
                     shiftPressed = false;
                     latinKeybPortrait.setShifted(shiftPressed);
                     cyrillicKeybPortrait.setShifted(shiftPressed);
+                    latinKeybLandscape.setShifted(shiftPressed);
+                    cyrillicKeybLandscape.setShifted(shiftPressed);
                     keybViev.invalidateAllKeys();
                     return true;
                 }
