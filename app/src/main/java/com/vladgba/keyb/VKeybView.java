@@ -234,12 +234,12 @@ public class VKeybView extends KeyboardView {
         if (this.relx < 0) return;
 
         while(true) {
-            if(curY > 0 && curX - horizontalTick > this.relx) {
+            if(curX - horizontalTick > this.relx) {
                 this.relx += horizontalTick;
                 super.getOnKeyboardActionListener().swipeRight();
                 continue;
             }
-            if(curY > 0 && curX + horizontalTick < this.relx) {
+            if(curX + horizontalTick < this.relx) {
                 this.relx -= horizontalTick;
                 super.getOnKeyboardActionListener().swipeLeft();
                 continue;
