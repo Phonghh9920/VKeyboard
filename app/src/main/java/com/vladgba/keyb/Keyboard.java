@@ -70,7 +70,6 @@ public class Keyboard {
         public boolean modifier;
         public int popupResId;
         public int pos;
-        public boolean repeatable;
 
         private final static int[] KEY_STATE_NORMAL = {
         };
@@ -98,7 +97,6 @@ public class Keyboard {
                 extChars = jdata.has("ext") ? jdata.getString("ext") : "";
                 if (extChars.length() > 0) extChars = padExtChars(extChars, pos);
                 cursor = jdata.has("cur") && (jdata.getInt("cur") == 1);
-                repeatable = jdata.has("repeat") && (jdata.getInt("repeat") == 1);
                 text = jdata.has("text") ? jdata.getString("text") : "";
             } catch (JSONException e) {
                 Log.d("Key", e.getMessage());

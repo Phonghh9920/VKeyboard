@@ -171,21 +171,30 @@ public class VKeyboard extends InputMethodService implements VKeybView.OnKeyboar
     private void releaseShiftable(int key, InputConnection ic) {
         keyShiftable(KeyEvent.ACTION_UP, key, ic);
     }
+
     private void clickShiftable(int key, InputConnection ic) {
         pressShiftable(key, ic);
         releaseShiftable(key, ic);
     }
+
     public void press(int key, @NotNull InputConnection ic) {
         ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,key));
     }
+
     public void release(int key, @NotNull InputConnection ic) {
         ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, key));
     }
+
+    public void click(int key) {
+        InputConnection ic = getCurrentInputConnection();
+        click(key, ic);
+    }
+
     public void click(int key, InputConnection ic) {
+        getCurrentInputConnection();
         press(key, ic);
         release(key, ic);
     }
-
 
     @Override
     public void onKey(int i, int[] ints) {

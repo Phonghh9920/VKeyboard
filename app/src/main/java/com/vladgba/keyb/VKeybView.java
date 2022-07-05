@@ -20,12 +20,11 @@ public class VKeybView extends KeyboardView {
     private Drawable curkeybgDrawable;
     private Resources res;
     private Context context;
-    private int savedX = 0;
-    private int savedY = 0;
+    private int keyX = 0;
+    private int keyY = 0;
     private int charPos = 0;
-    private boolean keyWait = false;
-    private int relx = 0;
-    private int rely = 0;
+    private int relX = 0;
+    private int relY = 0;
 
     /** Cursor **/
     private int horizontalTick = 30;
@@ -33,6 +32,8 @@ public class VKeybView extends KeyboardView {
     private boolean cursorMoved = false;
     private int offset = 70;
     private Key currentKey;
+    private boolean pressed = false;
+    private boolean skip = false;
 
     public VKeybView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -67,7 +68,6 @@ public class VKeybView extends KeyboardView {
             int y2 = key.height / 2;
             int y3 = key.height - y1;
 
-            int initdrawy = key.y;
             Rect rect = new Rect(
                     key.x + 1,
                     key.y + 1,
@@ -136,181 +136,123 @@ public class VKeybView extends KeyboardView {
         );
     }
 
-    private int getKeyIndices(int x, int y, int[] allKeys) {
-        int MAX_NEARBY_KEYS = 12;
-        int[] distances = new int[MAX_NEARBY_KEYS];
-
-        final Key[] keys = getKeyboard().getKeys().toArray(new Key[0]);
-        int primaryIndex = -1;
-        int closestKey = -1;
-        int closestKeyDist = 2;
-        java.util.Arrays.fill(distances, Integer.MAX_VALUE);
-        int [] nearestKeyIndices = getKeyboard().getNearestKeys(x, y);
-        final int keyCount = nearestKeyIndices.length;
-        for (int i = 0; i < keyCount; i++) {
-            final Key key = keys[nearestKeyIndices[i]];
-            int dist = 0;
-            boolean isInside = key.isInside(x,y);
-
-            if (isInside) primaryIndex = nearestKeyIndices[i];
-
-            if (isInside && key.codes[0] > 32) {
-                // Find insertion point
-                final int nCodes = key.codes.length;
-                if (dist < closestKeyDist) {
-                    closestKeyDist = dist;
-                    closestKey = nearestKeyIndices[i];
-                }
-
-                if (allKeys == null) continue;
-
-                for (int j = 0; j < distances.length; j++) {
-                    if (distances[j] > dist) {
-                        System.arraycopy(distances, j, distances, j + nCodes, distances.length - j - nCodes);
-                        System.arraycopy(allKeys, j, allKeys, j + nCodes, allKeys.length - j - nCodes);
-                        for (int c = 0; c < nCodes; c++) {
-                            allKeys[j + c] = key.codes[c];
-                            distances[j + c] = dist;
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-        return primaryIndex == -1 ? closestKey : primaryIndex;
-    }
-
-    private int translatePos(int i, int j) {
-        return i - offset > j ? 1 : i + offset < j ? 3 : 2;
-    }
-
-    private int detectPos(int x, int y) {
-        int matrixPos = translatePos(this.savedX, x) * 10 + translatePos(this.savedY, y);
-        /*
-        11 21 31
-        12 22 32
-        13 23 33
-         */
-        switch (matrixPos) {
-            case 11: return 1;
-            case 21: return 2;
-            case 31: return 3;
-
-            case 12: return 4;
-            case 22: return 0; // too little movement
-            case 32: return 5;
-
-            case 13: return 6;
-            case 23: return 7;
-            case 33: return 8;
-        }
-        return 0;
-    }
-    private void checkMove(int curX, int curY) {
-
-        if (!keyWait) return;
-        charPos = detectPos(curX, curY);
-
-        if (charPos == 0 || !cursorMoved) {
-            createCustomTouch(MotionEvent.ACTION_DOWN, curX, curY);
-            createCustomTouch(MotionEvent.ACTION_UP, curX, curY);
-            return;
-        }
-
-        if(this.relx >= 0) return;
-
-        int currentKeyIndex =  getKeyIndices(this.savedX, this.savedY, null);
-        Key currentKey = getKeyboard().getKeys().get(currentKeyIndex);
-        if (currentKey.extChars == null) return;
-        int popSz = currentKey.extChars.length();
-        if (popSz > 0 && popSz >= charPos) {
-            String textIndex = String.valueOf(currentKey.extChars.charAt(charPos - 1));
-            if (textIndex == null || textIndex.charAt(0) == ' ' || textIndex.charAt(0) == 'H') return;
-            createCustomKeyEvent(textIndex);
-        }
-    }
-
-    private void handleCursor(int curX, int curY) {
-        if (!cursorMoved && (curX - horizontalTick > savedX || curX + horizontalTick < savedX || curY - verticalTick > savedY || curY + verticalTick < savedY)) {
-            cursorMoved = true;
-        }
-        if (this.relx < 0) return;
-
-        while(true) {
-            if(curX - horizontalTick > this.relx) {
-                this.relx += horizontalTick;
-                super.getOnKeyboardActionListener().swipeRight();
-                continue;
-            }
-            if(curX + horizontalTick < this.relx) {
-                this.relx -= horizontalTick;
-                super.getOnKeyboardActionListener().swipeLeft();
-                continue;
-            }
-            if(curY - verticalTick > this.rely) {
-                this.rely += verticalTick;
-                super.getOnKeyboardActionListener().swipeDown();
-                continue;
-            }
-            if(curY + verticalTick < this.rely) {
-                this.rely -= horizontalTick;
-                super.getOnKeyboardActionListener().swipeUp();
-                continue;
-            }
-            break;
-        }
+    private int getExtPos(int x, int y) {
+        int matrixPos = (this.keyX - offset > x ? 1 : this.keyX + offset < x ? 3 : 2);
+        matrixPos += (this.keyY - offset > y ? 0 : this.keyY + offset < y ? 6 : 3);
+        return matrixPos == 5 ? 0 : matrixPos < 5 ? matrixPos : matrixPos - 1;
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent me) {
         final int action = me.getAction();
-
+        if (me.getPointerCount() > 1) return false;
         switch(action) {
-            case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_CANCEL:
-            case MotionEvent.ACTION_POINTER_UP:
-                checkMove((int) me.getX(0), (int) me.getY(0));
-                this.relx = -1;
-                this.rely = -1;
-                cursorMoved = false;
-                break;
             case MotionEvent.ACTION_DOWN:
             case MotionEvent.ACTION_POINTER_DOWN:
-                rememberPos((int) me.getX(0), (int) me.getY(0));
+                relX = -1;
+                relY = -1;
+                keyX = 0;
+                keyY = 0;
                 cursorMoved = false;
+                press((int) me.getX(0), (int) me.getY(0));
                 break;
             case MotionEvent.ACTION_MOVE:
-                handleCursor((int) me.getX(0), (int) me.getY(0));
-                return false;
-            default:
+                drag((int) me.getX(0), (int) me.getY(0));
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_POINTER_UP:
+                if (skip) return false;
+                release((int) me.getX(0), (int) me.getY(0));
                 break;
         }
-        if (!keyWait) return super.onTouchEvent(me);
 
         return true;
     }
 
-    /** Saves initial position of pointer **/
-    public void rememberPos(int curX, int curY) {
+    public void press(int curX, int curY) {
+        keyX = curX;
+        keyY = curY;
+        pressed = true;
+
         int currentKeyIndex =  getKeyIndices(curX, curY, null);
         if (currentKeyIndex == -1) return;
         currentKey = getKeyboard().getKeys().get(currentKeyIndex);
 
-        if (currentKey.cursor) {
-            keyWait = true;
-            this.relx = curX;
-            this.rely = curY;
-        } else if (currentKey.extChars == null || currentKey.extChars.length() == 0) {
-            keyWait = false;
-        } else {
-            this.relx = -1;
-            this.rely = -1;
-            keyWait = true;
-            this.savedX = curX;
-            this.savedY = curY;
+        if (currentKey.cursor || currentKey.codes[0] == -5 || currentKey.extChars.length() > 0) {
+            relX = curX;
+            relY = curY;
         }
-
     }
+    private void drag(int curX, int curY) {
+        if (relX < 0) return; // Not have alternative behavior
+
+        if (currentKey.codes[0] == -5) { // Delete
+            while(true) {
+                if (curX - horizontalTick > relX) {
+                    relX += horizontalTick;
+                    super.getOnKeyboardActionListener().click(112);
+                    continue;
+                }
+
+                if(curX + horizontalTick < relX) {
+                    relX -= horizontalTick;
+                    super.getOnKeyboardActionListener().onKey(-5, new int[]{-5});
+                    continue;
+                }
+                break;
+            }
+        } else if (currentKey.cursor) {
+            if (!cursorMoved && (curX - horizontalTick > keyX || curX + horizontalTick < keyX || curY - verticalTick > keyY || curY + verticalTick < keyY)) {
+                cursorMoved = true;
+            }
+            while(true) {
+                if(curX - horizontalTick > this.relX) {
+                    this.relX += horizontalTick;
+                    super.getOnKeyboardActionListener().swipeRight();
+                    continue;
+                }
+                if(curX + horizontalTick < this.relX) {
+                    this.relX -= horizontalTick;
+                    super.getOnKeyboardActionListener().swipeLeft();
+                    continue;
+                }
+                if(curY - verticalTick > this.relY) {
+                    this.relY += verticalTick;
+                    super.getOnKeyboardActionListener().swipeDown();
+                    continue;
+                }
+                if(curY + verticalTick < this.relY) {
+                    this.relY -= horizontalTick;
+                    super.getOnKeyboardActionListener().swipeUp();
+                    continue;
+                }
+                break;
+            }
+        } else if (currentKey.extChars.length() > 0) {
+            this.relX = curX;
+            this.relY = curY;
+            charPos = getExtPos(curX, curY);
+        }
+    }
+    private void release(int curX, int curY) {
+        if ((currentKey.cursor && cursorMoved) || currentKey.codes[0] == -5) return;
+        if (this.relX < 0) {
+            createCustomKeyEvent(currentKey.codes);
+            return; // Not have alternative behavior
+        }
+        if (charPos != 0) {
+            int extSz = currentKey.extChars.length();
+            if (extSz > 0 && extSz >= charPos) {
+                String textIndex = String.valueOf(currentKey.extChars.charAt(charPos - 1));
+                if (textIndex != null && textIndex.charAt(0) != ' ') {
+                    createCustomKeyEvent(textIndex);
+                    return;
+                }
+            }
+        }
+        createCustomKeyEvent(currentKey.codes);
+    }
+
 
     public int[] getFromString(CharSequence str) {
         if (str.length() > 1) {
@@ -330,6 +272,9 @@ public class VKeybView extends KeyboardView {
     private void createCustomKeyEvent(String data) {
         super.getOnKeyboardActionListener().onKey(getFromString(data)[0], getFromString(data));
     }
+    private void createCustomKeyEvent(int[] data) {
+        super.getOnKeyboardActionListener().onKey(data[0], data);
+    }
 
     private void createCustomTouch(int action, int x, int y) {
         long downTime = SystemClock.uptimeMillis();
@@ -337,5 +282,9 @@ public class VKeybView extends KeyboardView {
         int metaState = 0;
         MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, x, y, metaState);
         super.onTouchEvent(event);
+    }
+    private void customTap(int x, int y) {
+        createCustomTouch(MotionEvent.ACTION_DOWN, x, y);
+        createCustomTouch(MotionEvent.ACTION_UP, x, y);
     }
 }

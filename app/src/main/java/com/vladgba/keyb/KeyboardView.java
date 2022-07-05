@@ -30,9 +30,11 @@ public class KeyboardView extends View implements View.OnClickListener {
         void swipeRight();
         void swipeDown();
         void swipeUp();
+
+        void click(int i);
     }
     private static final int NOT_A_KEY = -1;
-    private static final int[] KEY_DELETE = { Keyboard.KEYCODE_DELETE };
+    static final int[] KEY_DELETE = { Keyboard.KEYCODE_DELETE };
     private Keyboard keyb;
     private PopupWindow popupKeyboard;
     private boolean keybOnScreen;
@@ -181,7 +183,7 @@ public class KeyboardView extends View implements View.OnClickListener {
         super.onSizeChanged(w, h, oldw, oldh);
         if (keyb != null) keyb.resize(w, h);
     }
-    private int getKeyIndices(int x, int y, int[] allKeys) {
+    int getKeyIndices(int x, int y, int[] allKeys) {
         final Key[] keys = this.keys;
         int primaryIndex = NOT_A_KEY;
         int closestKey = NOT_A_KEY;
@@ -329,17 +331,6 @@ public class KeyboardView extends View implements View.OnClickListener {
                 checkMultiTap(eventTime, keyIndex);
                 keybActionListener.onPress(keyIndex != NOT_A_KEY ?
                         keys[keyIndex].codes[0] : 0);
-                if (currentKey >= 0 && keys[currentKey].repeatable) {
-                    repeatKeyIndex = currentKey;
-                    Message msg = handler.obtainMessage(MSG_REPEAT);
-                    handler.sendMessageDelayed(msg, REPEAT_START_DELAY);
-                    repeatKey();
-                    // Delivering the key could have caused an abort
-                    if (abortKey) {
-                        repeatKeyIndex = NOT_A_KEY;
-                        break;
-                    }
-                }
                 if (currentKey != NOT_A_KEY) {
                     Message msg = handler.obtainMessage(MSG_LONGPRESS, me);
                     handler.sendMessageDelayed(msg, LONGPRESS_TIMEOUT);
