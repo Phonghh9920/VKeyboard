@@ -10,6 +10,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.*;
 import com.vladgba.keyb.Keyboard.Key;
 
@@ -27,10 +28,11 @@ public class VKeybView extends KeyboardView {
     private int relY = 0;
 
     /** Cursor **/
+    private int delTick = 60;
     private int horizontalTick = 30;
     private int verticalTick = 50;
     private boolean cursorMoved = false;
-    private int offset = 70;
+    private int offset = 70; // extChars
     private Key currentKey;
     private boolean pressed = false;
     private boolean skip = false;
@@ -129,7 +131,7 @@ public class VKeybView extends KeyboardView {
     private void viewChar(String str, int pos, int ox, int oy, Canvas canvas, Key key, Paint paint) {
         if (str.length() <= pos || str.charAt(pos) == ' ') return;
         canvas.drawText(
-                String.valueOf(str.charAt(pos)),
+                String.valueOf(VKeyboard.getShiftable(str.charAt(pos))),
                 key.x + ox,
                 key.y + oy + (paint.getTextSize() - paint.descent()) / 2,
                 paint
@@ -149,11 +151,6 @@ public class VKeybView extends KeyboardView {
         switch(action) {
             case MotionEvent.ACTION_DOWN:
             case MotionEvent.ACTION_POINTER_DOWN:
-                relX = -1;
-                relY = -1;
-                keyX = 0;
-                keyY = 0;
-                cursorMoved = false;
                 press((int) me.getX(0), (int) me.getY(0));
                 break;
             case MotionEvent.ACTION_MOVE:
@@ -172,7 +169,11 @@ public class VKeybView extends KeyboardView {
     public void press(int curX, int curY) {
         keyX = curX;
         keyY = curY;
+        relX = -1;
+        relY = -1;
         pressed = true;
+        cursorMoved = false;
+        charPos = 0;
 
         int currentKeyIndex =  getKeyIndices(curX, curY, null);
         if (currentKeyIndex == -1) return;
@@ -183,19 +184,24 @@ public class VKeybView extends KeyboardView {
             relY = curY;
         }
     }
+
     private void drag(int curX, int curY) {
         if (relX < 0) return; // Not have alternative behavior
 
         if (currentKey.codes[0] == -5) { // Delete
+            if (!cursorMoved && (curX - delTick > keyX || curX + delTick < keyX)) {
+                Log.d("Moved","");
+                cursorMoved = true;
+            }
             while(true) {
-                if (curX - horizontalTick > relX) {
-                    relX += horizontalTick;
+                if (curX - delTick > relX) {
+                    relX += delTick;
                     super.getOnKeyboardActionListener().click(112);
                     continue;
                 }
 
-                if(curX + horizontalTick < relX) {
-                    relX -= horizontalTick;
+                if(curX + delTick < relX) {
+                    relX -= delTick;
                     super.getOnKeyboardActionListener().onKey(-5, new int[]{-5});
                     continue;
                 }
@@ -234,8 +240,13 @@ public class VKeybView extends KeyboardView {
             charPos = getExtPos(curX, curY);
         }
     }
+
     private void release(int curX, int curY) {
-        if ((currentKey.cursor && cursorMoved) || currentKey.codes[0] == -5) return;
+        if (currentKey.cursor && cursorMoved) return;
+        if (currentKey.codes[0] == -5) {
+            if (!cursorMoved) super.getOnKeyboardActionListener().onKey(-5, new int[]{-5});
+            return;
+        }
         if (this.relX < 0) {
             createCustomKeyEvent(currentKey.codes);
             return; // Not have alternative behavior
@@ -252,7 +263,6 @@ public class VKeybView extends KeyboardView {
         }
         createCustomKeyEvent(currentKey.codes);
     }
-
 
     public int[] getFromString(CharSequence str) {
         if (str.length() > 1) {
@@ -272,6 +282,7 @@ public class VKeybView extends KeyboardView {
     private void createCustomKeyEvent(String data) {
         super.getOnKeyboardActionListener().onKey(getFromString(data)[0], getFromString(data));
     }
+
     private void createCustomKeyEvent(int[] data) {
         super.getOnKeyboardActionListener().onKey(data[0], data);
     }
@@ -283,6 +294,7 @@ public class VKeybView extends KeyboardView {
         MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, x, y, metaState);
         super.onTouchEvent(event);
     }
+
     private void customTap(int x, int y) {
         createCustomTouch(MotionEvent.ACTION_DOWN, x, y);
         createCustomTouch(MotionEvent.ACTION_UP, x, y);

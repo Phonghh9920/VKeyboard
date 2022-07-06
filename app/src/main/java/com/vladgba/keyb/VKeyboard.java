@@ -12,7 +12,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
-public class VKeyboard extends InputMethodService implements VKeybView.OnKeyboardActionListener {
+public class VKeyboard extends InputMethodService{
     private VKeybView keybViev;
     private boolean ctrlPressed = false;
     public static boolean shiftPressed = false;
@@ -91,11 +91,9 @@ public class VKeyboard extends InputMethodService implements VKeybView.OnKeyboar
         keybViev.setKeyboard(this.isPortrait ? latinKeybPortrait : latinKeybLandscape);
     }
 
-    @Override
     public void onPress(int i) {
     }
 
-    @Override
     public void onRelease(int i) {
     }
 
@@ -153,14 +151,14 @@ public class VKeyboard extends InputMethodService implements VKeybView.OnKeyboar
     }
 
     private void keyShiftable(int keyAct, int key, InputConnection ic) {
-        long evt = System.currentTimeMillis();
-        int mod = ctrlPressed ? KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON : 0;
+        long time = System.currentTimeMillis();
+        int ctrl = ctrlPressed ? KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON : 0;
         ic.sendKeyEvent(new KeyEvent(
-                evt, evt,
+                time, time,
                 keyAct,
                 key,
                 0,
-                shiftPressed ? mod | KeyEvent.META_SHIFT_LEFT_ON | KeyEvent.META_SHIFT_ON : mod
+                (shiftPressed ? KeyEvent.META_SHIFT_LEFT_ON | KeyEvent.META_SHIFT_ON : 0) | ctrl
         ));
     }
 
@@ -196,7 +194,6 @@ public class VKeyboard extends InputMethodService implements VKeybView.OnKeyboar
         release(key, ic);
     }
 
-    @Override
     public void onKey(int i, int[] ints) {
         long evt = System.currentTimeMillis();
         InputConnection ic = getCurrentInputConnection();
@@ -236,27 +233,22 @@ public class VKeyboard extends InputMethodService implements VKeybView.OnKeyboar
         return (Character.isLetter(code) && shiftPressed) ? Character.toUpperCase(code) : code;
     }
 
-    @Override
     public void onText(CharSequence chars) {
         for(int i = 0; i < chars.length(); i++) onKey(chars.charAt(i), new int[] {chars.charAt(i)});
     }
 
-    @Override
     public void swipeLeft() {
         clickShiftable(KeyEvent.KEYCODE_DPAD_LEFT, getCurrentInputConnection());
     }
 
-    @Override
     public void swipeRight() {
         clickShiftable(KeyEvent.KEYCODE_DPAD_RIGHT, getCurrentInputConnection());
     }
 
-    @Override
     public void swipeDown() {
         clickShiftable(KeyEvent.KEYCODE_DPAD_DOWN, getCurrentInputConnection());
     }
 
-    @Override
     public void swipeUp() {
         clickShiftable(KeyEvent.KEYCODE_DPAD_UP, getCurrentInputConnection());
     }

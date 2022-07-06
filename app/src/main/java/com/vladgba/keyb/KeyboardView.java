@@ -21,25 +21,13 @@ import java.util.List;
 import java.util.Map;
 
 public class KeyboardView extends View implements View.OnClickListener {
-    public interface OnKeyboardActionListener {
-        void onPress(int primaryCode);
-        void onRelease(int primaryCode);
-        void onKey(int primaryCode, int[] keyCodes);
-        void onText(CharSequence text);
-        void swipeLeft();
-        void swipeRight();
-        void swipeDown();
-        void swipeUp();
-
-        void click(int i);
-    }
     private static final int NOT_A_KEY = -1;
     static final int[] KEY_DELETE = { Keyboard.KEYCODE_DELETE };
     private Keyboard keyb;
     private PopupWindow popupKeyboard;
     private boolean keybOnScreen;
     private Key[] keys;
-    private OnKeyboardActionListener keybActionListener;
+    private VKeyboard keybActionListener;
     private static final int MSG_REPEAT = 3;
     private static final int MSG_LONGPRESS = 4;
     private static final int DEBOUNCE_TIME = 70;
@@ -124,11 +112,11 @@ public class KeyboardView extends View implements View.OnClickListener {
             gestureDetector.setIsLongpressEnabled(false);
         }
     }
-    public void setOnKeyboardActionListener(OnKeyboardActionListener listener) {
+    public void setOnKeyboardActionListener(VKeyboard listener) {
         keybActionListener = listener;
     }
 
-    protected OnKeyboardActionListener getOnKeyboardActionListener() {
+    protected VKeyboard getOnKeyboardActionListener() {
         return keybActionListener;
     }
 
