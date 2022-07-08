@@ -112,6 +112,12 @@ public class VKeyboard extends InputMethodService{
             case KeyEvent.KEYCODE_VOLUME_DOWN:
                 if (keybViev.isShown()) {
                     shiftPressed = true;
+
+                    long now = System.currentTimeMillis();
+                    InputConnection ic = getCurrentInputConnection();
+                    if (ic != null) ic.sendKeyEvent(new KeyEvent(
+                            now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT, 0, KeyEvent.META_SHIFT_ON | KeyEvent.META_SHIFT_LEFT_ON));
+
                     latinKeybPortrait.setShifted(shiftPressed);
                     cyrillicKeybPortrait.setShifted(shiftPressed);
                     latinKeybLandscape.setShifted(shiftPressed);
@@ -138,6 +144,12 @@ public class VKeyboard extends InputMethodService{
             case KeyEvent.KEYCODE_VOLUME_DOWN:
                 if (keybViev.isShown()) {
                     shiftPressed = false;
+
+                    long now = System.currentTimeMillis();
+                    InputConnection ic = getCurrentInputConnection();
+                    if (ic != null) ic.sendKeyEvent(new KeyEvent(
+                            now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SHIFT_LEFT, 0, KeyEvent.META_SHIFT_ON | KeyEvent.META_SHIFT_LEFT_ON));
+
                     latinKeybPortrait.setShifted(shiftPressed);
                     cyrillicKeybPortrait.setShifted(shiftPressed);
                     latinKeybLandscape.setShifted(shiftPressed);
