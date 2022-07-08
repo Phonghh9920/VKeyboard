@@ -21,8 +21,8 @@ public class VKeybView extends KeyboardView {
     private Drawable curkeybgDrawable;
     private Resources res;
     private Context context;
-    private int keyX = 0;
-    private int keyY = 0;
+    private int pressX = 0;
+    private int pressY = 0;
     private int charPos = 0;
     private int relX = 0;
     private int relY = 0;
@@ -57,6 +57,11 @@ public class VKeybView extends KeyboardView {
 
     @Override
     public void onDraw(Canvas canvas) {
+        if (pressed) {
+            drawKey(canvas);
+            return;
+        }
+
         List<Key> keys = getKeyboard().getKeys();
         for (Key key : keys) {
             canvas.save();
@@ -128,6 +133,58 @@ public class VKeybView extends KeyboardView {
         }
     }
 
+    private void drawKey(Canvas canvas) {
+        canvas.save();
+        Key key = currentKey;
+
+        Paint paint = new Paint();
+        paint.setAntiAlias(true);
+        paint.setTypeface(Typeface.MONOSPACE);
+        paint.setTextAlign(Paint.Align.CENTER);
+        paint.setTextSize((float) (key.height/2));
+        paint.setColor(res.getColor(R.color.textColor));
+
+        int x1 = key.width / 2 - key.width;
+        int x2 = key.width / 2;
+        int x3 = key.width * 2 - key.width / 2;
+
+        int y1 = key.height / 2 - key.height;
+        int y2 = key.height / 2;
+        int y3 = key.height * 2 - key.height / 2;
+
+        Rect rect = new Rect(
+                key.x - key.width,
+                key.y - key.height,
+                key.x + key.width * 2,
+                key.y + key.height * 2
+        );
+
+        canvas.clipRect(rect);
+
+        paint.setColor(res.getColor(R.color.keyboard_divider));
+        canvas.drawRect(key.x + x1 * 2, key.y + y1 * 2, key.x + x3 * 2, key.y + y3 * 2, paint);
+        paint.setColor(res.getColor(R.color.black));
+        canvas.drawRect(key.x, key.y, key.x + key.width, key.y + key.height, paint);
+        paint.setColor(res.getColor(R.color.textColor));
+        viewChar(String.valueOf(key.label), 0, x2, y2, canvas, key, paint);
+
+        if (key.extChars != null) {
+            String str = String.valueOf(key.extChars);
+            viewChar(str, 0, x1, y1, canvas, key, paint);
+            viewChar(str, 1, x2, y1, canvas, key, paint);
+            viewChar(str, 2, x3, y1, canvas, key, paint);
+
+            viewChar(str, 3, x1, y2, canvas, key, paint);
+            viewChar(str, 4, x3, y2, canvas, key, paint);
+
+            viewChar(str, 5, x1, y3, canvas, key, paint);
+            viewChar(str, 6, x2, y3, canvas, key, paint);
+            viewChar(str, 7, x3, y3, canvas, key, paint);
+        }
+
+        canvas.restore();
+    }
+
     private void viewChar(String str, int pos, int ox, int oy, Canvas canvas, Key key, Paint paint) {
         if (str.length() <= pos || str.charAt(pos) == ' ') return;
         canvas.drawText(
@@ -139,8 +196,8 @@ public class VKeybView extends KeyboardView {
     }
 
     private int getExtPos(int x, int y) {
-        int matrixPos = (this.keyX - offset > x ? 1 : this.keyX + offset < x ? 3 : 2);
-        matrixPos += (this.keyY - offset > y ? 0 : this.keyY + offset < y ? 6 : 3);
+        int matrixPos = (this.pressX - offset > x ? 1 : this.pressX + offset < x ? 3 : 2);
+        matrixPos += (this.pressY - offset > y ? 0 : this.pressY + offset < y ? 6 : 3);
         return matrixPos == 5 ? 0 : matrixPos < 5 ? matrixPos : matrixPos - 1;
     }
 
@@ -152,6 +209,7 @@ public class VKeybView extends KeyboardView {
             case MotionEvent.ACTION_DOWN:
             case MotionEvent.ACTION_POINTER_DOWN:
                 press((int) me.getX(0), (int) me.getY(0));
+                invalidateAllKeys();
                 break;
             case MotionEvent.ACTION_MOVE:
                 drag((int) me.getX(0), (int) me.getY(0));
@@ -160,6 +218,7 @@ public class VKeybView extends KeyboardView {
             case MotionEvent.ACTION_POINTER_UP:
                 if (skip) return false;
                 release((int) me.getX(0), (int) me.getY(0));
+                invalidateAllKeys();
                 break;
         }
 
@@ -167,11 +226,10 @@ public class VKeybView extends KeyboardView {
     }
 
     public void press(int curX, int curY) {
-        keyX = curX;
-        keyY = curY;
+        pressX = curX;
+        pressY = curY;
         relX = -1;
         relY = -1;
-        pressed = true;
         cursorMoved = false;
         charPos = 0;
 
@@ -180,6 +238,7 @@ public class VKeybView extends KeyboardView {
         currentKey = getKeyboard().getKeys().get(currentKeyIndex);
 
         if (currentKey.cursor || currentKey.codes[0] == -5 || currentKey.extChars.length() > 0) {
+            if (currentKey.extChars.length() > 0) pressed = true;
             relX = curX;
             relY = curY;
         }
@@ -189,7 +248,7 @@ public class VKeybView extends KeyboardView {
         if (relX < 0) return; // Not have alternative behavior
 
         if (currentKey.codes[0] == -5) { // Delete
-            if (!cursorMoved && (curX - delTick > keyX || curX + delTick < keyX)) {
+            if (!cursorMoved && (curX - delTick > pressX || curX + delTick < pressX)) {
                 Log.d("Moved","");
                 cursorMoved = true;
             }
@@ -208,7 +267,7 @@ public class VKeybView extends KeyboardView {
                 break;
             }
         } else if (currentKey.cursor) {
-            if (!cursorMoved && (curX - horizontalTick > keyX || curX + horizontalTick < keyX || curY - verticalTick > keyY || curY + verticalTick < keyY)) {
+            if (!cursorMoved && (curX - horizontalTick > pressX || curX + horizontalTick < pressX || curY - verticalTick > pressY || curY + verticalTick < pressY)) {
                 cursorMoved = true;
             }
             while(true) {
@@ -242,6 +301,7 @@ public class VKeybView extends KeyboardView {
     }
 
     private void release(int curX, int curY) {
+        pressed = false;
         if (currentKey.cursor && cursorMoved) return;
         if (currentKey.codes[0] == -5) {
             if (!cursorMoved) super.getOnKeyboardActionListener().onKey(-5, new int[]{-5});
