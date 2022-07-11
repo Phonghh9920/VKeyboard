@@ -1,7 +1,9 @@
 package com.vladgba.keyb;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
+import android.preference.PreferenceManager;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -154,18 +156,23 @@ public class Keyboard {
         }
     }
 
-    public Keyboard(Context context, String jd) {
-        this(context, jd, 0);
-    }
-
-    public Keyboard(@NotNull Context context, String jd, int modeId) {
+    public Keyboard(@NotNull Context context, String jd, boolean portrait) {
         DisplayMetrics dm = context.getResources().getDisplayMetrics();
         displayWidth = dm.widthPixels;
         displayHeight = dm.heightPixels;
 
-        int lowerSize = displayWidth > displayHeight ? displayHeight : displayWidth;
-        dWidth = lowerSize / 10;
-        dHeight = dWidth;
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+        if (portrait) {
+            float size = Float.valueOf(sp.getString("size", "10"));
+            int lowerSize = displayWidth > displayHeight ? displayHeight : displayWidth;
+            dWidth = (int) (lowerSize / size);
+            dHeight = dWidth;
+        } else {
+            float size = Float.valueOf(sp.getString("sizeland", "20"));
+            int biggerSize = displayWidth > displayHeight ? displayWidth : displayHeight;
+            dWidth = (int) Math.ceil(biggerSize / size);
+            dHeight = dWidth;
+        }
         keys = new ArrayList<>();
         modKeys = new ArrayList<>();
         loadKeyboard(jd);

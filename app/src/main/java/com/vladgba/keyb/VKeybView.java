@@ -28,9 +28,10 @@ public class VKeybView extends KeyboardView {
     private int relY = 0;
 
     /** Cursor **/
-    private int delTick = 60;
-    private int horizontalTick = 30;
-    private int verticalTick = 50;
+    private int delTick;
+    private int horizontalTick;
+    private int verticalTick;
+    private int offset; // extChars
     private boolean cursorMoved = false;
     private int offset = 70; // extChars
     private Key currentKey;
@@ -53,6 +54,11 @@ public class VKeybView extends KeyboardView {
         keybgDrawable = res.getDrawable(R.drawable.btn_keyboard_key);
         opkeybgDrawable = res.getDrawable(R.drawable.btn_keyboard_opkey);
         curkeybgDrawable = res.getDrawable(R.drawable.btn_keyboard_curkey);
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+        delTick = Integer.parseInt(sp.getString("swipedel", "60"));
+        horizontalTick = Integer.parseInt(sp.getString("swipehor", "30"));
+        verticalTick = Integer.parseInt(sp.getString("swipever", "50"));
+        offset = Integer.parseInt(sp.getString("swipeext", "70"));
     }
 
     @Override

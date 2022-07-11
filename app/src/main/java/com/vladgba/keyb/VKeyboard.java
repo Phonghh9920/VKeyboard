@@ -1,5 +1,6 @@
 package com.vladgba.keyb;
 
+import android.content.Context;
 import android.content.res.Configuration;
 import android.inputmethodservice.InputMethodService;
 import android.os.Environment;
@@ -13,35 +14,44 @@ import java.io.FileReader;
 import java.io.IOException;
 
 public class VKeyboard extends InputMethodService{
-    private VKeybView keybViev;
+    private static VKeybView keybViev;
     private boolean ctrlPressed = false;
     public static boolean shiftPressed = false;
-    private Keyboard latinKeybPortrait;
-    private Keyboard cyrillicKeybPortrait;
-    private Keyboard latinKeybLandscape;
-    private Keyboard cyrillicKeybLandscape;
-    private boolean isLatin = true;
-    private boolean isPortrait = true;
+    private static Keyboard latinKeybPortrait;
+    private static Keyboard cyrillicKeybPortrait;
+    private static Keyboard latinKeybLandscape;
+    private static Keyboard cyrillicKeybLandscape;
+    private static boolean isLatin = true;
+    private static boolean isPortrait = true;
+    private static Context that;
+
+    public static void reload() {
+        if (that == null) return;
+
+        latinKeybPortrait = new Keyboard(that,loadKeybLayout("vkeyb/latin-portrait"), true);
+        cyrillicKeybPortrait = new Keyboard(that,loadKeybLayout("vkeyb/cyrillic-portrait"), true);
+        latinKeybLandscape = new Keyboard(that,loadKeybLayout("vkeyb/latin-landscape"), false);
+        cyrillicKeybLandscape = new Keyboard(that,loadKeybLayout("vkeyb/cyrillic-landscape"), false);
+
+        setKeyb();
+    }
 
     @Override
     public View onCreateInputView() {
+        that = this;
         try {
             keybViev = (VKeybView) getLayoutInflater().inflate(R.layout.vkeybview,null);
         } catch (Exception e) {
             Log.d("CreateInputView", e.getMessage());
         }
-
-        latinKeybPortrait = new Keyboard(this,loadKeybLayout("vkeyb/latin-portrait"));
-        cyrillicKeybPortrait = new Keyboard(this,loadKeybLayout("vkeyb/cyrillic-portrait"));
-        latinKeybLandscape = new Keyboard(this,loadKeybLayout("vkeyb/latin-landscape"));
-        cyrillicKeybLandscape = new Keyboard(this,loadKeybLayout("vkeyb/cyrillic-landscape"));
-
-        setKeyb();
+        int orientation = this.getResources().getConfiguration().orientation;
+        isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT;
+        reload();
         keybViev.setOnKeyboardActionListener(this);
         return keybViev;
     }
 
-    private String loadKeybLayout(String name) {
+    private static String loadKeybLayout(String name) {
         File sdcard = Environment.getExternalStorageDirectory();
 
         File file = new File(sdcard, name + ".json");
@@ -82,13 +92,13 @@ public class VKeyboard extends InputMethodService{
         setKeyb();
     }
 
-    private void setKeyb() {
-        if (isLatin) keybViev.setKeyboard(this.isPortrait ? latinKeybPortrait : latinKeybLandscape);
-        else keybViev.setKeyboard(this.isPortrait ? cyrillicKeybPortrait : cyrillicKeybLandscape);
+    private static void setKeyb() {
+        if (isLatin) keybViev.setKeyboard(isPortrait ? latinKeybPortrait : latinKeybLandscape);
+        else keybViev.setKeyboard(isPortrait ? cyrillicKeybPortrait : cyrillicKeybLandscape);
     }
 
     private void forceLatin() {
-        keybViev.setKeyboard(this.isPortrait ? latinKeybPortrait : latinKeybLandscape);
+        keybViev.setKeyboard(isPortrait ? latinKeybPortrait : latinKeybLandscape);
     }
 
     public void onPress(int i) {

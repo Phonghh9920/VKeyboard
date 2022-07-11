@@ -25,18 +25,37 @@
                 android:title="Volume down" />
     </PreferenceCategory>
     <PreferenceCategory android:title="Swipe sensivity">
-        <SeekBarPreference
-                android:id="@+id/pref_hor_sens"
-                android:defaultValue="70"
-                android:key="HOR_SENS"
-                android:title="Horizontal (left/right)"
-        />
-        <SeekBarPreference
-                android:id="@+id/pref_ver_sens"
-                android:defaultValue="50"
-                android:key="VERT_SENS"
-                android:title="Vertical (up/down)"
-        />
+        <EditTextPreference
+                android:key="swipehor"
+                android:title="Portrait key size"
+                android:dialogTitle="Portrait key size"
+                android:defaultValue="30" />
+        <EditTextPreference
+                android:key="swipever"
+                android:title="Cursor"
+                android:dialogTitle="Landscape key size"
+                android:defaultValue="50" />
+        <EditTextPreference
+                android:key="swipedel"
+                android:title="Delete button swipe sensitivity"
+                android:dialogTitle="Landscape key size"
+                android:defaultValue="60" />
+        <EditTextPreference
+                android:key="swipeext"
+                android:title="Extra character trigger threshold"
+                android:dialogTitle="Extra character trigger threshold"
+                android:defaultValue="70" />
     </PreferenceCategory>
-
+    <PreferenceCategory android:title="Key size">
+        <EditTextPreference
+                android:key="size"
+                android:title="Portrait key size"
+                android:dialogTitle="Portrait key size"
+                android:defaultValue="10" />
+        <EditTextPreference
+                android:key="sizeland"
+                android:title="Landscape key size"
+                android:dialogTitle="Landscape key size"
+                android:defaultValue="20" />
+    </PreferenceCategory>
 </PreferenceScreen>

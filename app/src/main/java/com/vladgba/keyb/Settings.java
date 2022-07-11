@@ -14,4 +14,9 @@ public class Settings extends Activity {
             getFragmentManager().beginTransaction().add(R.id.idFrameLayout, new SettingsFrag()).commit();
         }
     }
+
+    protected void onPause() {
+        super.onPause();
+        VKeyboard.reload();
+    }
 }
