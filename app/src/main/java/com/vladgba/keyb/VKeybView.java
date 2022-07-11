@@ -2,13 +2,12 @@ package com.vladgba.keyb;
 
 import java.util.List;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.Resources;
-import android.graphics.Canvas;
-import android.graphics.Paint;
-import android.graphics.Rect;
-import android.graphics.Typeface;
+import android.graphics.*;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.*;
@@ -33,10 +32,11 @@ public class VKeybView extends KeyboardView {
     private int verticalTick;
     private int offset; // extChars
     private boolean cursorMoved = false;
-    private int offset = 70; // extChars
     private Key currentKey;
     private boolean pressed = false;
     private boolean skip = false;
+    private Bitmap buffer;
+
 
     public VKeybView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -62,12 +62,14 @@ public class VKeybView extends KeyboardView {
     }
 
     @Override
-    public void onDraw(Canvas canvas) {
-        if (pressed) {
-            drawKey(canvas);
-            return;
-        }
+    public void setKeyboard(Keyboard keyboard) {
+        super.setKeyboard(keyboard);
+        buffer = null;
+    }
 
+    private void repaintKeyb(int w, int h) {
+        buffer = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(buffer);
         List<Key> keys = getKeyboard().getKeys();
         for (Key key : keys) {
             canvas.save();
@@ -137,6 +139,13 @@ public class VKeybView extends KeyboardView {
             }
             canvas.restore();
         }
+    }
+
+    @Override
+    public void onDraw(Canvas canvas) {
+        if (buffer == null) repaintKeyb(canvas.getWidth(), canvas.getHeight());
+        canvas.drawBitmap(buffer, 0, 0, null);
+        if (pressed) drawKey(canvas);
     }
 
     private void drawKey(Canvas canvas) {
