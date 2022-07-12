@@ -8,7 +8,7 @@
                 android:summary="to launch the keyboard anywhere"
                 android:title="Permanent notification" />
     </PreferenceCategory-->
-    <PreferenceCategory android:title="Keys">
+    <!--PreferenceCategory android:title="Keys">
         <ListPreference
                 android:defaultValue="1"
                 android:dialogTitle="asd"
@@ -23,17 +23,17 @@
                 android:entryValues="@array/pref_voldown_val"
                 android:key="pref_list_test"
                 android:title="Volume down" />
-    </PreferenceCategory>
+    </PreferenceCategory-->
     <PreferenceCategory android:title="Swipe sensivity">
         <EditTextPreference
                 android:key="swipehor"
-                android:title="Portrait key size"
-                android:dialogTitle="Portrait key size"
+                android:title="Horizontal cursor"
+                android:dialogTitle="Horizontal cursor swipe sensitivity"
                 android:defaultValue="30" />
         <EditTextPreference
                 android:key="swipever"
-                android:title="Cursor speed"
-                android:dialogTitle="Cursor speed"
+                android:title="Vertical cursor"
+                android:dialogTitle="Vertical cursor swipe sensitivity"
                 android:defaultValue="50" />
         <EditTextPreference
                 android:key="swipedel"
