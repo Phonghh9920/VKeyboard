@@ -25,7 +25,7 @@ public class Keyboard {
     private static float SEARCH_DISTANCE = 1.8f;
     private int dWidth;
     private int dHeight;
-    private boolean shifted;
+    public boolean shifted;
     private Key[] shiftKeys = {null, null};
     private int[] shiftKeyIndices = {-1, -1};
     private int totalHeight;
@@ -215,6 +215,7 @@ public class Keyboard {
     }
 
     public boolean setShifted(boolean shiftState) {
+        shifted = shiftState;
         for (Key shiftKey : shiftKeys) {
             if (shiftKey != null) shiftKey.on = shiftState;
         }

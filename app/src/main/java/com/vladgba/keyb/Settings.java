@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 
 public class Settings extends Activity {
+    public static boolean needReload = false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -17,6 +18,6 @@ public class Settings extends Activity {
 
     protected void onPause() {
         super.onPause();
-        VKeyboard.reload();
+        needReload = true;
     }
 }

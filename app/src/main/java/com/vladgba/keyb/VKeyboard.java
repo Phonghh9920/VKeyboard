@@ -6,6 +6,7 @@ import android.inputmethodservice.InputMethodService;
 import android.os.Environment;
 import android.util.Log;
 import android.view.*;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import org.jetbrains.annotations.NotNull;
 import java.io.BufferedReader;
@@ -14,7 +15,7 @@ import java.io.FileReader;
 import java.io.IOException;
 
 public class VKeyboard extends InputMethodService{
-    private static VKeybView keybViev;
+    private VKeybView keybViev;
     private boolean ctrlPressed = false;
     public static boolean shiftPressed = false;
     private static Keyboard latinKeybPortrait;
@@ -25,15 +26,26 @@ public class VKeyboard extends InputMethodService{
     private static boolean isPortrait = true;
     private static Context that;
 
-    public static void reload() {
+    public void reload() {
         if (that == null) return;
 
         latinKeybPortrait = new Keyboard(that,loadKeybLayout("vkeyb/latin-portrait"), true);
         cyrillicKeybPortrait = new Keyboard(that,loadKeybLayout("vkeyb/cyrillic-portrait"), true);
         latinKeybLandscape = new Keyboard(that,loadKeybLayout("vkeyb/latin-landscape"), false);
         cyrillicKeybLandscape = new Keyboard(that,loadKeybLayout("vkeyb/cyrillic-landscape"), false);
-
+        keybViev.loadVars(that);
         setKeyb();
+    }
+
+    @Override
+    public void onStartInputView(EditorInfo info, boolean restarting) {
+        super.onStartInputView(info, restarting);
+
+        if (Settings.needReload) {
+            reload();
+            Settings.needReload = false;
+        }
+
     }
 
     @Override
@@ -92,7 +104,7 @@ public class VKeyboard extends InputMethodService{
         setKeyb();
     }
 
-    private static void setKeyb() {
+    private void setKeyb() {
         if (isLatin) keybViev.setKeyboard(isPortrait ? latinKeybPortrait : latinKeybLandscape);
         else keybViev.setKeyboard(isPortrait ? cyrillicKeybPortrait : cyrillicKeybLandscape);
     }
@@ -252,7 +264,11 @@ public class VKeyboard extends InputMethodService{
     }
 
     public static char getShiftable(char code) {
-        return (Character.isLetter(code) && shiftPressed) ? Character.toUpperCase(code) : code;
+        return getShiftable(code, shiftPressed);
+    }
+
+    public static char getShiftable(char code, boolean sh) {
+        return (Character.isLetter(code) && sh) ? Character.toUpperCase(code) : code;
     }
 
     public void onText(CharSequence chars) {

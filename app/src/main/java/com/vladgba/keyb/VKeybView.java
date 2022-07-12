@@ -28,6 +28,8 @@ public class VKeybView extends KeyboardView {
 
     /** Cursor **/
     private int delTick;
+    private float primaryFont;
+    private float secondaryFont;
     private int horizontalTick;
     private int verticalTick;
     private int offset; // extChars
@@ -35,7 +37,8 @@ public class VKeybView extends KeyboardView {
     private Key currentKey;
     private boolean pressed = false;
     private boolean skip = false;
-    private Bitmap buffer;
+    public Bitmap buffer;
+    private Bitmap bufferSh;
 
 
     public VKeybView(Context context, AttributeSet attrs) {
@@ -54,8 +57,14 @@ public class VKeybView extends KeyboardView {
         keybgDrawable = res.getDrawable(R.drawable.btn_keyboard_key);
         opkeybgDrawable = res.getDrawable(R.drawable.btn_keyboard_opkey);
         curkeybgDrawable = res.getDrawable(R.drawable.btn_keyboard_curkey);
+        loadVars(context);
+    }
+
+    public void loadVars(Context context) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
         delTick = Integer.parseInt(sp.getString("swipedel", "60"));
+        primaryFont = Float.parseFloat(sp.getString("sizeprimary", "1.9"));
+        secondaryFont = Float.parseFloat(sp.getString("sizesecondary", "4.5"));
         horizontalTick = Integer.parseInt(sp.getString("swipehor", "30"));
         verticalTick = Integer.parseInt(sp.getString("swipever", "50"));
         offset = Integer.parseInt(sp.getString("swipeext", "70"));
@@ -68,8 +77,20 @@ public class VKeybView extends KeyboardView {
     }
 
     private void repaintKeyb(int w, int h) {
-        buffer = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(buffer);
+        keybPaint(w, h, false);
+        keybPaint(w, h, true);
+    }
+
+    private void keybPaint(int w, int h, boolean sh) {
+        Canvas canvas;
+        if (sh) {
+            bufferSh = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            canvas = new Canvas(bufferSh);
+        } else {
+            buffer = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            canvas = new Canvas(buffer);
+        }
+
         List<Key> keys = getKeyboard().getKeys();
         for (Key key : keys) {
             canvas.save();
@@ -109,11 +130,11 @@ public class VKeybView extends KeyboardView {
             paint.setAntiAlias(true);
             paint.setTypeface(Typeface.MONOSPACE);
             paint.setTextAlign(Paint.Align.CENTER);
-            paint.setTextSize((float) (key.height/1.9));
+            paint.setTextSize((float) (key.height / primaryFont));
             paint.setColor(res.getColor(R.color.textColor));
 
             if (key.label != null) {
-                String lbl = VKeyboard.shiftPressed && key.label.length() < 2 ? String.valueOf(VKeyboard.getShiftable(key.label.charAt(0))) : key.label.toString();
+                String lbl = sh && key.label.length() < 2 ? String.valueOf(VKeyboard.getShiftable(key.label.charAt(0), sh)) : key.label.toString();
                 canvas.drawText(
                         lbl,
                         key.x + (key.width / 2),
@@ -121,21 +142,21 @@ public class VKeybView extends KeyboardView {
                         paint);
             }
 
-            paint.setTextSize((float) (key.height/4.5));
+            paint.setTextSize((float) (key.height / secondaryFont));
             paint.setColor(res.getColor(R.color.textColor));
 
             if (key.extChars != null) {
                 String str = String.valueOf(key.extChars);
-                viewChar(str, 0, x1, y1, canvas, key, paint);
-                viewChar(str, 1, x2, y1, canvas, key, paint);
-                viewChar(str, 2, x3, y1, canvas, key, paint);
+                viewChar(str, 0, x1, y1, canvas, key, paint, sh);
+                viewChar(str, 1, x2, y1, canvas, key, paint, sh);
+                viewChar(str, 2, x3, y1, canvas, key, paint, sh);
 
-                viewChar(str, 3, x1, y2, canvas, key, paint);
-                viewChar(str, 4, x3, y2, canvas, key, paint);
+                viewChar(str, 3, x1, y2, canvas, key, paint, sh);
+                viewChar(str, 4, x3, y2, canvas, key, paint, sh);
 
-                viewChar(str, 5, x1, y3, canvas, key, paint);
-                viewChar(str, 6, x2, y3, canvas, key, paint);
-                viewChar(str, 7, x3, y3, canvas, key, paint);
+                viewChar(str, 5, x1, y3, canvas, key, paint, sh);
+                viewChar(str, 6, x2, y3, canvas, key, paint, sh);
+                viewChar(str, 7, x3, y3, canvas, key, paint, sh);
             }
             canvas.restore();
         }
@@ -144,7 +165,7 @@ public class VKeybView extends KeyboardView {
     @Override
     public void onDraw(Canvas canvas) {
         if (buffer == null) repaintKeyb(canvas.getWidth(), canvas.getHeight());
-        canvas.drawBitmap(buffer, 0, 0, null);
+        canvas.drawBitmap(getKeyboard().shifted ? bufferSh : buffer, 0, 0, null);
         if (pressed) drawKey(canvas);
     }
 
@@ -156,7 +177,7 @@ public class VKeybView extends KeyboardView {
         paint.setAntiAlias(true);
         paint.setTypeface(Typeface.MONOSPACE);
         paint.setTextAlign(Paint.Align.CENTER);
-        paint.setTextSize((float) (key.height/2));
+        paint.setTextSize((float) (key.height / primaryFont));
         paint.setColor(res.getColor(R.color.textColor));
 
         int x1 = key.width / 2 - key.width;
@@ -181,29 +202,31 @@ public class VKeybView extends KeyboardView {
         paint.setColor(res.getColor(R.color.black));
         canvas.drawRect(key.x, key.y, key.x + key.width, key.y + key.height, paint);
         paint.setColor(res.getColor(R.color.textColor));
-        viewChar(String.valueOf(key.label), 0, x2, y2, canvas, key, paint);
+
+        boolean sh = getKeyboard().shifted;
+        viewChar(String.valueOf(key.label), 0, x2, y2, canvas, key, paint,  sh);
 
         if (key.extChars != null) {
             String str = String.valueOf(key.extChars);
-            viewChar(str, 0, x1, y1, canvas, key, paint);
-            viewChar(str, 1, x2, y1, canvas, key, paint);
-            viewChar(str, 2, x3, y1, canvas, key, paint);
+            viewChar(str, 0, x1, y1, canvas, key, paint,  sh);
+            viewChar(str, 1, x2, y1, canvas, key, paint,  sh);
+            viewChar(str, 2, x3, y1, canvas, key, paint,  sh);
 
-            viewChar(str, 3, x1, y2, canvas, key, paint);
-            viewChar(str, 4, x3, y2, canvas, key, paint);
+            viewChar(str, 3, x1, y2, canvas, key, paint,  sh);
+            viewChar(str, 4, x3, y2, canvas, key, paint,  sh);
 
-            viewChar(str, 5, x1, y3, canvas, key, paint);
-            viewChar(str, 6, x2, y3, canvas, key, paint);
-            viewChar(str, 7, x3, y3, canvas, key, paint);
+            viewChar(str, 5, x1, y3, canvas, key, paint,  sh);
+            viewChar(str, 6, x2, y3, canvas, key, paint,  sh);
+            viewChar(str, 7, x3, y3, canvas, key, paint,  sh);
         }
 
         canvas.restore();
     }
 
-    private void viewChar(String str, int pos, int ox, int oy, Canvas canvas, Key key, Paint paint) {
+    private void viewChar(String str, int pos, int ox, int oy, Canvas canvas, Key key, Paint paint, boolean sh) {
         if (str.length() <= pos || str.charAt(pos) == ' ') return;
         canvas.drawText(
-                String.valueOf(VKeyboard.getShiftable(str.charAt(pos))),
+                String.valueOf(VKeyboard.getShiftable(str.charAt(pos), sh)),
                 key.x + ox,
                 key.y + oy + (paint.getTextSize() - paint.descent()) / 2,
                 paint

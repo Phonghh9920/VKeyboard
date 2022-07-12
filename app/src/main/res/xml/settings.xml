@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen
     xmlns:android="http://schemas.android.com/apk/res/android">
-    <PreferenceCategory android:title="General">
+    <!--PreferenceCategory android:title="General">
         <SwitchPreference
                 android:defaultValue="false"
                 android:key="perm_notification"
                 android:summary="to launch the keyboard anywhere"
                 android:title="Permanent notification" />
-    </PreferenceCategory>
+    </PreferenceCategory-->
     <PreferenceCategory android:title="Keys">
         <ListPreference
                 android:defaultValue="1"
@@ -32,30 +32,42 @@
                 android:defaultValue="30" />
         <EditTextPreference
                 android:key="swipever"
-                android:title="Cursor"
-                android:dialogTitle="Landscape key size"
+                android:title="Cursor speed"
+                android:dialogTitle="Cursor speed"
                 android:defaultValue="50" />
         <EditTextPreference
                 android:key="swipedel"
-                android:title="Delete button swipe sensitivity"
-                android:dialogTitle="Landscape key size"
+                android:title="Delete button"
+                android:dialogTitle="Delete button swipe sensitivity"
                 android:defaultValue="60" />
         <EditTextPreference
                 android:key="swipeext"
-                android:title="Extra character trigger threshold"
+                android:title="Extra characters"
                 android:dialogTitle="Extra character trigger threshold"
                 android:defaultValue="70" />
     </PreferenceCategory>
     <PreferenceCategory android:title="Key size">
         <EditTextPreference
                 android:key="size"
-                android:title="Portrait key size"
+                android:title="Portrait"
                 android:dialogTitle="Portrait key size"
                 android:defaultValue="10" />
         <EditTextPreference
                 android:key="sizeland"
-                android:title="Landscape key size"
+                android:title="Landscape"
                 android:dialogTitle="Landscape key size"
                 android:defaultValue="20" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Font">
+        <EditTextPreference
+                android:key="sizeprimary"
+                android:title="Primary"
+                android:dialogTitle="Portrait key size"
+                android:defaultValue="1.9" />
+        <EditTextPreference
+                android:key="sizesecondary"
+                android:title="Secondary"
+                android:dialogTitle="Landscape key size"
+                android:defaultValue="4.5" />
     </PreferenceCategory>
 </PreferenceScreen>
