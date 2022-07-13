@@ -15,7 +15,7 @@ import java.io.FileReader;
 import java.io.IOException;
 
 public class VKeyboard extends InputMethodService{
-    private VKeybView keybViev;
+    private VKeybView keybView;
     private boolean ctrlPressed = false;
     public static boolean shiftPressed = false;
     private static Keyboard latinKeybPortrait;
@@ -33,7 +33,7 @@ public class VKeyboard extends InputMethodService{
         cyrillicKeybPortrait = new Keyboard(that,loadKeybLayout("vkeyb/cyrillic-portrait"), true);
         latinKeybLandscape = new Keyboard(that,loadKeybLayout("vkeyb/latin-landscape"), false);
         cyrillicKeybLandscape = new Keyboard(that,loadKeybLayout("vkeyb/cyrillic-landscape"), false);
-        keybViev.loadVars(that);
+        keybView.loadVars(that);
         setKeyb();
     }
 
@@ -52,15 +52,15 @@ public class VKeyboard extends InputMethodService{
     public View onCreateInputView() {
         that = this;
         try {
-            keybViev = (VKeybView) getLayoutInflater().inflate(R.layout.vkeybview,null);
+            keybView = (VKeybView) getLayoutInflater().inflate(R.layout.vkeybview,null);
         } catch (Exception e) {
             Log.d("CreateInputView", e.getMessage());
         }
         int orientation = this.getResources().getConfiguration().orientation;
         isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT;
         reload();
-        keybViev.setOnKeyboardActionListener(this);
-        return keybViev;
+        keybView.setOnKeyboardActionListener(this);
+        return keybView;
     }
 
     private static String loadKeybLayout(String name) {
@@ -105,12 +105,12 @@ public class VKeyboard extends InputMethodService{
     }
 
     private void setKeyb() {
-        if (isLatin) keybViev.setKeyboard(isPortrait ? latinKeybPortrait : latinKeybLandscape);
-        else keybViev.setKeyboard(isPortrait ? cyrillicKeybPortrait : cyrillicKeybLandscape);
+        if (isLatin) keybView.setKeyboard(isPortrait ? latinKeybPortrait : latinKeybLandscape);
+        else keybView.setKeyboard(isPortrait ? cyrillicKeybPortrait : cyrillicKeybLandscape);
     }
 
     private void forceLatin() {
-        keybViev.setKeyboard(isPortrait ? latinKeybPortrait : latinKeybLandscape);
+        keybView.setKeyboard(isPortrait ? latinKeybPortrait : latinKeybLandscape);
     }
 
     public void onPress(int i) {
@@ -124,17 +124,20 @@ public class VKeyboard extends InputMethodService{
         if(keyCode<0) return true;
         switch (keyCode) {
             case KeyEvent.KEYCODE_VOLUME_UP:
-                if (keybViev.isShown()) {
+                if (keybView.isShown()) {
                     ctrlPressed = true;
+                    if (keybView.ctrlModi) return true;
+                    else if (keybView.pressed) keybView.ctrlModi = true;
                     forceLatin();
                     super.onKeyDown(KeyEvent.KEYCODE_CTRL_LEFT, event);
                     return true;
                 }
                 break;
             case KeyEvent.KEYCODE_VOLUME_DOWN:
-                if (keybViev.isShown()) {
+                if (keybView.isShown()) {
                     shiftPressed = true;
-
+                    if (keybView.shiftModi) return true;
+                    else if (keybView.pressed) keybView.shiftModi = true;
                     long now = System.currentTimeMillis();
                     InputConnection ic = getCurrentInputConnection();
                     if (ic != null) ic.sendKeyEvent(new KeyEvent(
@@ -144,7 +147,7 @@ public class VKeyboard extends InputMethodService{
                     cyrillicKeybPortrait.setShifted(shiftPressed);
                     latinKeybLandscape.setShifted(shiftPressed);
                     cyrillicKeybLandscape.setShifted(shiftPressed);
-                    keybViev.invalidateAllKeys();
+                    keybView.invalidateAllKeys();
                     return true;
                 }
                 break;
@@ -156,7 +159,7 @@ public class VKeyboard extends InputMethodService{
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_VOLUME_UP:
-                if (keybViev.isShown()) {
+                if (keybView.isShown()) {
                     ctrlPressed = false;
                     setKeyb();
                     super.onKeyUp(KeyEvent.KEYCODE_CTRL_LEFT, event);
@@ -164,7 +167,7 @@ public class VKeyboard extends InputMethodService{
                 }
                 break;
             case KeyEvent.KEYCODE_VOLUME_DOWN:
-                if (keybViev.isShown()) {
+                if (keybView.isShown()) {
                     shiftPressed = false;
 
                     long now = System.currentTimeMillis();
@@ -176,7 +179,7 @@ public class VKeyboard extends InputMethodService{
                     cyrillicKeybPortrait.setShifted(shiftPressed);
                     latinKeybLandscape.setShifted(shiftPressed);
                     cyrillicKeybLandscape.setShifted(shiftPressed);
-                    keybViev.invalidateAllKeys();
+                    keybView.invalidateAllKeys();
                     return true;
                 }
                 break;
@@ -185,14 +188,16 @@ public class VKeyboard extends InputMethodService{
     }
 
     private void keyShiftable(int keyAct, int key, InputConnection ic) {
+        Log.d("ctrl", String.valueOf(keybView.ctrlModi));
+        Log.d("shift", String.valueOf(keybView.shiftModi));
         long time = System.currentTimeMillis();
-        int ctrl = ctrlPressed ? KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON : 0;
+        int ctrl = ctrlPressed || keybView.ctrlModi ? KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON : 0;
         ic.sendKeyEvent(new KeyEvent(
                 time, time,
                 keyAct,
                 key,
                 0,
-                (shiftPressed ? KeyEvent.META_SHIFT_LEFT_ON | KeyEvent.META_SHIFT_ON : 0) | ctrl
+                (shiftPressed || keybView.shiftModi ? KeyEvent.META_SHIFT_LEFT_ON | KeyEvent.META_SHIFT_ON : 0) | ctrl
         ));
     }
 
@@ -229,17 +234,18 @@ public class VKeyboard extends InputMethodService{
     }
 
     public void onKey(int i, int[] ints) {
+        Log.d("key", String.valueOf(i));
         long evt = System.currentTimeMillis();
         InputConnection ic = getCurrentInputConnection();
         int curr = 0;
-        if(i > 96 && i < 123) { // idk where i got these numbers
-            clickShiftable(i-68, ic);
+        if(i > 96 && i < 123) { // a-z
+            clickShiftable(i - 68, ic);
         } else if (i >= -19 && i <= -22) { // DPAD
             clickShiftable(i * -1, ic);
         } else {
             switch (i) {
                 case -112: // Forward DEL
-                    click(i*-1, ic);
+                    click(i * -1, ic);
                     break;
                 case -9:
                     clickShiftable(KeyEvent.KEYCODE_TAB, ic);
@@ -257,7 +263,8 @@ public class VKeyboard extends InputMethodService{
                     click(KeyEvent.KEYCODE_ENTER, ic);
                     break;
                 default:
-                    char code = getShiftable((char)i);
+                    Log.d("key", String.valueOf(i));
+                    char code = getShiftable((char) i, keybView.shiftModi || shiftPressed);
                     ic.commitText(String.valueOf(code),1);
             }
         }

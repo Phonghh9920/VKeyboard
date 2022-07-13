@@ -6,7 +6,6 @@ import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.*;
 import android.graphics.drawable.Drawable;
-import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -19,7 +18,6 @@ public class VKeybView extends KeyboardView {
     private Drawable opkeybgDrawable;
     private Drawable curkeybgDrawable;
     private Resources res;
-    private Context context;
     private int pressX = 0;
     private int pressY = 0;
     private int charPos = 0;
@@ -35,10 +33,11 @@ public class VKeybView extends KeyboardView {
     private int offset; // extChars
     private boolean cursorMoved = false;
     private Key currentKey;
-    private boolean pressed = false;
-    private boolean skip = false;
+    public boolean pressed = false;
     public Bitmap buffer;
     private Bitmap bufferSh;
+    public boolean shiftModi = false;
+    public boolean ctrlModi = false;
 
 
     public VKeybView(Context context, AttributeSet attrs) {
@@ -52,7 +51,6 @@ public class VKeybView extends KeyboardView {
     }
 
     private void initResources(Context context) {
-        this.context = context;
         res = context.getResources();
         keybgDrawable = res.getDrawable(R.drawable.btn_keyboard_key);
         opkeybgDrawable = res.getDrawable(R.drawable.btn_keyboard_opkey);
@@ -116,7 +114,7 @@ public class VKeybView extends KeyboardView {
             int primaryCode = -1;
             if (null != key.codes && key.codes.length != 0) primaryCode = key.codes[0];
 
-            Drawable dr = primaryCode < 0 || key.codes[0] < 0 ? opkeybgDrawable : keybgDrawable;
+            Drawable dr = primaryCode < 0 ? opkeybgDrawable : keybgDrawable;
             if (key.cursor) dr = curkeybgDrawable;
 
             if (null != dr) {
@@ -130,19 +128,19 @@ public class VKeybView extends KeyboardView {
             paint.setAntiAlias(true);
             paint.setTypeface(Typeface.MONOSPACE);
             paint.setTextAlign(Paint.Align.CENTER);
-            paint.setTextSize((float) (key.height / primaryFont));
+            paint.setTextSize(key.height / primaryFont);
             paint.setColor(res.getColor(R.color.textColor));
 
             if (key.label != null) {
-                String lbl = sh && key.label.length() < 2 ? String.valueOf(VKeyboard.getShiftable(key.label.charAt(0), sh)) : key.label.toString();
+                String lbl = sh && key.label.length() < 2 ? String.valueOf(VKeyboard.getShiftable(key.label.charAt(0), true)) : key.label.toString();
                 canvas.drawText(
                         lbl,
-                        key.x + (key.width / 2),
+                        key.x + (key.width / 2f),
                         key.y + (key.height + paint.getTextSize() - paint.descent()) / 2,
                         paint);
             }
 
-            paint.setTextSize((float) (key.height / secondaryFont));
+            paint.setTextSize(key.height / secondaryFont);
             paint.setColor(res.getColor(R.color.textColor));
 
             if (key.extChars != null) {
@@ -177,7 +175,7 @@ public class VKeybView extends KeyboardView {
         paint.setAntiAlias(true);
         paint.setTypeface(Typeface.MONOSPACE);
         paint.setTextAlign(Paint.Align.CENTER);
-        paint.setTextSize((float) (key.height / primaryFont));
+        paint.setTextSize(key.height / primaryFont);
         paint.setColor(res.getColor(R.color.textColor));
 
         int x1 = key.width / 2 - key.width;
@@ -254,8 +252,9 @@ public class VKeybView extends KeyboardView {
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_POINTER_UP:
-                if (skip) return false;
-                release((int) me.getX(0), (int) me.getY(0));
+                release();
+                shiftModi = false;
+                ctrlModi = false;
                 invalidateAllKeys();
                 break;
         }
@@ -276,10 +275,11 @@ public class VKeybView extends KeyboardView {
         currentKey = getKeyboard().getKeys().get(currentKeyIndex);
 
         if (currentKey.cursor || currentKey.codes[0] == -5 || currentKey.extChars.length() > 0) {
-            if (currentKey.extChars.length() > 0) pressed = true;
+            /*if (currentKey.extChars.length() > 0) pressed = true;*/
             relX = curX;
             relY = curY;
         }
+        pressed = true;
     }
 
     private void drag(int curX, int curY) {
@@ -338,22 +338,18 @@ public class VKeybView extends KeyboardView {
         }
     }
 
-    private void release(int curX, int curY) {
+    private void release() {
         pressed = false;
         if (currentKey.cursor && cursorMoved) return;
         if (currentKey.codes[0] == -5) {
             if (!cursorMoved) super.getOnKeyboardActionListener().onKey(-5, new int[]{-5});
             return;
         }
-        if (this.relX < 0) {
-            createCustomKeyEvent(currentKey.codes);
-            return; // Not have alternative behavior
-        }
         if (charPos != 0) {
             int extSz = currentKey.extChars.length();
             if (extSz > 0 && extSz >= charPos) {
                 String textIndex = String.valueOf(currentKey.extChars.charAt(charPos - 1));
-                if (textIndex != null && textIndex.charAt(0) != ' ') {
+                if (textIndex.charAt(0) != ' ') {
                     createCustomKeyEvent(textIndex);
                     return;
                 }
@@ -373,28 +369,12 @@ public class VKeybView extends KeyboardView {
         }
     }
 
-    public void customClick(String ch) {
-        createCustomKeyEvent(ch);
-    }
-
     private void createCustomKeyEvent(String data) {
         super.getOnKeyboardActionListener().onKey(getFromString(data)[0], getFromString(data));
     }
 
     private void createCustomKeyEvent(int[] data) {
+        Log.d("cust", String.valueOf(shiftModi));
         super.getOnKeyboardActionListener().onKey(data[0], data);
-    }
-
-    private void createCustomTouch(int action, int x, int y) {
-        long downTime = SystemClock.uptimeMillis();
-        long eventTime = SystemClock.uptimeMillis();
-        int metaState = 0;
-        MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, x, y, metaState);
-        super.onTouchEvent(event);
-    }
-
-    private void customTap(int x, int y) {
-        createCustomTouch(MotionEvent.ACTION_DOWN, x, y);
-        createCustomTouch(MotionEvent.ACTION_UP, x, y);
     }
 }
