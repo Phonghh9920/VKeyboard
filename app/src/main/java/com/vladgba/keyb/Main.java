@@ -47,8 +47,8 @@ public class Main extends Activity {
         final Button grantPermissions = findViewById(R.id.main_grant_permission);
         grantPermissions.setOnClickListener(v -> {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
-                    if (!Environment.isExternalStorageManager()){
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    if (!Environment.isExternalStorageManager()) {
                         Intent getpermission = new Intent();
                         getpermission.setAction(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
                         startActivity(getpermission);

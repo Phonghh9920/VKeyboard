@@ -87,11 +87,6 @@ public class VKeyboard extends InputMethodService{
         return "";
     }
 
-    public void changeKeyb() {
-        isLatin = !isLatin;
-        setKeyb();
-    }
-
     @Override
     public void onConfigurationChanged(Configuration cfg) {
         super.onConfigurationChanged(cfg);
@@ -147,6 +142,7 @@ public class VKeyboard extends InputMethodService{
                     cyrillicKeybPortrait.setShifted(shiftPressed);
                     latinKeybLandscape.setShifted(shiftPressed);
                     cyrillicKeybLandscape.setShifted(shiftPressed);
+
                     keybView.invalidateAllKeys();
                     return true;
                 }
@@ -188,8 +184,6 @@ public class VKeyboard extends InputMethodService{
     }
 
     private void keyShiftable(int keyAct, int key, InputConnection ic) {
-        Log.d("ctrl", String.valueOf(keybView.ctrlModi));
-        Log.d("shift", String.valueOf(keybView.shiftModi));
         long time = System.currentTimeMillis();
         int ctrl = ctrlPressed || keybView.ctrlModi ? KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON : 0;
         ic.sendKeyEvent(new KeyEvent(
@@ -234,10 +228,7 @@ public class VKeyboard extends InputMethodService{
     }
 
     public void onKey(int i, int[] ints) {
-        Log.d("key", String.valueOf(i));
-        long evt = System.currentTimeMillis();
         InputConnection ic = getCurrentInputConnection();
-        int curr = 0;
         if(i > 96 && i < 123) { // a-z
             clickShiftable(i - 68, ic);
         } else if (i >= -19 && i <= -22) { // DPAD
@@ -256,8 +247,9 @@ public class VKeyboard extends InputMethodService{
                 case Keyboard.KEYCODE_DELETE:
                     clickShiftable(KeyEvent.KEYCODE_DEL, ic);
                     break;
-                case Keyboard.KEYCODE_SHIFT: // changed to lang switch
-                    changeKeyb();
+                case -2: // lang switch
+                    isLatin = !isLatin;
+                    setKeyb();
                     break;
                 case Keyboard.KEYCODE_DONE:
                     click(KeyEvent.KEYCODE_ENTER, ic);
@@ -268,10 +260,6 @@ public class VKeyboard extends InputMethodService{
                     ic.commitText(String.valueOf(code),1);
             }
         }
-    }
-
-    public static char getShiftable(char code) {
-        return getShiftable(code, shiftPressed);
     }
 
     public static char getShiftable(char code, boolean sh) {

@@ -22,23 +22,22 @@ public class Keyboard {
     private static final int GRID_WIDTH = 10;
     private static final int GRID_HEIGHT = 5;
     private static final int GRID_SIZE = GRID_WIDTH * GRID_HEIGHT;
-    private static float SEARCH_DISTANCE = 1.8f;
+    private static final float SEARCH_DISTANCE = 1.8f;
     private int dWidth;
     private int dHeight;
     public boolean shifted;
-    private Key[] shiftKeys = {null, null};
-    private int[] shiftKeyIndices = {-1, -1};
+    private final Key[] shiftKeys = {null, null};
     private int totalHeight;
     private int totalWidth;
-    private List<Key> keys;
-    private List<Key> modKeys;
-    private int displayWidth;
-    private int displayHeight;
+    private final List<Key> keys;
+    private final List<Key> modKeys;
+    private final int displayWidth;
+    private final int displayHeight;
     private int cellWidth;
     private int cellHeight;
     private int[][] gridNeighbors;
     private int proximityThreshold;
-    private ArrayList<Row> rows = new ArrayList<>();
+    private final ArrayList<Row> rows = new ArrayList<>();
 
     private int loadx;
     private int loady;
@@ -65,7 +64,6 @@ public class Keyboard {
         public int x;
         public int y;
         public boolean pressed;
-        public boolean on;
         public CharSequence text;
         public CharSequence extChars;
         public boolean cursor;
@@ -92,8 +90,8 @@ public class Keyboard {
             this.pos = pos;
             try {
                 label = jdata.has("key") ? jdata.getString("key") : "";
-                codes = new int[] {jdata.has("code") ? jdata.getInt("code") : 0};
-                if(codes[0] == 0 && !TextUtils.isEmpty(label)) codes[0] = label.charAt(0);
+                codes = new int[]{jdata.has("code") ? jdata.getInt("code") : 0};
+                if (codes[0] == 0 && !TextUtils.isEmpty(label)) codes[0] = label.charAt(0);
                 width = parent.defaultWidth * (jdata.has("size") ? jdata.getInt("size") : 1);
                 Log.d("v", String.valueOf(width));
                 extChars = jdata.has("ext") ? jdata.getString("ext") : "";
@@ -118,26 +116,26 @@ public class Keyboard {
             chars += "        ";
             switch (pos) {
                 case 1:
-                    return "    " + chars.subSequence(0,1) + " " + chars.subSequence(1,3);
+                    return "    " + chars.subSequence(0, 1) + " " + chars.subSequence(1, 3);
                 case 2:
-                    return "   " + chars.subSequence(0,5);
+                    return "   " + chars.subSequence(0, 5);
                 case 3:
-                    return "   " + chars.subSequence(0,1) + " " + chars.subSequence(1,3) + " ";
+                    return "   " + chars.subSequence(0, 1) + " " + chars.subSequence(1, 3) + " ";
                 case 4:
-                    return " " + chars.subSequence(0,2) + " " + chars.subSequence(2,3) + " " + chars.subSequence(3,5);
+                    return " " + chars.subSequence(0, 2) + " " + chars.subSequence(2, 3) + " " + chars.subSequence(3, 5);
 
                 case 6:
-                    return chars.subSequence(0,2) + " " + chars.subSequence(2,3) + " " + chars.subSequence(3,5) + " ";
+                    return chars.subSequence(0, 2) + " " + chars.subSequence(2, 3) + " " + chars.subSequence(3, 5) + " ";
                 case 7:
-                    return " " + chars.subSequence(0,2) + " " + chars.subSequence(2,3) + "   ";
+                    return " " + chars.subSequence(0, 2) + " " + chars.subSequence(2, 3) + "   ";
                 case 8:
-                    return chars.subSequence(0,5) + "   ";
+                    return chars.subSequence(0, 5) + "   ";
                 case 9:
-                    return chars.subSequence(0,2) + " " + chars.subSequence(2,3) + "    ";
+                    return chars.subSequence(0, 2) + " " + chars.subSequence(2, 3) + "    ";
 
                 default:
                 case 5:
-                    return chars.subSequence(0,8);
+                    return chars.subSequence(0, 8);
             }
         }
 
@@ -149,10 +147,6 @@ public class Keyboard {
             int xDist = this.x + width / 2 - x;
             int yDist = this.y + height / 2 - y;
             return xDist * xDist + yDist * yDist;
-        }
-
-        public int[] getCurrentDrawableState() {
-            return pressed ? KEY_STATE_PRESSED : KEY_STATE_NORMAL;
         }
     }
 
@@ -214,16 +208,8 @@ public class Keyboard {
         return totalWidth;
     }
 
-    public boolean setShifted(boolean shiftState) {
+    public void setShifted(boolean shiftState) {
         shifted = shiftState;
-        for (Key shiftKey : shiftKeys) {
-            if (shiftKey != null) shiftKey.on = shiftState;
-        }
-        if (shifted != shiftState) {
-            shifted = shiftState;
-            return true;
-        }
-        return false;
     }
 
     private void computeNearestNeighbors() {
@@ -272,8 +258,8 @@ public class Keyboard {
             JSONArray json = (new JSONObject(jd)).getJSONArray("keyb");
             parseKeyboardAttributes();
 
-            for(int i = 0; i < json.length(); i++) {
-                int pos = i == 0 ? 0 : i == json.length() -1 ? 6 : 3;
+            for (int i = 0; i < json.length(); i++) {
+                int pos = i == 0 ? 0 : i == json.length() - 1 ? 6 : 3;
                 loadRow(json.getJSONArray(i), pos);
             }
 
@@ -291,7 +277,6 @@ public class Keyboard {
             for (int i = 0; i < shiftKeys.length; i++) {
                 if (shiftKeys[i] == null) {
                     shiftKeys[i] = loadkey;
-                    shiftKeyIndices[i] = keys.size() - 1;
                     break;
                 }
             }
@@ -307,10 +292,10 @@ public class Keyboard {
 
     private void loadRow(JSONArray row, int pos) throws JSONException {
         loadx = 0;
-        loadcurrentRow = new Row(this);;
+        loadcurrentRow = new Row(this);
         rows.add(loadcurrentRow);
-        for(int i = 0; i < row.length(); i++) {
-            int keypos = pos + (i == 0 ? 1 : (i == row.length() -1 ? 3 : 2));
+        for (int i = 0; i < row.length(); i++) {
+            int keypos = pos + (i == 0 ? 1 : (i == row.length() - 1 ? 3 : 2));
             loadKey(row.getJSONObject(i), keypos);
         }
         loady += loadcurrentRow.defaultHeight;

@@ -5,26 +5,25 @@ import android.graphics.Paint;
 import android.graphics.Paint.Align;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.util.Log;
-import com.vladgba.keyb.Keyboard.Key;
 import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.widget.PopupWindow;
+import com.vladgba.keyb.Keyboard.Key;
+
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class KeyboardView extends View implements View.OnClickListener {
     private static final int NOT_A_KEY = -1;
-    static final int[] KEY_DELETE = { Keyboard.KEYCODE_DELETE };
+    static final int[] KEY_DELETE = {Keyboard.KEYCODE_DELETE};
     private Keyboard keyb;
-    private PopupWindow popupKeyboard;
+    private final PopupWindow popupKeyboard;
     private boolean keybOnScreen;
     private Key[] keys;
     private VKeyboard keybActionListener;
@@ -34,7 +33,7 @@ public class KeyboardView extends View implements View.OnClickListener {
     private int proximityThreshold;
     private int lastX;
     private int lastY;
-    private Paint paint;
+    private final Paint paint;
     private long downTime;
     private long lastMoveTime;
     private int lastKey;
@@ -43,19 +42,19 @@ public class KeyboardView extends View implements View.OnClickListener {
     private int currentKey = NOT_A_KEY;
     private long lastKeyTime;
     private long currentKeyTime;
-    private int[] keyIndices = new int[12];
+    private final int[] keyIndices = new int[12];
     private GestureDetector gestureDetector;
     private int repeatKeyIndex = NOT_A_KEY;
     private boolean abortKey;
     private int oldPointerCount = 1;
     private float oldPointerX;
     private float oldPointerY;
-    private Drawable keyBackground;
+    private final Drawable keyBackground;
     private static final int REPEAT_INTERVAL = 50;
     private static final int REPEAT_START_DELAY = 400;
     private static final int LONGPRESS_TIMEOUT = ViewConfiguration.getLongPressTimeout();
-    private static int MAX_NEARBY_KEYS = 12;
-    private int[] mDistances = new int[MAX_NEARBY_KEYS];
+    private static final int MAX_NEARBY_KEYS = 12;
+    private final int[] mDistances = new int[MAX_NEARBY_KEYS];
     private int lastSentIndex;
     private int tapCount;
     private long lastTapTime;
@@ -66,9 +65,11 @@ public class KeyboardView extends View implements View.OnClickListener {
     public KeyboardView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
+
     public KeyboardView(Context context, AttributeSet attrs, int defStyleAttr) {
         this(context, attrs, defStyleAttr, 0);
     }
+
     public KeyboardView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         int keyTextSize = 0;
@@ -83,6 +84,7 @@ public class KeyboardView extends View implements View.OnClickListener {
         keyBackground.getPadding(new Rect(0, 0, 0, 0));
         resetMultiTap();
     }
+
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         initGestureDetector();
@@ -101,6 +103,7 @@ public class KeyboardView extends View implements View.OnClickListener {
             }
         };
     }
+
     private void initGestureDetector() {
         if (gestureDetector == null) {
             gestureDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
@@ -112,6 +115,7 @@ public class KeyboardView extends View implements View.OnClickListener {
             gestureDetector.setIsLongpressEnabled(false);
         }
     }
+
     public void setOnKeyboardActionListener(VKeyboard listener) {
         keybActionListener = listener;
     }
@@ -171,18 +175,19 @@ public class KeyboardView extends View implements View.OnClickListener {
         super.onSizeChanged(w, h, oldw, oldh);
         if (keyb != null) keyb.resize(w, h);
     }
+
     int getKeyIndices(int x, int y, int[] allKeys) {
         final Key[] keys = this.keys;
         int primaryIndex = NOT_A_KEY;
         int closestKey = NOT_A_KEY;
         int closestKeyDist = proximityThreshold + 1;
         java.util.Arrays.fill(mDistances, Integer.MAX_VALUE);
-        int [] nearestKeyIndices = keyb.getNearestKeys(x, y);
+        int[] nearestKeyIndices = keyb.getNearestKeys(x, y);
         final int keyCount = nearestKeyIndices.length;
         for (int i = 0; i < keyCount; i++) {
             final Key key = keys[nearestKeyIndices[i]];
             int dist = 0;
-            boolean isInside = key.isInside(x,y);
+            boolean isInside = key.isInside(x, y);
             if (isInside) {
                 primaryIndex = nearestKeyIndices[i];
             }
@@ -210,6 +215,7 @@ public class KeyboardView extends View implements View.OnClickListener {
         }
         return primaryIndex == NOT_A_KEY ? closestKey : primaryIndex;
     }
+
     private void detectAndSendKey(int index, int x, int y, long eventTime) {
         if (index == NOT_A_KEY || index >= keys.length) return;
         final Key key = keys[index];
@@ -254,6 +260,7 @@ public class KeyboardView extends View implements View.OnClickListener {
     public boolean onHoverEvent(MotionEvent event) {
         return true;
     }
+
     @Override
     public boolean onTouchEvent(MotionEvent me) {
         final int pointerCount = me.getPointerCount();
@@ -287,6 +294,7 @@ public class KeyboardView extends View implements View.OnClickListener {
         oldPointerCount = pointerCount;
         return result;
     }
+
     private boolean onModifiedTouchEvent(MotionEvent me, boolean possiblePoly) {
         int touchX = (int) me.getX();
         int touchY = (int) me.getY();
@@ -398,17 +406,21 @@ public class KeyboardView extends View implements View.OnClickListener {
         detectAndSendKey(currentKey, key.x, key.y, lastTapTime);
         return true;
     }
+
     public void closing() {
         removeMessages();
         dismissPopupKeyboard();
     }
+
     private void removeMessages() {
     }
+
     @Override
     public void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         closing();
     }
+
     private void dismissPopupKeyboard() {
         if (false && popupKeyboard.isShowing()) {
             popupKeyboard.dismiss();
@@ -416,12 +428,14 @@ public class KeyboardView extends View implements View.OnClickListener {
             invalidateAllKeys();
         }
     }
+
     private void resetMultiTap() {
         lastSentIndex = NOT_A_KEY;
         tapCount = 0;
         lastTapTime = -1;
         inMultiTap = false;
     }
+
     private void checkMultiTap(long eventTime, int keyIndex) {
         if (keyIndex == NOT_A_KEY) return;
         Key key = keys[keyIndex];
