@@ -15,10 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Keyboard {
-    public static final int KEYCODE_SHIFT = -1;
-    public static final int KEYCODE_DONE = -4;
-    public static final int KEYCODE_DELETE = -5;
-    public static final int KEYCODE_ALT = -6;
     private static final int GRID_WIDTH = 10;
     private static final int GRID_HEIGHT = 5;
     private static final int GRID_SIZE = GRID_WIDTH * GRID_HEIGHT;
@@ -26,11 +22,9 @@ public class Keyboard {
     private int dWidth;
     private int dHeight;
     public boolean shifted;
-    private final Key[] shiftKeys = {null, null};
     private int totalHeight;
     private int totalWidth;
     private final List<Key> keys;
-    private final List<Key> modKeys;
     private final int displayWidth;
     private final int displayHeight;
     private int cellWidth;
@@ -72,13 +66,6 @@ public class Keyboard {
         public int popupResId;
         public int pos;
 
-        private final static int[] KEY_STATE_NORMAL = {
-        };
-
-        private final static int[] KEY_STATE_PRESSED = {
-                android.R.attr.state_pressed
-        };
-
         public Key(Row parent) {
             height = parent.defaultHeight;
             width = parent.defaultWidth;
@@ -111,7 +98,6 @@ public class Keyboard {
             popupResId = 0;
             modifier = false;
             icon = null;
-
         }
 
         private CharSequence padExtChars(CharSequence chars, int pos) {
@@ -159,18 +145,17 @@ public class Keyboard {
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
         if (portrait) {
-            float size = Float.valueOf(sp.getString("size", "10"));
-            int lowerSize = displayWidth > displayHeight ? displayHeight : displayWidth;
+            float size = Float.parseFloat(sp.getString("size", "10"));
+            int lowerSize = Math.min(displayWidth, displayHeight);
             dWidth = (int) (lowerSize / size);
             dHeight = dWidth;
         } else {
-            float size = Float.valueOf(sp.getString("sizeland", "20"));
+            float size = Float.parseFloat(sp.getString("sizeland", "20"));
             int biggerSize = displayWidth > displayHeight ? displayWidth : displayHeight;
             dWidth = (int) Math.ceil(biggerSize / size);
             dHeight = dWidth;
         }
         keys = new ArrayList<>();
-        modKeys = new ArrayList<>();
         loadKeyboard(jd);
     }
 
@@ -275,17 +260,6 @@ public class Keyboard {
         Key loadkey = new Key(loadcurrentRow, loadx, loady, jdata, pos);
         if (loadkey.codes == null) return;
         keys.add(loadkey);
-        if (loadkey.codes[0] == KEYCODE_SHIFT) {
-            for (int i = 0; i < shiftKeys.length; i++) {
-                if (shiftKeys[i] == null) {
-                    shiftKeys[i] = loadkey;
-                    break;
-                }
-            }
-            modKeys.add(loadkey);
-        } else if (loadkey.codes[0] == KEYCODE_ALT) {
-            modKeys.add(loadkey);
-        }
         loadcurrentRow.keys.add(loadkey);
 
         loadx += loadkey.width;
@@ -304,7 +278,7 @@ public class Keyboard {
     }
 
     private void parseKeyboardAttributes() {
-        dWidth = (displayWidth > dHeight ? dHeight : displayWidth);
+        dWidth = Math.min(displayWidth, dHeight);
         dHeight = dWidth;
         proximityThreshold = (int) (dWidth * SEARCH_DISTANCE);
         proximityThreshold = proximityThreshold * proximityThreshold;

@@ -249,7 +249,8 @@ public class VKeyboard extends InputMethodService {
     }
 
     public void onText(CharSequence chars) {
-        for (int i = 0; i < chars.length(); i++) onKey(chars.charAt(i), new int[]{chars.charAt(i)});
+        InputConnection ic = getCurrentInputConnection();
+        ic.commitText(String.valueOf(chars), 1);
     }
 
     public void swipeLeft() {

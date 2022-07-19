@@ -6,7 +6,6 @@ import android.content.res.Resources;
 import android.graphics.*;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import com.vladgba.keyb.Keyboard.Key;
 
@@ -290,7 +289,6 @@ public class VKeybView extends KeyboardView {
 
         if (currentKey.repeat) { // Delete
             if (!cursorMoved && (curX - delTick > pressX || curX + delTick < pressX)) {
-                Log.d("Moved", "");
                 cursorMoved = true;
             }
             while (true) {
@@ -344,7 +342,11 @@ public class VKeybView extends KeyboardView {
     private void release(int curX, int curY) {
         pressed = false;
         if (currentKey.cursor && cursorMoved) return;
-        if (currentKey.repeat) {
+        if (currentKey.text.length() > 0) {
+            keybActionListener.onText(currentKey.text);
+            keybActionListener.onRelease(NOT_A_KEY);
+            return;
+        } else if (currentKey.repeat) {
             if (!cursorMoved) super.getOnKeyboardActionListener().onKey(currentKey.codes[0], currentKey.codes);
             return;
         }
