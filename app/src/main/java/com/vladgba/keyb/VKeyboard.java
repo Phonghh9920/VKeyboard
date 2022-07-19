@@ -5,7 +5,8 @@ import android.content.res.Configuration;
 import android.inputmethodservice.InputMethodService;
 import android.os.Environment;
 import android.util.Log;
-import android.view.*;
+import android.view.KeyEvent;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import org.jetbrains.annotations.NotNull;
@@ -14,7 +15,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
-public class VKeyboard extends InputMethodService{
+public class VKeyboard extends InputMethodService {
     private VKeybView keybView;
     private boolean ctrlPressed = false;
     public static boolean shiftPressed = false;
@@ -29,10 +30,10 @@ public class VKeyboard extends InputMethodService{
     public void reload() {
         if (that == null) return;
 
-        latinKeybPortrait = new Keyboard(that,loadKeybLayout("vkeyb/latin-portrait"), true);
-        cyrillicKeybPortrait = new Keyboard(that,loadKeybLayout("vkeyb/cyrillic-portrait"), true);
-        latinKeybLandscape = new Keyboard(that,loadKeybLayout("vkeyb/latin-landscape"), false);
-        cyrillicKeybLandscape = new Keyboard(that,loadKeybLayout("vkeyb/cyrillic-landscape"), false);
+        latinKeybPortrait = new Keyboard(that, loadKeybLayout("vkeyb/latin-portrait"), true);
+        cyrillicKeybPortrait = new Keyboard(that, loadKeybLayout("vkeyb/cyrillic-portrait"), true);
+        latinKeybLandscape = new Keyboard(that, loadKeybLayout("vkeyb/latin-landscape"), false);
+        cyrillicKeybLandscape = new Keyboard(that, loadKeybLayout("vkeyb/cyrillic-landscape"), false);
         keybView.loadVars(that);
         setKeyb();
     }
@@ -52,7 +53,7 @@ public class VKeyboard extends InputMethodService{
     public View onCreateInputView() {
         that = this;
         try {
-            keybView = (VKeybView) getLayoutInflater().inflate(R.layout.vkeybview,null);
+            keybView = (VKeybView) getLayoutInflater().inflate(R.layout.vkeybview, null);
         } catch (Exception e) {
             Log.d("CreateInputView", e.getMessage());
         }
@@ -80,7 +81,7 @@ public class VKeyboard extends InputMethodService{
             br.close();
             Log.d("Keyb", "Done");
             return String.valueOf(text);
-        } catch(IOException e) {
+        } catch (IOException e) {
             Log.d("Keyb", "Error");
             Log.d("Keyb", e.getMessage());
         }
@@ -90,12 +91,12 @@ public class VKeyboard extends InputMethodService{
     @Override
     public void onConfigurationChanged(Configuration cfg) {
         super.onConfigurationChanged(cfg);
-        if (cfg.orientation == Configuration.ORIENTATION_LANDSCAPE && this.isPortrait) updateOrientation(false);
-        else if (cfg.orientation == Configuration.ORIENTATION_PORTRAIT && !this.isPortrait) updateOrientation(true);
+        if (cfg.orientation == Configuration.ORIENTATION_LANDSCAPE && isPortrait) updateOrientation(false);
+        else if (cfg.orientation == Configuration.ORIENTATION_PORTRAIT && !isPortrait) updateOrientation(true);
     }
 
     private void updateOrientation(boolean b) {
-        this.isPortrait = b;
+        isPortrait = b;
         setKeyb();
     }
 
@@ -116,7 +117,7 @@ public class VKeyboard extends InputMethodService{
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if(keyCode<0) return true;
+        if (keyCode < 0) return true;
         switch (keyCode) {
             case KeyEvent.KEYCODE_VOLUME_UP:
                 if (keybView.isShown()) {
@@ -209,7 +210,7 @@ public class VKeyboard extends InputMethodService{
     }
 
     public void press(int key, @NotNull InputConnection ic) {
-        ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,key));
+        ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, key));
     }
 
     public void release(int key, @NotNull InputConnection ic) {
@@ -229,36 +230,17 @@ public class VKeyboard extends InputMethodService{
 
     public void onKey(int i, int[] ints) {
         InputConnection ic = getCurrentInputConnection();
-        if(i > 96 && i < 123) { // a-z
+        if (i > 96 && i < 123) { // a-z
             clickShiftable(i - 68, ic);
-        } else if (i >= -19 && i <= -22) { // DPAD
+        } else if (i == -2) { // lang switch
+            isLatin = !isLatin;
+            setKeyb();
+        } else if (i < 0) {
             clickShiftable(i * -1, ic);
         } else {
-            switch (i) {
-                case -112: // Forward DEL
-                    click(i * -1, ic);
-                    break;
-                case -9:
-                    clickShiftable(KeyEvent.KEYCODE_TAB, ic);
-                    break;
-                case -32:
-                    click(KeyEvent.KEYCODE_SPACE, ic);
-                    break;
-                case Keyboard.KEYCODE_DELETE:
-                    clickShiftable(KeyEvent.KEYCODE_DEL, ic);
-                    break;
-                case -2: // lang switch
-                    isLatin = !isLatin;
-                    setKeyb();
-                    break;
-                case Keyboard.KEYCODE_DONE:
-                    click(KeyEvent.KEYCODE_ENTER, ic);
-                    break;
-                default:
-                    Log.d("key", String.valueOf(i));
-                    char code = getShiftable((char) i, keybView.shiftModi || shiftPressed);
-                    ic.commitText(String.valueOf(code),1);
-            }
+            Log.d("key", String.valueOf(i));
+            char code = getShiftable((char) i, keybView.shiftModi || shiftPressed);
+            ic.commitText(String.valueOf(code), 1);
         }
     }
 
@@ -267,7 +249,7 @@ public class VKeyboard extends InputMethodService{
     }
 
     public void onText(CharSequence chars) {
-        for(int i = 0; i < chars.length(); i++) onKey(chars.charAt(i), new int[] {chars.charAt(i)});
+        for (int i = 0; i < chars.length(); i++) onKey(chars.charAt(i), new int[]{chars.charAt(i)});
     }
 
     public void swipeLeft() {

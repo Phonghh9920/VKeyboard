@@ -278,7 +278,7 @@ public class VKeybView extends KeyboardView {
         if (currentKeyIndex == -1) return;
         currentKey = getKeyboard().getKeys().get(currentKeyIndex);
 
-        if (currentKey.cursor || currentKey.codes[0] == -5 || currentKey.extChars.length() > 0) {
+        if (currentKey.cursor || currentKey.repeat || currentKey.extChars.length() > 0) {
             if (currentKey.extChars.length() > 0) pressed = true;
             relX = curX;
             relY = curY;
@@ -288,7 +288,7 @@ public class VKeybView extends KeyboardView {
     private void drag(int curX, int curY) {
         if (relX < 0) return; // Not have alternative behavior
 
-        if (currentKey.codes[0] == -5) { // Delete
+        if (currentKey.repeat) { // Delete
             if (!cursorMoved && (curX - delTick > pressX || curX + delTick < pressX)) {
                 Log.d("Moved", "");
                 cursorMoved = true;
@@ -296,13 +296,13 @@ public class VKeybView extends KeyboardView {
             while (true) {
                 if (curX - delTick > relX) {
                     relX += delTick;
-                    super.getOnKeyboardActionListener().click(112);
+                    super.getOnKeyboardActionListener().click(currentKey.forward);
                     continue;
                 }
 
                 if (curX + delTick < relX) {
                     relX -= delTick;
-                    super.getOnKeyboardActionListener().onKey(-5, new int[]{-5});
+                    super.getOnKeyboardActionListener().onKey(currentKey.codes[0], currentKey.codes);
                     continue;
                 }
                 break;
@@ -344,8 +344,8 @@ public class VKeybView extends KeyboardView {
     private void release(int curX, int curY) {
         pressed = false;
         if (currentKey.cursor && cursorMoved) return;
-        if (currentKey.codes[0] == -5) {
-            if (!cursorMoved) super.getOnKeyboardActionListener().onKey(-5, new int[]{-5});
+        if (currentKey.repeat) {
+            if (!cursorMoved) super.getOnKeyboardActionListener().onKey(currentKey.codes[0], currentKey.codes);
             return;
         }
         if (this.relX < 0) {

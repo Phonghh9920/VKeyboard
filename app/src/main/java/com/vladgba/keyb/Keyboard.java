@@ -63,9 +63,10 @@ public class Keyboard {
         public int height;
         public int x;
         public int y;
-        public boolean pressed;
+        public boolean repeat = false;
         public CharSequence text;
         public CharSequence extChars;
+        public int forward;
         public boolean cursor;
         public boolean modifier;
         public int popupResId;
@@ -97,7 +98,9 @@ public class Keyboard {
                 extChars = jdata.has("ext") ? jdata.getString("ext") : "";
                 if (extChars.length() > 0) extChars = padExtChars(extChars, pos);
                 cursor = jdata.has("cur") && (jdata.getInt("cur") == 1);
+                repeat = jdata.has("repeat") && (jdata.getInt("repeat") == 1);
                 text = jdata.has("text") ? jdata.getString("text") : "";
+                forward = jdata.has("forward") ? jdata.getInt("forward") : 0;
             } catch (JSONException e) {
                 Log.d("Key", e.getMessage());
                 return;
@@ -108,7 +111,6 @@ public class Keyboard {
             popupResId = 0;
             modifier = false;
             icon = null;
-            text = null;
 
         }
 
