@@ -5,5 +5,4 @@
         android:imeSubtypeLocale="en_US"
         android:imeSubtypeMode="keyboard"
         />
-
 </input-method>

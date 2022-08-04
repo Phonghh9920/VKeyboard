@@ -5,10 +5,10 @@
         <p><i>VKeyboard</i> provides a new Android input method (<b>disabled</b> by default).</p>
         <p>To activate it, follow these steps.</p>
         <h3>Add VKeyboard to the list of system input methods:</h3>
-        <p>1. Open "Manage on-screen keyboards"
+        <p>1. Open <b>Manage on-screen keyboards</b>
         <p>- Find <b>VKeyboard</b> and enable it.</p>
         <p>- Confirm the warning displayed by the system. The system always shows this message when using a third-party keyboard.</p>
-        <p>- Click the <i>Back</i> button to return to this page..</p>
+        <p>- Click the <b>Back</b> button to return to this page..</p>
         <p>2. Click "Choose input method".</p>
         <p>- Select VKeyboard from the list.</p>
         <p>3. Done!</p>
