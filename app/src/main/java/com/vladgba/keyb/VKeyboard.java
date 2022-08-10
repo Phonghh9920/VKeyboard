@@ -117,6 +117,7 @@ public class VKeyboard extends InputMethodService {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keybView == null) return false;
         if (keyCode < 0) return true;
         switch (keyCode) {
             case KeyEvent.KEYCODE_VOLUME_UP:
@@ -154,6 +155,7 @@ public class VKeyboard extends InputMethodService {
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keybView == null) return false;
         switch (keyCode) {
             case KeyEvent.KEYCODE_VOLUME_UP:
                 if (keybView.isShown()) {
