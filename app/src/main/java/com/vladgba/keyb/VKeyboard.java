@@ -128,6 +128,8 @@ public class VKeyboard extends InputMethodService {
                     forceLatin();
                     super.onKeyDown(KeyEvent.KEYCODE_CTRL_LEFT, event);
                     return true;
+                } else if (ctrlPressed) {
+                    return true;
                 }
                 break;
             case KeyEvent.KEYCODE_VOLUME_DOWN:
@@ -147,6 +149,8 @@ public class VKeyboard extends InputMethodService {
 
                     keybView.invalidateAllKeys();
                     return true;
+                } else if (shiftPressed) {
+                    return true;
                 }
                 break;
         }
@@ -158,16 +162,18 @@ public class VKeyboard extends InputMethodService {
         if (keybView == null) return false;
         switch (keyCode) {
             case KeyEvent.KEYCODE_VOLUME_UP:
+                ctrlPressed = false;
                 if (keybView.isShown()) {
-                    ctrlPressed = false;
                     setKeyb();
                     super.onKeyUp(KeyEvent.KEYCODE_CTRL_LEFT, event);
+                    return true;
+                } else if (ctrlPressed) {
                     return true;
                 }
                 break;
             case KeyEvent.KEYCODE_VOLUME_DOWN:
+                shiftPressed = false;
                 if (keybView.isShown()) {
-                    shiftPressed = false;
 
                     long now = System.currentTimeMillis();
                     InputConnection ic = getCurrentInputConnection();
@@ -179,6 +185,8 @@ public class VKeyboard extends InputMethodService {
                     latinKeybLandscape.setShifted(shiftPressed);
                     cyrillicKeybLandscape.setShifted(shiftPressed);
                     keybView.invalidateAllKeys();
+                    return true;
+                } else if (shiftPressed) {
                     return true;
                 }
                 break;
