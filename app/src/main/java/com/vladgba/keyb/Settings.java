@@ -10,7 +10,6 @@ public class Settings extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.settings_view);
-        //getActionBar().setTitle("Settings");
         if (findViewById(R.id.idFrameLayout) != null) {
             if (savedInstanceState != null) return;
             getFragmentManager().beginTransaction().add(R.id.idFrameLayout, new SettingsFrag()).commit();

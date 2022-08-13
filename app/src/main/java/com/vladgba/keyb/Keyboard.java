@@ -3,7 +3,6 @@ package com.vladgba.keyb;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
-import android.preference.PreferenceManager;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -26,7 +25,6 @@ public class Keyboard {
     private int totalWidth;
     private final List<Key> keys;
     private final int displayWidth;
-    private final int displayHeight;
     private int cellWidth;
     private int cellHeight;
     private int[][] gridNeighbors;
@@ -141,9 +139,9 @@ public class Keyboard {
     public Keyboard(@NotNull Context context, String jd, boolean portrait) {
         DisplayMetrics dm = context.getResources().getDisplayMetrics();
         displayWidth = dm.widthPixels;
-        displayHeight = dm.heightPixels;
+        int displayHeight = dm.heightPixels;
 
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences sp = context.getSharedPreferences(context.getPackageName() + "_preferences", Context.MODE_PRIVATE);
         if (portrait) {
             float size = Float.parseFloat(sp.getString("size", "10"));
             int lowerSize = Math.min(displayWidth, displayHeight);
@@ -151,7 +149,7 @@ public class Keyboard {
             dHeight = dWidth;
         } else {
             float size = Float.parseFloat(sp.getString("sizeland", "20"));
-            int biggerSize = displayWidth > displayHeight ? displayWidth : displayHeight;
+            int biggerSize = Math.max(displayWidth, displayHeight);
             dWidth = (int) Math.ceil(biggerSize / size);
             dHeight = dWidth;
         }
@@ -159,10 +157,8 @@ public class Keyboard {
         loadKeyboard(jd);
     }
 
-    final void resize(int newWidth, int newHeight) {
-        int numRows = rows.size();
-        for (int rowIndex = 0; rowIndex < numRows; ++rowIndex) {
-            Row row = rows.get(rowIndex);
+    final void resize(int newWidth) {
+        for (Row row : rows) {
             int numKeys = row.keys.size();
             int totalWidth = 0;
             for (int keyIndex = 0; keyIndex < numKeys; ++keyIndex) {
@@ -252,7 +248,7 @@ public class Keyboard {
 
             totalHeight = loady;
         } catch (JSONException e) {
-            Log.d("PSR", e.getMessage());
+            Log.e("PSR", e.getMessage());
         }
     }
 

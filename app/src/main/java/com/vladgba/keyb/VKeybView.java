@@ -1,10 +1,11 @@
 package com.vladgba.keyb;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.*;
-import android.preference.PreferenceManager;
+import android.os.Build;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import com.vladgba.keyb.Keyboard.Key;
@@ -54,7 +55,7 @@ public class VKeybView extends KeyboardView {
     }
 
     public void loadVars(Context context) {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences sp = context.getSharedPreferences(context.getPackageName() + "_preferences", Context.MODE_PRIVATE);
         delTick = Integer.parseInt(sp.getString("swipedel", "60"));
         primaryFont = Float.parseFloat(sp.getString("sizeprimary", "1.9"));
         secondaryFont = Float.parseFloat(sp.getString("sizesecondary", "4.5"));
@@ -123,19 +124,19 @@ public class VKeybView extends KeyboardView {
             recty = new RectF(key.x + bi, key.y + bi, key.x + key.width - bi, key.y + key.height - bi);
             canvas.drawRoundRect(recty, 15, 15, paint);
 
-            paint.setColor(res.getColor(R.color.textColor));
+            paint.setColor(getColor(R.color.textColor));
 
             if (key.label != null) {
-                String lbl = sh && key.label.length() < 2 ? String.valueOf(VKeyboard.getShiftable(key.label.charAt(0), sh)) : key.label.toString();
+                String lbl = sh && key.label.length() < 2 ? String.valueOf(VKeyboard.getShiftable(key.label.charAt(0), true)) : key.label.toString();
                 canvas.drawText(
                         lbl,
-                        key.x + (key.width / 2),
+                        key.x + (key.width / 2f),
                         key.y + (key.height + paint.getTextSize() - paint.descent()) / 2,
                         paint);
             }
 
             paint.setTextSize(key.height / secondaryFont);
-            paint.setColor(res.getColor(R.color.textColor));
+            paint.setColor(getColor(R.color.textColor));
 
             if (key.extChars != null) {
                 String str = String.valueOf(key.extChars);
@@ -154,9 +155,14 @@ public class VKeybView extends KeyboardView {
         }
     }
 
+    private int getColor(int textColor) {
+        //noinspection deprecation
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? res.getColor(textColor, getOnKeyboardActionListener().getTheme()) : res.getColor(textColor);
+    }
+
     @Override
     public void onDraw(Canvas canvas) {
-        if (buffer == null) repaintKeyb(canvas.getWidth(), canvas.getHeight());
+        if (buffer == null) repaintKeyb(getWidth(), getHeight());
         canvas.drawBitmap(getKeyboard().shifted ? bufferSh : buffer, 0, 0, null);
         if (pressed) drawKey(canvas);
     }
@@ -170,7 +176,7 @@ public class VKeybView extends KeyboardView {
         paint.setTypeface(Typeface.MONOSPACE);
         paint.setTextAlign(Paint.Align.CENTER);
         paint.setTextSize(key.height / primaryFont);
-        paint.setColor(res.getColor(R.color.textColor));
+        paint.setColor(getColor(R.color.textColor));
 
         int x1 = key.width / 2 - key.width;
         int x2 = key.width / 2;
@@ -201,7 +207,7 @@ public class VKeybView extends KeyboardView {
         recty = new RectF(key.x, key.y, key.x + key.width, key.y + key.height);
         canvas.drawRoundRect(recty, 15, 15, paint);
 
-        paint.setColor(res.getColor(R.color.textColor));
+        paint.setColor(getColor(R.color.textColor));
 
         boolean sh = getKeyboard().shifted;
         viewChar(String.valueOf(key.label), 0, x2, y2, canvas, key, paint, sh);
@@ -240,6 +246,7 @@ public class VKeybView extends KeyboardView {
         return matrixPos == 5 ? 0 : matrixPos < 5 ? matrixPos : matrixPos - 1;
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent me) {
         final int action = me.getAction();
@@ -255,7 +262,7 @@ public class VKeybView extends KeyboardView {
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_POINTER_UP:
-                release((int) me.getX(0), (int) me.getY(0));
+                release();
                 ctrlModi = false;
                 shiftModi = false;
                 invalidateAllKeys();
@@ -273,7 +280,7 @@ public class VKeybView extends KeyboardView {
         cursorMoved = false;
         charPos = 0;
 
-        int currentKeyIndex = getKeyIndices(curX, curY, null);
+        int currentKeyIndex = getKeyIndices(curX, curY);
         if (currentKeyIndex == -1) return;
         currentKey = getKeyboard().getKeys().get(currentKeyIndex);
 
@@ -300,7 +307,7 @@ public class VKeybView extends KeyboardView {
 
                 if (curX + delTick < relX) {
                     relX -= delTick;
-                    super.getOnKeyboardActionListener().onKey(currentKey.codes[0], currentKey.codes);
+                    super.getOnKeyboardActionListener().onKey(currentKey.codes[0]);
                     continue;
                 }
                 break;
@@ -339,15 +346,14 @@ public class VKeybView extends KeyboardView {
         }
     }
 
-    private void release(int curX, int curY) {
+    private void release() {
         pressed = false;
         if (currentKey.cursor && cursorMoved) return;
         if (currentKey.text.length() > 0) {
             keybActionListener.onText(currentKey.text);
-            keybActionListener.onRelease(NOT_A_KEY);
             return;
         } else if (currentKey.repeat) {
-            if (!cursorMoved) super.getOnKeyboardActionListener().onKey(currentKey.codes[0], currentKey.codes);
+            if (!cursorMoved) super.getOnKeyboardActionListener().onKey(currentKey.codes[0]);
             return;
         }
         if (this.relX < 0) {
@@ -358,7 +364,7 @@ public class VKeybView extends KeyboardView {
             int extSz = currentKey.extChars.length();
             if (extSz > 0 && extSz >= charPos) {
                 String textIndex = String.valueOf(currentKey.extChars.charAt(charPos - 1));
-                if (textIndex != null && textIndex.charAt(0) != ' ') {
+                if (textIndex.charAt(0) != ' ') {
                     createCustomKeyEvent(textIndex);
                     return;
                 }
@@ -379,10 +385,10 @@ public class VKeybView extends KeyboardView {
     }
 
     private void createCustomKeyEvent(String data) {
-        super.getOnKeyboardActionListener().onKey(getFromString(data)[0], getFromString(data));
+        super.getOnKeyboardActionListener().onKey(getFromString(data)[0]);
     }
 
     private void createCustomKeyEvent(int[] data) {
-        super.getOnKeyboardActionListener().onKey(data[0], data);
+        super.getOnKeyboardActionListener().onKey(data[0]);
     }
 }

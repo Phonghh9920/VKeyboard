@@ -53,7 +53,7 @@ public class VKeyboard extends InputMethodService {
     public View onCreateInputView() {
         that = this;
         try {
-            keybView = (VKeybView) getLayoutInflater().inflate(R.layout.vkeybview, null);
+            keybView = (VKeybView) getLayoutInflater().inflate(R.layout.vkeybview, null, false);
         } catch (Exception e) {
             Log.d("CreateInputView", e.getMessage());
         }
@@ -107,12 +107,6 @@ public class VKeyboard extends InputMethodService {
 
     private void forceLatin() {
         keybView.setKeyboard(isPortrait ? latinKeybPortrait : latinKeybLandscape);
-    }
-
-    public void onPress(int i) {
-    }
-
-    public void onRelease(int i) {
     }
 
     @Override
@@ -238,7 +232,7 @@ public class VKeyboard extends InputMethodService {
         release(key, ic);
     }
 
-    public void onKey(int i, int[] ints) {
+    public void onKey(int i) {
         InputConnection ic = getCurrentInputConnection();
         if (i > 96 && i < 123) { // a-z
             clickShiftable(i - 68, ic);

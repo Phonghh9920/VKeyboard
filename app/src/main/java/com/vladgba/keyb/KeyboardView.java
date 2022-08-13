@@ -1,8 +1,6 @@
 package com.vladgba.keyb;
 
 import android.content.Context;
-import android.graphics.Paint;
-import android.graphics.Paint.Align;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
@@ -19,9 +17,6 @@ public class KeyboardView extends View implements View.OnClickListener {
     private Key[] keys;
     public VKeyboard keybActionListener;
     private int proximityThreshold;
-    private final Drawable keyBackground;
-    private static final int MAX_NEARBY_KEYS = 12;
-    private final int[] mDistances = new int[MAX_NEARBY_KEYS];
 
     public KeyboardView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
@@ -33,7 +28,7 @@ public class KeyboardView extends View implements View.OnClickListener {
 
     public KeyboardView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
-        keyBackground = context.getDrawable(R.drawable.keyboard_bg_color);
+        Drawable keyBackground = context.getDrawable(R.drawable.keyboard_bg_color);
         popupKeyboard = new PopupWindow(context);
         popupKeyboard.setBackgroundDrawable(null);
         keyBackground.getPadding(new Rect(0, 0, 0, 0));
@@ -57,7 +52,7 @@ public class KeyboardView extends View implements View.OnClickListener {
         removeMessages();
         keyb = keyboard;
         List<Key> keys = keyb.getKeys();
-        this.keys = keys.toArray(new Key[keys.size()]);
+        this.keys = keys.toArray(new Key[0]);
         requestLayout();
         invalidateAllKeys();
         computeProximityThreshold(keyboard);
@@ -100,15 +95,14 @@ public class KeyboardView extends View implements View.OnClickListener {
     @Override
     public void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        if (keyb != null) keyb.resize(w, h);
+        if (keyb != null) keyb.resize(w);
     }
 
-    int getKeyIndices(int x, int y, int[] allKeys) {
+    int getKeyIndices(int x, int y) {
         final Key[] keys = this.keys;
         int primaryIndex = NOT_A_KEY;
         int closestKey = NOT_A_KEY;
         int closestKeyDist = proximityThreshold + 1;
-        java.util.Arrays.fill(mDistances, Integer.MAX_VALUE);
         int[] nearestKeyIndices = keyb.getNearestKeys(x, y);
         for (int nearestKeyIndex : nearestKeyIndices) {
             final Key key = keys[nearestKeyIndex];
@@ -118,24 +112,9 @@ public class KeyboardView extends View implements View.OnClickListener {
                 primaryIndex = nearestKeyIndex;
             }
             if (isInside && key.codes[0] > 32) {
-                final int nCodes = key.codes.length;
                 if (dist < closestKeyDist) {
                     closestKeyDist = dist;
                     closestKey = nearestKeyIndex;
-                }
-                if (allKeys == null) continue;
-                for (int j = 0; j < mDistances.length; j++) {
-                    if (mDistances[j] > dist) {
-                        System.arraycopy(mDistances, j, mDistances, j + nCodes,
-                                mDistances.length - j - nCodes);
-                        System.arraycopy(allKeys, j, allKeys, j + nCodes,
-                                allKeys.length - j - nCodes);
-                        for (int c = 0; c < nCodes; c++) {
-                            allKeys[j + c] = key.codes[c];
-                            mDistances[j + c] = dist;
-                        }
-                        break;
-                    }
                 }
             }
         }

@@ -26,7 +26,8 @@ public class Main extends Activity {
         setContentView(R.layout.main);
 
         String html = getString(R.string.main_text);
-        Spanned content = Html.fromHtml(html);
+        Spanned content = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY) : Html.fromHtml(html);
+
         TextView description = findViewById(R.id.main_description);
         description.setMovementMethod(LinkMovementMethod.getInstance());
         description.setText(content, TextView.BufferType.SPANNABLE);
