@@ -46,7 +46,6 @@ public class VKeyboard extends InputMethodService {
             reload();
             Settings.needReload = false;
         }
-
     }
 
     @Override
@@ -101,6 +100,7 @@ public class VKeyboard extends InputMethodService {
     }
 
     private void setKeyb() {
+        if (keybView == null) return;
         if (isLatin) keybView.setKeyboard(isPortrait ? latinKeybPortrait : latinKeybLandscape);
         else keybView.setKeyboard(isPortrait ? cyrillicKeybPortrait : cyrillicKeybLandscape);
     }
