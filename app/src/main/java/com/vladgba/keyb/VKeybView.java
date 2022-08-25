@@ -37,6 +37,7 @@ public class VKeybView extends KeyboardView {
     private Bitmap bufferSh;
     public boolean ctrlModi = false;
     public boolean shiftModi = false;
+    final int[] angPos = new int[]{ 4, 1, 2, 3, 5, 8, 7, 6, 4 };
 
 
     public VKeybView(Context context, AttributeSet attrs) {
@@ -241,9 +242,9 @@ public class VKeybView extends KeyboardView {
     }
 
     private int getExtPos(int x, int y) {
-        int matrixPos = (this.pressX - offset > x ? 1 : this.pressX + offset < x ? 3 : 2);
-        matrixPos += (this.pressY - offset > y ? 0 : this.pressY + offset < y ? 6 : 3);
-        return matrixPos == 5 ? 0 : matrixPos < 5 ? matrixPos : matrixPos - 1;
+        if (Math.abs(this.pressX - x) < this.offset && Math.abs(this.pressY - y) < this.offset) return 0;
+        final double angle = Math.toDegrees(Math.atan2(this.pressY - y, this.pressX - x)); 
+        return angPos[(int) Math.ceil(((angle < 0 ? 360d : 0d) + angle + 22.5d) / 45d) - 1];
     }
 
     @SuppressLint("ClickableViewAccessibility")
