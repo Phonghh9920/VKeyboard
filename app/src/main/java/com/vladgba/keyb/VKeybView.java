@@ -192,13 +192,11 @@ public class VKeybView extends KeyboardView {
         recty = new RectF(key.x + x1 * 2 + 1, key.y + y1 * 2 + 1, key.x - x1 + x3 - 1, key.y - y1 + y3 - 1);
         canvas.drawRoundRect(recty, 30, 30, paint);
 
-        paint.setColor(0xff191919);
+        paint.setColor(0xff222222);
         recty = new RectF(key.x, key.y, key.x + key.width, key.y + key.height);
         canvas.drawRoundRect(recty, 15, 15, paint);
 
         paint.setColor(getColor(R.color.textColor));
-        Paint pressedPaint = paint;
-        pressedPaint.setColor(0xff191919);
         boolean sh = getKeyboard().shifted;
 
         viewChar(String.valueOf(key.label), 0, x2, y2, canvas, key, paint, sh);
@@ -213,9 +211,9 @@ public class VKeybView extends KeyboardView {
         final int[] xi = new int[] { x1, x2, x3, x1, x3, x1, x2, x3 };
         final int[] yi = new int[] { y1, y1, y1, y2, y2, y3, y3, y3 };
         for (int i = 0; i < 8; i++) {
-                    p.setColor(0xff696969);
+            p.setColor(0xff696969);
             if (h && charPos == i + 1) cv.drawCircle(key.x + xi[i], key.y + yi[i], 60, p);
-                    p.setColor(0xffff0000);
+            p.setColor(getColor(R.color.textColor));
             viewChar(str, i, xi[i], yi[i], cv, key, p, sh);
         }
     }
@@ -338,8 +336,8 @@ public class VKeybView extends KeyboardView {
     }
 
     private void release(int curX, int curY) {
-        if (curY == 0) return;
         pressed = false;
+		if (curY == 0) return;
         if (currentKey.cursor && cursorMoved) return;
         if (currentKey.text.length() > 0) {
             keybActionListener.onText(currentKey.text);
@@ -355,9 +353,9 @@ public class VKeybView extends KeyboardView {
         if (charPos != 0) {
             int extSz = currentKey.extChars.length();
             if (extSz > 0 && extSz >= charPos) {
-                String textIndex = String.valueOf(currentKey.extChars.charAt(charPos - 1));
+                char textIndex = currentKey.extChars.charAt(charPos - 1);
                 if (textIndex == ' ') return;
-                createCustomKeyEvent(textIndex);
+                createCustomKeyEvent(String.valueOf(textIndex));
                 return;
             }
         }
