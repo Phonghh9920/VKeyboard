@@ -82,7 +82,7 @@ public class VKeybView extends KeyboardView {
         Canvas canvas = new Canvas(sh ? bufferSh : buffer);
 
         Paint paint = new Paint();
-        paint.setColor(0xff000000);
+        paint.setColor(getColor(R.color.keyboardBackground));
         RectF r = new RectF(0, 0, w, h);
         canvas.drawRect(r, paint);
 
@@ -91,41 +91,47 @@ public class VKeybView extends KeyboardView {
             canvas.save();
 
             // Positions for subsymbols
-            int x1 = key.width / 6;
+            int x1 = key.width / 5;
             int x2 = key.width / 2;
             int x3 = key.width - x1;
 
-            int y1 = key.height / 6;
+            int y1 = key.height / 5;
             int y2 = key.height / 2;
             int y3 = key.height - y1;
 
             Rect rect = new Rect(
-                    key.x + 1,
-                    key.y + 1,
-                    key.x + key.width - 2,
-                    key.y + key.height - 2
+                    key.x,
+                    key.y,
+                    key.x + key.width,
+                    key.y + key.height
             );
 
             canvas.clipRect(rect);
 
             paint = new Paint();
             paint.setAntiAlias(true);
-            paint.setTypeface(Typeface.MONOSPACE);
             paint.setTextAlign(Paint.Align.CENTER);
-            paint.setTextSize(key.height / primaryFont);
-            paint.setColor(0xff484848);
+            paint.setColor(getColor(R.color.keyBorder));
 
-            int bi = 3;
-            RectF recty = new RectF(key.x + bi, key.y + bi, key.x + key.width - bi, key.y + key.height - bi);
-            canvas.drawRoundRect(recty, 15, 15, paint);
+            int bi = key.height / 16;
+            int ki = key.height / 6;
+            int pd = key.height / 36;
 
-            paint.setColor(0xff000000);
+            RectF recty = new RectF(key.x + bi-pd/3, key.y + bi, key.x + key.width - bi+pd/3, key.y + key.height - bi+pd);
+            canvas.drawRoundRect(recty, ki, ki, paint);
 
-            bi = 4;
+            paint.setColor(getColor(R.color.keyBackground));
+
             recty = new RectF(key.x + bi, key.y + bi, key.x + key.width - bi, key.y + key.height - bi);
-            canvas.drawRoundRect(recty, 15, 15, paint);
+            canvas.drawRoundRect(recty, ki, ki, paint);
 
+            paint.setTextSize(key.height / secondaryFont);
             paint.setColor(getColor(R.color.textColor));
+
+            viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, false);
+
+            paint.setColor(getColor(R.color.primaryText));
+            paint.setTextSize(key.height / 3);
 
             if (key.label != null) {
                 String lbl = sh && key.label.length() < 2 ? String.valueOf(VKeyboard.getShiftable(key.label.charAt(0), true)) : key.label.toString();
@@ -135,11 +141,6 @@ public class VKeybView extends KeyboardView {
                         key.y + (key.height + paint.getTextSize() - paint.descent()) / 2,
                         paint);
             }
-
-            paint.setTextSize(key.height / secondaryFont);
-            paint.setColor(getColor(R.color.textColor));
-
-            viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, false);
 
             canvas.restore();
         }
@@ -153,6 +154,10 @@ public class VKeybView extends KeyboardView {
     @Override
     public void onDraw(Canvas canvas) {
         if (buffer == null) repaintKeyb(getWidth(), getHeight());
+        Canvas c = new Canvas(buffer);
+        Paint p = new Paint();
+        p.setColor(0xffff0000);
+        c.drawCircle(pressX,pressY,2,p);
         canvas.drawBitmap(getKeyboard().shifted ? bufferSh : buffer, 0, 0, null);
         if (pressed) drawKey(canvas);
     }
@@ -165,7 +170,7 @@ public class VKeybView extends KeyboardView {
         paint.setAntiAlias(true);
         paint.setTextAlign(Paint.Align.CENTER);
         paint.setTextSize(key.height / primaryFont);
-        paint.setColor(getColor(R.color.textColor));
+        paint.setColor(getColor(R.color.previewText));
 
         int x1 = key.width / 2 - key.width;
         int x2 = key.width / 2;
@@ -184,22 +189,18 @@ public class VKeybView extends KeyboardView {
 
         canvas.clipRect(rect);
 
-        paint.setColor(0xff696969);
+        int pd = key.height / 36;
+        paint.setColor(getColor(R.color.keyBorder));
         RectF recty = new RectF(key.x + x1 * 2, key.y + y1 * 2, key.x - x1 + x3, key.y - y1 + y3);
         canvas.drawRoundRect(recty, 30, 30, paint);
 
-        paint.setColor(0xff000000);
-        recty = new RectF(key.x + x1 * 2 + 1, key.y + y1 * 2 + 1, key.x - x1 + x3 - 1, key.y - y1 + y3 - 1);
+        paint.setColor(getColor(R.color.keyBackground));
+        recty = new RectF(key.x + x1 * 2 + pd / 3, key.y + y1 * 2, key.x - x1 + x3 - pd / 3, key.y - y1 + y3 - pd);
         canvas.drawRoundRect(recty, 30, 30, paint);
 
-        paint.setColor(0xff222222);
-        recty = new RectF(key.x, key.y, key.x + key.width, key.y + key.height);
-        canvas.drawRoundRect(recty, 15, 15, paint);
-
-        paint.setColor(getColor(R.color.textColor));
+        paint.setColor(getColor(R.color.primaryText));
         boolean sh = getKeyboard().shifted;
 
-        viewChar(String.valueOf(key.label), 0, x2, y2, canvas, key, paint, sh);
         viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, true);
 
         canvas.restore();
@@ -211,10 +212,27 @@ public class VKeybView extends KeyboardView {
         final int[] xi = new int[] { x1, x2, x3, x1, x3, x1, x2, x3 };
         final int[] yi = new int[] { y1, y1, y1, y2, y2, y3, y3, y3 };
         for (int i = 0; i < 8; i++) {
-            p.setColor(0xff696969);
-            if (h && charPos == i + 1) cv.drawCircle(key.x + xi[i], key.y + yi[i], 60, p);
-            p.setColor(getColor(R.color.textColor));
+            p.setColor(getColor(R.color.previewSelected));
+            if (h) {
+                if (charPos == i + 1) cv.drawCircle(key.x + xi[i], key.y + yi[i], 50, p);
+                p.setColor(getColor(R.color.previewText));
+            } else {
+                p.setColor(getColor(R.color.secondaryText));
+            }
             viewChar(str, i, xi[i], yi[i], cv, key, p, sh);
+        }
+        if (h) {
+            if (charPos == 0) {
+                p.setColor(getColor(R.color.previewSelected));
+                cv.drawCircle(key.x + x2, key.y + y2, 60, p);
+            }
+            p.setColor(getColor(R.color.previewText));
+            cv.drawText(
+                sh && key.label.length() < 2 ? String.valueOf(VKeyboard.getShiftable(key.label.charAt(0), true)) : key.label.toString(),
+                key.x + x2,
+                key.y + y2 + (p.getTextSize() - p.descent()) / 2,
+                p
+            );
         }
     }
 
@@ -283,7 +301,7 @@ public class VKeybView extends KeyboardView {
     private void drag(int curX, int curY) {
         if (relX < 0) return; // Not have alternative behavior
 
-        if (currentKey.repeat) { // Delete
+        if (currentKey.repeat) {
             if (!cursorMoved && (curX - delTick > pressX || curX + delTick < pressX)) {
                 cursorMoved = true;
             }
@@ -337,7 +355,7 @@ public class VKeybView extends KeyboardView {
 
     private void release(int curX, int curY) {
         pressed = false;
-		if (curY == 0) return;
+        if (curY == 0) return;
         if (currentKey.cursor && cursorMoved) return;
         if (currentKey.text.length() > 0) {
             keybActionListener.onText(currentKey.text);
