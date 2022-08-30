@@ -9,4 +9,12 @@
     <drawable name="key_normal_color">#000000</drawable>
     <drawable name="opkey_normal_color">#001b10</drawable>
     <drawable name="curkey_normal_color">#000022</drawable>
+	<color name="primaryText">#000000</color>
+	<color name="secondaryText">#dddddd</color>
+	<color name="keyboardBackground">#EBEFF2</color>
+	<color name="keyBorder">#b9bbbb</color>
+	<color name="keyBackground">#ffffff</color>
+	<color name="previewBackground">#ffffff</color>
+	<color name="previewSelected">#cccccc</color>
+	<color name="previewText">#222222</color>
 </resources>
