@@ -8,15 +8,11 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.PopupWindow;
 import com.vladgba.keyb.Keyboard.Key;
-import java.util.List;
 
 public class KeyboardView extends View implements View.OnClickListener {
-    public static final int NOT_A_KEY = -1;
     private Keyboard keyb;
     private final PopupWindow popupKeyboard;
-    private Key[] keys;
     public VKeyboard keybActionListener;
-    private int proximityThreshold;
 
     public KeyboardView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
@@ -49,13 +45,9 @@ public class KeyboardView extends View implements View.OnClickListener {
     }
 
     public void setKeyboard(Keyboard keyboard) {
-        removeMessages();
         keyb = keyboard;
-        List<Key> keys = keyb.getKeys();
-        this.keys = keys.toArray(new Key[0]);
         requestLayout();
-        invalidateAllKeys();
-        computeProximityThreshold(keyboard);
+        invalidate();
     }
 
     public Keyboard getKeyboard() {
@@ -63,7 +55,6 @@ public class KeyboardView extends View implements View.OnClickListener {
     }
 
     public void onClick(View v) {
-        dismissPopupKeyboard();
     }
 
     @Override
@@ -79,18 +70,6 @@ public class KeyboardView extends View implements View.OnClickListener {
         }
     }
 
-    private void computeProximityThreshold(Keyboard keyboard) {
-        if (keyboard == null) return;
-        final Key[] keys = this.keys;
-        if (keys == null) return;
-        int length = keys.length;
-
-        if (length == 0) return;
-        int dimensionSum = 0;
-        for (Key key : keys) dimensionSum += Math.min(key.width, key.height);
-        if (dimensionSum < 0) return;
-        proximityThreshold = (int) (dimensionSum * 1.4f / length);
-    }
 
     @Override
     public void onSizeChanged(int w, int h, int oldw, int oldh) {
@@ -98,33 +77,23 @@ public class KeyboardView extends View implements View.OnClickListener {
         if (keyb != null) keyb.resize(w);
     }
 
-    int getKeyIndices(int x, int y) {
-        final Key[] keys = this.keys;
-        int primaryIndex = NOT_A_KEY;
-        int closestKey = NOT_A_KEY;
-        int closestKeyDist = proximityThreshold + 1;
-        int[] nearestKeyIndices = keyb.getNearestKeys(x, y);
-        for (int nearestKeyIndex : nearestKeyIndices) {
-            final Key key = keys[nearestKeyIndex];
-            int dist = 0;
-            boolean isInside = key.isInside(x, y);
-            if (isInside) {
-                primaryIndex = nearestKeyIndex;
-            }
-            if (isInside && key.codes[0] > 32) {
-                if (dist < closestKeyDist) {
-                    closestKeyDist = dist;
-                    closestKey = nearestKeyIndex;
+    Key getKey(int x, int y) {
+        int mr = 0;
+        for (int i = 0; i < keyb.rows.size(); i++) {
+            Keyboard.Row row = keyb.rows.get(i);
+            if (row.height + mr >= y) {
+                int mk = 0;
+                for (int j = 0; j < row.keys.size(); j++) {
+                    Keyboard.Key k = row.keys.get(j);
+                    if (k.width + mk >= x) return k;
+                    mk += k.width;
                 }
+                break;
             }
+            mr += row.height;
         }
-        return primaryIndex == NOT_A_KEY ? closestKey : primaryIndex;
+        return null;
     }
-
-    public void invalidateAllKeys() {
-        invalidate();
-    }
-
     @Override
     public boolean onHoverEvent(MotionEvent event) {
         return true;
@@ -147,7 +116,7 @@ public class KeyboardView extends View implements View.OnClickListener {
     private void dismissPopupKeyboard() {
         if (popupKeyboard.isShowing()) {
             popupKeyboard.dismiss();
-            invalidateAllKeys();
+            invalidate();
         }
     }
 

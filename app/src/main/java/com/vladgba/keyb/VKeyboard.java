@@ -1,9 +1,9 @@
 package com.vladgba.keyb;
 
-import android.content.Context;
 import android.content.res.Configuration;
 import android.inputmethodservice.InputMethodService;
 import android.os.Environment;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -14,27 +14,21 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.HashMap;
 
 public class VKeyboard extends InputMethodService {
     private VKeybView keybView;
     private boolean ctrlPressed = false;
     public static boolean shiftPressed = false;
-    private static Keyboard latinKeybPortrait;
-    private static Keyboard cyrillicKeybPortrait;
-    private static Keyboard latinKeybLandscape;
-    private static Keyboard cyrillicKeybLandscape;
-    private static boolean isLatin = true;
+    private static Keyboard keybLayout;
     private static boolean isPortrait = true;
-    private static Context that;
+	public static String currentLayout = "latin";
+    public DisplayMetrics dm;
+    private HashMap<String, Keyboard> loadedLayouts = new HashMap<>();
 
     public void reload() {
-        if (that == null) return;
-
-        latinKeybPortrait = new Keyboard(that, loadKeybLayout("vkeyb/latin-portrait"), true);
-        cyrillicKeybPortrait = new Keyboard(that, loadKeybLayout("vkeyb/cyrillic-portrait"), true);
-        latinKeybLandscape = new Keyboard(that, loadKeybLayout("vkeyb/latin-landscape"), false);
-        cyrillicKeybLandscape = new Keyboard(that, loadKeybLayout("vkeyb/cyrillic-landscape"), false);
-        keybView.loadVars(that);
+        keybLayout = new Keyboard(this, loadKeybLayout("vkeyb/" + currentLayout + (isPortrait ? "-portrait" : "-landscape")), true);
+		keybView.loadVars(this);
         setKeyb();
     }
 
@@ -42,20 +36,20 @@ public class VKeyboard extends InputMethodService {
     public void onStartInputView(EditorInfo info, boolean restarting) {
         super.onStartInputView(info, restarting);
 
-        if (Settings.needReload) {
+        if (Settings.needReload || layoutFileChanged()) {
             reload();
             Settings.needReload = false;
         }
     }
 
+    private boolean layoutFileChanged() {
+        return true;
+    }
+
     @Override
     public View onCreateInputView() {
-        that = this;
-        try {
-            keybView = (VKeybView) getLayoutInflater().inflate(R.layout.vkeybview, null, false);
-        } catch (Exception e) {
-            Log.d("CreateInputView", e.getMessage());
-        }
+        dm = this.getResources().getDisplayMetrics();
+        keybView = (VKeybView) getLayoutInflater().inflate(R.layout.vkeybview, null, false);
         int orientation = this.getResources().getConfiguration().orientation;
         isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT;
         reload();
@@ -63,7 +57,7 @@ public class VKeyboard extends InputMethodService {
         return keybView;
     }
 
-    private static String loadKeybLayout(String name) {
+    public static String loadKeybLayout(String name) {
         File sdcard = Environment.getExternalStorageDirectory();
 
         File file = new File(sdcard, name + ".json");
@@ -101,12 +95,11 @@ public class VKeyboard extends InputMethodService {
 
     private void setKeyb() {
         if (keybView == null) return;
-        if (isLatin) keybView.setKeyboard(isPortrait ? latinKeybPortrait : latinKeybLandscape);
-        else keybView.setKeyboard(isPortrait ? cyrillicKeybPortrait : cyrillicKeybLandscape);
+        keybView.setKeyboard(keybLayout);
     }
 
     private void forceLatin() {
-        keybView.setKeyboard(isPortrait ? latinKeybPortrait : latinKeybLandscape);
+        keybView.setKeyboard(keybLayout);
     }
 
     @Override
@@ -136,12 +129,8 @@ public class VKeyboard extends InputMethodService {
                     if (ic != null) ic.sendKeyEvent(new KeyEvent(
                             now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT, 0, KeyEvent.META_SHIFT_ON | KeyEvent.META_SHIFT_LEFT_ON));
 
-                    latinKeybPortrait.setShifted(shiftPressed);
-                    cyrillicKeybPortrait.setShifted(shiftPressed);
-                    latinKeybLandscape.setShifted(shiftPressed);
-                    cyrillicKeybLandscape.setShifted(shiftPressed);
-
-                    keybView.invalidateAllKeys();
+                    keybLayout.setShifted(shiftPressed);
+                    keybView.invalidate();
                     return true;
                 } else if (shiftPressed) {
                     return true;
@@ -174,11 +163,8 @@ public class VKeyboard extends InputMethodService {
                     if (ic != null) ic.sendKeyEvent(new KeyEvent(
                             now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SHIFT_LEFT, 0, KeyEvent.META_SHIFT_ON | KeyEvent.META_SHIFT_LEFT_ON));
 
-                    latinKeybPortrait.setShifted(shiftPressed);
-                    cyrillicKeybPortrait.setShifted(shiftPressed);
-                    latinKeybLandscape.setShifted(shiftPressed);
-                    cyrillicKeybLandscape.setShifted(shiftPressed);
-                    keybView.invalidateAllKeys();
+                    keybLayout.setShifted(shiftPressed);
+                    keybView.invalidate();
                     return true;
                 } else if (shiftPressed) {
                     return true;
@@ -221,11 +207,6 @@ public class VKeyboard extends InputMethodService {
         ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, key));
     }
 
-    public void click(int key) {
-        InputConnection ic = getCurrentInputConnection();
-        click(key, ic);
-    }
-
     public void click(int key, InputConnection ic) {
         getCurrentInputConnection();
         press(key, ic);
@@ -233,12 +214,13 @@ public class VKeyboard extends InputMethodService {
     }
 
     public void onKey(int i) {
+		if (i == 0) {
+			reload();
+			return;
+		}
         InputConnection ic = getCurrentInputConnection();
         if (i > 96 && i < 123) { // a-z
             clickShiftable(i - 68, ic);
-        } else if (i == -2) { // lang switch
-            isLatin = !isLatin;
-            setKeyb();
         } else if (i < 0) {
             clickShiftable(i * -1, ic);
         } else {
@@ -258,18 +240,18 @@ public class VKeyboard extends InputMethodService {
     }
 
     public void swipeLeft() {
-        clickShiftable(KeyEvent.KEYCODE_DPAD_LEFT, getCurrentInputConnection());
+        clickShiftable(21, getCurrentInputConnection());
     }
 
     public void swipeRight() {
-        clickShiftable(KeyEvent.KEYCODE_DPAD_RIGHT, getCurrentInputConnection());
+        clickShiftable(22, getCurrentInputConnection());
     }
 
     public void swipeDown() {
-        clickShiftable(KeyEvent.KEYCODE_DPAD_DOWN, getCurrentInputConnection());
+        clickShiftable(20, getCurrentInputConnection());
     }
 
     public void swipeUp() {
-        clickShiftable(KeyEvent.KEYCODE_DPAD_UP, getCurrentInputConnection());
+        clickShiftable(19, getCurrentInputConnection());
     }
 }
