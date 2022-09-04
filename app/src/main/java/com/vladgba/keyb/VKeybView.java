@@ -366,8 +366,10 @@ public class VKeybView extends KeyboardView {
         pressed = false;
         if (curY == 0) return;
         if (currentKey.cursor && cursorMoved) return;
-
-        Log.d("keyIndexRelease", String.valueOf(currentKey));
+        if (currentKey.rand != null && currentKey.rand.length > 0) {
+            keybActionListener.onText(currentKey.rand[new Random().nextInt(currentKey.rand.length)]);
+            return;
+        }
         if (currentKey.lang != null && charPos == 0) {
             VKeyboard.currentLayout = String.valueOf(currentKey.lang);
             getOnKeyboardActionListener().onKey(0);

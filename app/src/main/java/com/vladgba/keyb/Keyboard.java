@@ -145,6 +145,7 @@ public class Keyboard {
         public int forward;
         public int backward;
         public boolean cursor;
+        public String[] rand;
 
         public Key(Row parent) {
             height = parent.height;
@@ -160,7 +161,6 @@ public class Keyboard {
                 codes = new int[]{jdata.has("code") ? jdata.getInt("code") : 0};
                 if (codes[0] == 0 && !TextUtils.isEmpty(label)) codes[0] = label.charAt(0);
                 width = parent.width * (jdata.has("size") ? jdata.getInt("size") : 1);
-                Log.d("v", String.valueOf(width));
                 extChars = jdata.has("ext") ? jdata.getString("ext") : "";
                 if (extChars.length() > 0) extChars = padExtChars(extChars, pos);
                 cursor = jdata.has("cur") && (jdata.getInt("cur") == 1);
@@ -169,6 +169,15 @@ public class Keyboard {
                 lang = jdata.has("lang") ? jdata.getString("lang") : null;
                 forward = jdata.has("forward") ? jdata.getInt("forward") : 0;
                 backward = jdata.has("backward") ? jdata.getInt("backward") : 0;
+                JSONArray rands = jdata.has("rand") ? jdata.getJSONArray("rand") : null;
+                if (rands == null) {
+                    rand = null;
+                } else {
+                    rand = new String[rands.length];
+                    for (int i = 0; i < rands.length; i++) {
+                        rand[i] = rands.getString(i);
+                    }
+                }
             } catch (JSONException e) {
                 Log.d("Key", e.getMessage());
                 return;
@@ -176,7 +185,7 @@ public class Keyboard {
             height = parent.width;
         }
 
-        private CharSequence padExtChars(CharSequence chars, int pos) {
+        private CharSequence padExtChars(CharSequence chars, int pos) { // TODO: refactor
             chars += "        ";
             switch (pos) {
                 case 1:
