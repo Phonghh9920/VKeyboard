@@ -22,6 +22,7 @@ public class VKeyboard extends InputMethodService {
     public static boolean shiftPressed = false;
     private static Keyboard keybLayout;
     private static boolean isPortrait = true;
+    public static final String defLayout = "latin";
     public static String currentLayout = "latin";
     public DisplayMetrics dm;
     private HashMap<String, Keyboard> loadedLayouts = new HashMap<>();
@@ -99,7 +100,9 @@ public class VKeyboard extends InputMethodService {
     }
 
     private void forceLatin() {
-        keybView.setKeyboard(keybLayout);
+        keybLayout = new Keyboard(this, loadKeybLayout("vkeyb/" + defLayout + (isPortrait ? "-portrait" : "-landscape")), true);
+        keybView.loadVars(this);
+        setKeyb();
     }
 
     @Override
