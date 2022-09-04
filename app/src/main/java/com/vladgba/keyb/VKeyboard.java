@@ -22,13 +22,13 @@ public class VKeyboard extends InputMethodService {
     public static boolean shiftPressed = false;
     private static Keyboard keybLayout;
     private static boolean isPortrait = true;
-	public static String currentLayout = "latin";
+    public static String currentLayout = "latin";
     public DisplayMetrics dm;
     private HashMap<String, Keyboard> loadedLayouts = new HashMap<>();
 
     public void reload() {
         keybLayout = new Keyboard(this, loadKeybLayout("vkeyb/" + currentLayout + (isPortrait ? "-portrait" : "-landscape")), true);
-		keybView.loadVars(this);
+        keybView.loadVars(this);
         setKeyb();
     }
 
@@ -214,10 +214,10 @@ public class VKeyboard extends InputMethodService {
     }
 
     public void onKey(int i) {
-		if (i == 0) {
-			reload();
-			return;
-		}
+        if (i == 0) {
+            reload();
+            return;
+        }
         InputConnection ic = getCurrentInputConnection();
         if (i > 96 && i < 123) { // a-z
             clickShiftable(i - 68, ic);
