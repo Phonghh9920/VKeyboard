@@ -9,19 +9,26 @@ import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.View;
 import com.vladgba.keyb.Keyboard.Key;
-import java.util.Random;
 
 import java.util.List;
+import java.util.Random;
 
-public class VKeybView extends KeyboardView {
+public class VKeybView extends View implements View.OnClickListener {
+    final int[] angPos = new int[]{4, 1, 2, 3, 5, 8, 7, 6, 4};
+    public VKeyboard keybActionListener;
+    public boolean pressed = false;
+    public Bitmap buffer;
+    public boolean ctrlModi = false;
+    public boolean shiftModi = false;
+    private Keyboard keyb;
     private Resources res;
     private int pressX = 0;
     private int pressY = 0;
     private int charPos = 0;
     private int relX = 0;
     private int relY = 0;
-
     /**
      * Cursor
      **/
@@ -33,13 +40,7 @@ public class VKeybView extends KeyboardView {
     private int offset; // extChars
     private boolean cursorMoved = false;
     private Key currentKey;
-    public boolean pressed = false;
-    public Bitmap buffer;
     private Bitmap bufferSh;
-    public boolean ctrlModi = false;
-    public boolean shiftModi = false;
-    final int[] angPos = new int[]{4, 1, 2, 3, 5, 8, 7, 6, 4};
-
 
     public VKeybView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -49,6 +50,74 @@ public class VKeybView extends KeyboardView {
     public VKeybView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         initResources(context);
+    }
+
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+    }
+
+    protected VKeyboard getOnKeyboardActionListener() {
+        return keybActionListener;
+    }
+
+    public void setOnKeyboardActionListener(VKeyboard listener) {
+        keybActionListener = listener;
+    }
+
+    public Keyboard getKeyboard() {
+        return keyb;
+    }
+
+    public void setKeyboard(Keyboard keyboard) {
+        buffer = null;
+        keyb = keyboard;
+        requestLayout();
+        invalidate();
+    }
+
+    public void onClick(View v) {
+    }
+
+    @Override
+    public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if (keyb == null) {
+            setMeasuredDimension(0, 0);
+        } else {
+            int width = keyb.getMinWidth();
+            if (MeasureSpec.getSize(widthMeasureSpec) < width + 10) {
+                width = MeasureSpec.getSize(widthMeasureSpec);
+            }
+            setMeasuredDimension(width, keyb.getHeight());
+        }
+    }
+
+    @Override
+    public void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (keyb != null) keyb.resize(w);
+    }
+
+    Key getKey(int x, int y) {
+        int mr = 0;
+        for (int i = 0; i < keyb.rows.size(); i++) {
+            Keyboard.Row row = keyb.rows.get(i);
+            if (row.height + mr >= y) {
+                int mk = 0;
+                for (int j = 0; j < row.keys.size(); j++) {
+                    Keyboard.Key k = row.keys.get(j);
+                    if (k.width + mk >= x) return k;
+                    mk += k.width;
+                }
+                break;
+            }
+            mr += row.height;
+        }
+        return null;
+    }
+
+    @Override
+    public boolean onHoverEvent(MotionEvent event) {
+        return true;
     }
 
     private void initResources(Context context) {
@@ -70,12 +139,6 @@ public class VKeybView extends KeyboardView {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    @Override
-    public void setKeyboard(Keyboard keyboard) {
-        super.setKeyboard(keyboard);
-        buffer = null;
     }
 
     private void repaintKeyb(int w, int h) {
@@ -299,7 +362,6 @@ public class VKeybView extends KeyboardView {
         if (currentKey == null) return;
         pressed = true;
         if (currentKey.cursor || currentKey.repeat || currentKey.extChars.length() > 0) {
-            //if (currentKey.extChars.length() > 0) pressed = true;
             relX = curX;
             relY = curY;
         }
@@ -315,13 +377,13 @@ public class VKeybView extends KeyboardView {
             while (true) {
                 if (curX - delTick > relX) {
                     relX += delTick;
-                    super.getOnKeyboardActionListener().onKey(currentKey.forward == 0 ? currentKey.codes[0] : currentKey.forward);
+                    getOnKeyboardActionListener().onKey(currentKey.forward == 0 ? currentKey.codes[0] : currentKey.forward);
                     continue;
                 }
 
                 if (curX + delTick < relX) {
                     relX -= delTick;
-                    super.getOnKeyboardActionListener().onKey(currentKey.backward == 0 ? currentKey.codes[0] : currentKey.backward);
+                    getOnKeyboardActionListener().onKey(currentKey.backward == 0 ? currentKey.codes[0] : currentKey.backward);
                     continue;
                 }
                 break;
@@ -333,22 +395,22 @@ public class VKeybView extends KeyboardView {
             while (true) {
                 if (curX - horizontalTick > this.relX) {
                     this.relX += horizontalTick;
-                    super.getOnKeyboardActionListener().swipeRight();
+                    getOnKeyboardActionListener().swipeRight();
                     continue;
                 }
                 if (curX + horizontalTick < this.relX) {
                     this.relX -= horizontalTick;
-                    super.getOnKeyboardActionListener().swipeLeft();
+                    getOnKeyboardActionListener().swipeLeft();
                     continue;
                 }
                 if (curY - verticalTick > this.relY) {
                     this.relY += verticalTick;
-                    super.getOnKeyboardActionListener().swipeDown();
+                    getOnKeyboardActionListener().swipeDown();
                     continue;
                 }
                 if (curY + verticalTick < this.relY) {
                     this.relY -= horizontalTick;
-                    super.getOnKeyboardActionListener().swipeUp();
+                    getOnKeyboardActionListener().swipeUp();
                     continue;
                 }
                 break;
@@ -380,7 +442,7 @@ public class VKeybView extends KeyboardView {
             keybActionListener.onText(currentKey.text);
             return;
         } else if (currentKey.repeat) {
-            if (!cursorMoved) super.getOnKeyboardActionListener().onKey(currentKey.codes[0]);
+            if (!cursorMoved) getOnKeyboardActionListener().onKey(currentKey.codes[0]);
             return;
         }
         if (this.relX < 0) {
@@ -400,21 +462,18 @@ public class VKeybView extends KeyboardView {
     }
 
     public int[] getFromString(CharSequence str) {
-        if (str.length() > 1) {
-            int[] out = new int[str.length()];
-            for (int j = 0; j < str.length(); j++)
-                out[j] = Character.getNumericValue(str.charAt(j));
-            return out; // FIXME: Is it fixes >1 length?
-        } else {
-            return new int[]{str.charAt(0)};
-        }
+        if (str.length() < 2) return new int[]{str.charAt(0)};
+
+        int[] out = new int[str.length()];
+        for (int j = 0; j < str.length(); j++) out[j] = Character.getNumericValue(str.charAt(j));
+        return out; // FIXME: Is it fixes >1 length?
     }
 
     private void createCustomKeyEvent(String data) {
-        super.getOnKeyboardActionListener().onKey(getFromString(data)[0]);
+        getOnKeyboardActionListener().onKey(getFromString(data)[0]);
     }
 
     private void createCustomKeyEvent(int[] data) {
-        super.getOnKeyboardActionListener().onKey(data[0]);
+        getOnKeyboardActionListener().onKey(data[0]);
     }
 }
