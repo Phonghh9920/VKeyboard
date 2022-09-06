@@ -10,6 +10,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import com.vladgba.keyb.Keyboard.Key;
+import java.util.Random;
 
 import java.util.List;
 

@@ -150,7 +150,7 @@ public class VKeyboard extends InputMethodService {
             case KeyEvent.KEYCODE_VOLUME_UP:
                 ctrlPressed = false;
                 if (keybView.isShown()) {
-                    setKeyb();
+                    reload();
                     super.onKeyUp(KeyEvent.KEYCODE_CTRL_LEFT, event);
                     return true;
                 } else if (ctrlPressed) {

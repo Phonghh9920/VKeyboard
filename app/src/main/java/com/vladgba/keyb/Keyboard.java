@@ -173,8 +173,8 @@ public class Keyboard {
                 if (rands == null) {
                     rand = null;
                 } else {
-                    rand = new String[rands.length];
-                    for (int i = 0; i < rands.length; i++) {
+                    rand = new String[rands.length()];
+                    for (int i = 0; i < rands.length(); i++) {
                         rand[i] = rands.getString(i);
                     }
                 }
