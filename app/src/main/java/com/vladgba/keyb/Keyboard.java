@@ -185,31 +185,24 @@ public class Keyboard {
             height = parent.width;
         }
 
-        private CharSequence padExtChars(CharSequence chars, int pos) { // TODO: refactor
-            chars += "        ";
-            switch (pos) {
-                case 1:
-                    return "    " + chars.subSequence(0, 1) + " " + chars.subSequence(1, 3);
-                case 2:
-                    return "   " + chars.subSequence(0, 5);
-                case 3:
-                    return "   " + chars.subSequence(0, 1) + " " + chars.subSequence(1, 3) + " ";
-                case 4:
-                    return " " + chars.subSequence(0, 2) + " " + chars.subSequence(2, 3) + " " + chars.subSequence(3, 5);
+        private CharSequence padExtChars(CharSequence chars, int pos) {
+            int[][] modes = new int[][] {
+                    {-4, 1, -1, 2}, {-3, 5}, {-3, 1, -1, 2},
+                    {-1, 2, -1, 1, 2}, {8}, {2, -1, 1, -1, 2},
+                    {-1, 2, -1, 1}, {5}, {2, -1, 1}
+            };
 
-                case 6:
-                    return chars.subSequence(0, 2) + " " + chars.subSequence(2, 3) + " " + chars.subSequence(3, 5) + " ";
-                case 7:
-                    return " " + chars.subSequence(0, 2) + " " + chars.subSequence(2, 3) + "   ";
-                case 8:
-                    return chars.subSequence(0, 5) + "   ";
-                case 9:
-                    return chars.subSequence(0, 2) + " " + chars.subSequence(2, 3) + "    ";
+            StringBuilder sb = new StringBuilder();
+            int[] curv = modes[pos - 1];
+            int p = 0;
 
-                default:
-                case 5:
-                    return chars.subSequence(0, 8);
+            for (int i : curv) {
+                if (p >= chars.length()) break;
+
+                if (i > 0) sb.append(chars.subSequence(p, Math.min((p += i), chars.length())));
+                else sb.append(new String(new char[-i]).replace("\0", " "));
             }
+            return sb.toString();
         }
     }
 }
