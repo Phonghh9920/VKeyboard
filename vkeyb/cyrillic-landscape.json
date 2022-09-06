@@ -1,4 +1,8 @@
 {
+"sett":{
+"size":"10",
+"size-land":"20"
+},
 "keyb":[
 
 
@@ -160,23 +164,23 @@
 "ext": "\u0452"
 },
 {
-"key": "\u21BC",
-"code": "-67",
-"repeat": "1",
-"forward": "112",
-"size": "2"
+"key":"\u2190",
+"code":"-67",
+"repeat":"1",
+"forward":"-112",
+"size":"2"
 }
 ],
 
 
 [
 {
-"key": ".",
-"text": ""
+"key": "123",
+"lang":"num"
 },
 {
-"key": "crlic",
-"code": "-2",
+"key": "cyrillic",
+"lang":"latin",
 "size": "2"
 },
 {
