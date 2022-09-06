@@ -1,13 +1,11 @@
-package com.vladgba.keyb;
+package com.vladgba.keyb
 
-import android.os.Bundle;
-import android.preference.PreferenceFragment;
-import androidx.annotation.Nullable;
+import android.os.Bundle
+import android.preference.PreferenceFragment
 
-public class SettingsFrag extends PreferenceFragment {
-    @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        addPreferencesFromResource(R.xml.settings);
+class SettingsFrag : PreferenceFragment() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        addPreferencesFromResource(R.xml.settings)
     }
 }

@@ -1,208 +1,209 @@
-package com.vladgba.keyb;
+package com.vladgba.keyb
 
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.text.TextUtils;
-import android.util.DisplayMetrics;
-import android.util.Log;
-import org.jetbrains.annotations.NotNull;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import java.util.ArrayList;
-import java.util.List;
+import android.content.Context
+import android.text.TextUtils
+import android.util.Log
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+import kotlin.math.ceil
+import kotlin.math.max
+import kotlin.math.min
 
-public class Keyboard {
-    public final ArrayList<Row> rows = new ArrayList<>();
-    private final ArrayList<Key> keys;
-    public boolean shifted;
-    private final int dWidth;
-    private final int dHeight;
-    private int totalHeight;
-    private int totalWidth;
-    private int loadx;
-    private int loady;
-    private Row loadcurrentRow;
-    public Keyboard(@NotNull Context context, String jd, boolean portrait) {
-        DisplayMetrics dm = context.getResources().getDisplayMetrics();
-        int displayWidth = dm.widthPixels;
-        int displayHeight = dm.heightPixels;
+class Keyboard(context: Context, jd: String, portrait: Boolean) {
+    @JvmField
+    val rows = ArrayList<Row>()
+    private val keys: ArrayList<Key>
+    @JvmField
+    var shifted = false
+    private var dWidth = 0
+    private var dHeight = 0
+    var height = 0
+        private set
+    var minWidth = 0
+        private set
+    private var loadx = 0
+    private var loady = 0
+    private var loadcurrentRow: Row? = null
 
-        SharedPreferences sp = context.getSharedPreferences(context.getPackageName() + "_preferences", Context.MODE_PRIVATE);
+    init {
+        val dm = context.resources.displayMetrics
+        val displayWidth = dm.widthPixels
+        val displayHeight = dm.heightPixels
+        val sp = context.getSharedPreferences(context.packageName + "_preferences", Context.MODE_PRIVATE)
         if (portrait) {
-            float size = Float.parseFloat(sp.getString("size", "10"));
-            int lowerSize = Math.min(displayWidth, displayHeight);
-            dWidth = (int) (lowerSize / size);
-            dHeight = dWidth;
+            val size = sp.getString("size", "10")!!.toFloat()
+            val lowerSize = min(displayWidth, displayHeight)
+            dWidth = (lowerSize / size).toInt()
+            dHeight = dWidth
         } else {
-            float size = Float.parseFloat(sp.getString("sizeland", "20"));
-            int biggerSize = Math.max(displayWidth, displayHeight);
-            dWidth = (int) Math.ceil(biggerSize / size);
-            dHeight = dWidth;
+            val size = sp.getString("sizeland", "20")!!.toFloat()
+            val biggerSize = max(displayWidth, displayHeight)
+            dWidth = ceil((biggerSize / size).toDouble()).toInt()
+            dHeight = dWidth
         }
-        keys = new ArrayList<>();
-        loadKeyboard(jd);
+        keys = ArrayList()
+        loadKeyboard(jd)
     }
 
-    final void resize(int newWidth) {
-        for (Row row : rows) {
-            int numKeys = row.keys.size();
-            int totalWidth = 0;
-            for (int keyIndex = 0; keyIndex < numKeys; ++keyIndex) {
-                Key key = row.keys.get(keyIndex);
-                totalWidth += key.width;
+    fun resize(newWidth: Int) {
+        for (row in rows) {
+            val numKeys = row.keys.size
+            var totalWidth = 0
+            for (keyIndex in 0 until numKeys) {
+                val key = row.keys[keyIndex]
+                totalWidth += key.width
             }
             if (totalWidth > newWidth) {
-                int x = 0;
-                float scaleFactor = (float) newWidth / totalWidth;
-                for (int keyIndex = 0; keyIndex < numKeys; ++keyIndex) {
-                    Key key = row.keys.get(keyIndex);
-                    key.width *= scaleFactor;
-                    key.x = x;
-                    x += key.width;
+                var x = 0
+                val scaleFactor = newWidth.toFloat() / totalWidth
+                for (keyIndex in 0 until numKeys) {
+                    val key = row.keys[keyIndex]
+                    key.width *= scaleFactor.toInt()
+                    key.x = x
+                    x += key.width
                 }
             }
         }
-        totalWidth = newWidth;
+        minWidth = newWidth
     }
 
-    public List<Key> getKeys() {
-        return keys;
+    fun getKeys(): List<Key> {
+        return keys
     }
 
-    public int getHeight() {
-        return totalHeight;
+    fun setShifted(shiftState: Boolean) {
+        shifted = shiftState
     }
 
-    public int getMinWidth() {
-        return totalWidth;
-    }
-
-    public void setShifted(boolean shiftState) {
-        shifted = shiftState;
-    }
-
-    private void loadKeyboard(String jd) {
-        Log.d("json", jd);
-        loadx = 0;
-        loady = 0;
+    private fun loadKeyboard(jd: String) {
+        Log.d("json", jd)
+        loadx = 0
+        loady = 0
         try {
-            JSONArray json = (new JSONObject(jd)).getJSONArray("keyb");
-
-            for (int i = 0; i < json.length(); i++) {
-                int pos = i == 0 ? 0 : i == json.length() - 1 ? 6 : 3;
-                loadRow(json.getJSONArray(i), pos);
+            val json = JSONObject(jd).getJSONArray("keyb")
+            for (i in 0 until json.length()) {
+                val pos = if (i == 0) 0 else if (i == json.length() - 1) 6 else 3
+                loadRow(json.getJSONArray(i), pos)
             }
-
-            totalHeight = loady;
-        } catch (JSONException e) {
-            Log.e("PSR", e.getMessage());
+            height = loady
+        } catch (e: JSONException) {
+            Log.e("PSR", e.message!!)
         }
     }
 
-    private void loadKey(JSONObject jdata, int pos) {
-        Key loadkey = new Key(loadcurrentRow, loadx, loady, jdata, pos);
-        if (loadkey.codes == null) return;
-        keys.add(loadkey);
-        loadcurrentRow.keys.add(loadkey);
-        loadx += loadkey.width;
-        if (loadx > totalWidth) totalWidth = loadx;
+    private fun loadKey(jdata: JSONObject, pos: Int) {
+        val loadkey = Key(loadcurrentRow, loadx, loady, jdata, pos)
+        if (loadkey.codes == null) return
+        keys.add(loadkey)
+        loadcurrentRow!!.keys.add(loadkey)
+        loadx += loadkey.width
+        if (loadx > minWidth) minWidth = loadx
     }
 
-    private void loadRow(JSONArray row, int pos) throws JSONException {
-        loadx = 0;
-        loadcurrentRow = new Row(this);
-        rows.add(loadcurrentRow);
-        for (int i = 0; i < row.length(); i++) {
-            int keypos = pos + (i == 0 ? 1 : (i == row.length() - 1 ? 3 : 2));
-            loadKey(row.getJSONObject(i), keypos);
+    @Throws(JSONException::class)
+    private fun loadRow(row: JSONArray, pos: Int) {
+        loadx = 0
+        loadcurrentRow = Row(this)
+        rows.add(loadcurrentRow!!)
+        for (i in 0 until row.length()) {
+            val keypos = pos + if (i == 0) 1 else if (i == row.length() - 1) 3 else 2
+            loadKey(row.getJSONObject(i), keypos)
         }
-        loady += loadcurrentRow.height;
+        loady += loadcurrentRow!!.height
     }
 
-    public static class Row {
-        public int width;
-        public int height;
-        ArrayList<Key> keys = new ArrayList<>();
+    class Row(parent: Keyboard) {
+        var width: Int
+        @JvmField
+        var height: Int
+        @JvmField
+        var keys = ArrayList<Key>()
 
-        public Row(Keyboard parent) {
-            width = parent.dWidth;
-            height = parent.dHeight;
+        init {
+            width = parent.dWidth
+            height = parent.dHeight
         }
     }
 
-    public static class Key {
-        public int[] codes;
-        public CharSequence label;
-        public int width;
-        public int height;
-        public int x;
-        public int y;
-        public boolean repeat = false;
-        public CharSequence text;
-        public CharSequence lang;
-        public CharSequence extChars;
-        public int forward;
-        public int backward;
-        public boolean cursor;
-        public String[] rand;
+    class Key(parent: Row?) {
+        var codes: IntArray? = null
 
-        public Key(Row parent) {
-            height = parent.height;
-            width = parent.width;
+        var label: CharSequence? = null
+        var width: Int
+        var height: Int
+        var x = 0
+        var y = 0
+        var repeat = false
+        var text: CharSequence? = null
+        var lang: CharSequence? = null
+        var extChars: CharSequence? = null
+        var forward = 0
+        var backward = 0
+        var cursor = false
+        var rand: Array<String?>? = null
+
+        init {
+            height = parent!!.height
+            width = parent.width
         }
 
-        public Key(Row parent, int x, int y, JSONObject jdata, int pos) {
-            this(parent);
-            this.x = x;
-            this.y = y;
+        constructor(parent: Row?, x: Int, y: Int, jdata: JSONObject, pos: Int) : this(parent) {
+            this.x = x
+            this.y = y
             try {
-                label = jdata.has("key") ? jdata.getString("key") : "";
-                codes = new int[]{jdata.has("code") ? jdata.getInt("code") : 0};
-                if (codes[0] == 0 && !TextUtils.isEmpty(label)) codes[0] = label.charAt(0);
-                width = parent.width * (jdata.has("size") ? jdata.getInt("size") : 1);
-                extChars = jdata.has("ext") ? jdata.getString("ext") : "";
-                if (extChars.length() > 0) extChars = padExtChars(extChars, pos);
-                cursor = jdata.has("cur") && (jdata.getInt("cur") == 1);
-                repeat = jdata.has("repeat") && (jdata.getInt("repeat") == 1);
-                text = jdata.has("text") ? jdata.getString("text") : "";
-                lang = jdata.has("lang") ? jdata.getString("lang") : null;
-                forward = jdata.has("forward") ? jdata.getInt("forward") : 0;
-                backward = jdata.has("backward") ? jdata.getInt("backward") : 0;
-                JSONArray rands = jdata.has("rand") ? jdata.getJSONArray("rand") : null;
+                label = if (jdata.has("key")) jdata.getString("key") else ""
+                codes = intArrayOf(if (jdata.has("code")) jdata.getInt("code") else 0)
+                if (codes!![0] == 0 && !TextUtils.isEmpty(label)) codes!![0] = label!![0].code
+                width = parent!!.width * if (jdata.has("size")) jdata.getInt("size") else 1
+                extChars = if (jdata.has("ext")) jdata.getString("ext") else ""
+                if (extChars!!.isNotEmpty()) extChars = padExtChars(extChars, pos)
+                cursor = jdata.has("cur") && jdata.getInt("cur") == 1
+                repeat = jdata.has("repeat") && jdata.getInt("repeat") == 1
+                text = if (jdata.has("text")) jdata.getString("text") else ""
+                lang = if (jdata.has("lang")) jdata.getString("lang") else null
+                forward = if (jdata.has("forward")) jdata.getInt("forward") else 0
+                backward = if (jdata.has("backward")) jdata.getInt("backward") else 0
+                val rands = if (jdata.has("rand")) jdata.getJSONArray("rand") else null
                 if (rands == null) {
-                    rand = null;
+                    rand = null
                 } else {
-                    rand = new String[rands.length()];
-                    for (int i = 0; i < rands.length(); i++) {
-                        rand[i] = rands.getString(i);
+                    rand = arrayOfNulls(rands.length())
+                    for (i in 0 until rands.length()) {
+                        rand!![i] = rands.getString(i)
                     }
                 }
-            } catch (JSONException e) {
-                Log.d("Key", e.getMessage());
-                return;
+            } catch (e: JSONException) {
+                Log.d("Key", e.message!!)
+                return
             }
-            height = parent.width;
+            this.height = parent.width
         }
 
-        private CharSequence padExtChars(CharSequence chars, int pos) {
-            int[][] modes = new int[][] {
-                    {-4, 1, -1, 2}, {-3, 5}, {-3, 1, -1, 2},
-                    {-1, 2, -1, 1, 2}, {8}, {2, -1, 1, -1, 2},
-                    {-1, 2, -1, 1}, {5}, {2, -1, 1}
-            };
-
-            StringBuilder sb = new StringBuilder();
-            int[] curv = modes[pos - 1];
-            int p = 0;
-
-            for (int i : curv) {
-                if (p >= chars.length()) break;
-
-                if (i > 0) sb.append(chars.subSequence(p, Math.min((p += i), chars.length())));
-                else sb.append(new String(new char[-i]).replace("\0", " "));
+        private fun padExtChars(chars: CharSequence?, pos: Int): CharSequence {
+            val modes = arrayOf(
+                intArrayOf(-4, 1, -1, 2),
+                intArrayOf(-3, 5),
+                intArrayOf(-3, 1, -1, 2),
+                intArrayOf(-1, 2, -1, 1, 2),
+                intArrayOf(8),
+                intArrayOf(2, -1, 1, -1, 2),
+                intArrayOf(-1, 2, -1, 1),
+                intArrayOf(5),
+                intArrayOf(2, -1, 1)
+            )
+            val sb = StringBuilder()
+            val curv = modes[pos - 1]
+            var p = 0
+            for (i in curv) {
+                if (p >= chars!!.length) break
+                if (i > 0) sb.append(chars.subSequence(p, min(i.let { p += it; p }, chars.length))) else sb.append(
+                    String(
+                        CharArray(-i)
+                    ).replace("\u0000", " ")
+                )
             }
-            return sb.toString();
+            return sb.toString()
         }
     }
 }

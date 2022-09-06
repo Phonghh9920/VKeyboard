@@ -1,260 +1,267 @@
-package com.vladgba.keyb;
+package com.vladgba.keyb
 
-import android.content.res.Configuration;
-import android.inputmethodservice.InputMethodService;
-import android.os.Environment;
-import android.util.DisplayMetrics;
-import android.util.Log;
-import android.view.KeyEvent;
-import android.view.View;
-import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputConnection;
-import org.jetbrains.annotations.NotNull;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.HashMap;
+import android.content.res.Configuration
+import android.inputmethodservice.InputMethodService
+import android.os.Environment
+import android.util.DisplayMetrics
+import android.util.Log
+import android.view.KeyEvent
+import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileReader
+import java.io.IOException
 
-public class VKeyboard extends InputMethodService {
-    private VKeybView keybView;
-    private boolean ctrlPressed = false;
-    public static boolean shiftPressed = false;
-    private static Keyboard keybLayout;
-    private static boolean isPortrait = true;
-    public static final String defLayout = "latin";
-    public static String currentLayout = "latin";
-    public DisplayMetrics dm;
-    private HashMap<String, Keyboard> loadedLayouts = new HashMap<>();
-
-    public void reload() {
-        keybLayout = new Keyboard(this, loadKeybLayout("vkeyb/" + currentLayout + (isPortrait ? "-portrait" : "-landscape")), true);
-        keybView.loadVars(this);
-        setKeyb();
+class VKeyboard : InputMethodService() {
+    private var keybView: VKeybView? = null
+    private var ctrlPressed = false
+    var dm: DisplayMetrics? = null
+    private val loadedLayouts = HashMap<String, Keyboard>()
+    fun reload() {
+        keybLayout = Keyboard(
+            this,
+            loadKeybLayout("vkeyb/" + currentLayout + if (isPortrait) "-portrait" else "-landscape"),
+            true
+        )
+        keybView!!.loadVars(this)
+        setKeyb()
     }
 
-    @Override
-    public void onStartInputView(EditorInfo info, boolean restarting) {
-        super.onStartInputView(info, restarting);
-
+    override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
         if (Settings.needReload || layoutFileChanged()) {
-            reload();
-            Settings.needReload = false;
+            reload()
+            Settings.needReload = false
         }
     }
 
-    private boolean layoutFileChanged() {
-        return true;
+    private fun layoutFileChanged(): Boolean {
+        return true
     }
 
-    @Override
-    public View onCreateInputView() {
-        dm = this.getResources().getDisplayMetrics();
-        keybView = (VKeybView) getLayoutInflater().inflate(R.layout.vkeybview, null, false);
-        int orientation = this.getResources().getConfiguration().orientation;
-        isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT;
-        reload();
-        keybView.setOnKeyboardActionListener(this);
-        return keybView;
+    override fun onCreateInputView(): View {
+        dm = this.resources.displayMetrics
+        keybView = layoutInflater.inflate(R.layout.vkeybview, null, false) as VKeybView
+        val orientation = this.resources.configuration.orientation
+        isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
+        reload()
+        keybView!!.onKeyboardActionListener = this
+        return keybView!!
     }
 
-    public static String loadKeybLayout(String name) {
-        File sdcard = Environment.getExternalStorageDirectory();
+    override fun onConfigurationChanged(cfg: Configuration) {
+        super.onConfigurationChanged(cfg)
+        if (cfg.orientation == Configuration.ORIENTATION_LANDSCAPE && isPortrait) updateOrientation(false) else if (cfg.orientation == Configuration.ORIENTATION_PORTRAIT && !isPortrait) updateOrientation(
+            true
+        )
+    }
 
-        File file = new File(sdcard, name + ".json");
-        StringBuilder text = new StringBuilder();
+    private fun updateOrientation(b: Boolean) {
+        isPortrait = b
+        setKeyb()
+    }
 
-        try {
-            BufferedReader br = new BufferedReader(new FileReader(file));
-            String line;
+    private fun setKeyb() {
+        if (keybView == null) return
+        keybView!!.keyboard = keybLayout
+    }
 
-            while ((line = br.readLine()) != null) {
-                text.append(line);
-                text.append('\n');
+    private fun forceLatin() {
+        keybLayout =
+            Keyboard(this, loadKeybLayout("vkeyb/" + defLayout + if (isPortrait) "-portrait" else "-landscape"), true)
+        keybView!!.loadVars(this)
+        setKeyb()
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (keybView == null) return false
+        if (keyCode < 0) return true
+        when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> if (keybView!!.isShown) {
+                ctrlPressed = true
+                if (keybView!!.ctrlModi) return true else if (keybView!!.havePoints) keybView!!.ctrlModi = true
+                forceLatin()
+                super.onKeyDown(KeyEvent.KEYCODE_CTRL_LEFT, event)
+                return true
+            } else if (ctrlPressed) {
+                return true
             }
-            br.close();
-            Log.d("Keyb", "Done");
-            return String.valueOf(text);
-        } catch (IOException e) {
-            Log.d("Keyb", "Error");
-            Log.d("Keyb", e.getMessage());
+            KeyEvent.KEYCODE_VOLUME_DOWN -> if (keybView!!.isShown) {
+                shiftPressed = true
+                if (keybView!!.shiftModi) return true else if (keybView!!.havePoints) keybView!!.shiftModi = true
+                val now = System.currentTimeMillis()
+                val ic = currentInputConnection
+                ic?.sendKeyEvent(
+                    KeyEvent(
+                        now,
+                        now,
+                        KeyEvent.ACTION_DOWN,
+                        KeyEvent.KEYCODE_SHIFT_LEFT,
+                        0,
+                        KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+                    )
+                )
+                keybLayout!!.setShifted(shiftPressed)
+                keybView!!.invalidate()
+                return true
+            } else if (shiftPressed) {
+                return true
+            }
         }
-        return "";
+        return super.onKeyDown(keyCode, event)
     }
 
-    @Override
-    public void onConfigurationChanged(Configuration cfg) {
-        super.onConfigurationChanged(cfg);
-        if (cfg.orientation == Configuration.ORIENTATION_LANDSCAPE && isPortrait) updateOrientation(false);
-        else if (cfg.orientation == Configuration.ORIENTATION_PORTRAIT && !isPortrait) updateOrientation(true);
-    }
-
-    private void updateOrientation(boolean b) {
-        isPortrait = b;
-        setKeyb();
-    }
-
-    private void setKeyb() {
-        if (keybView == null) return;
-        keybView.setKeyboard(keybLayout);
-    }
-
-    private void forceLatin() {
-        keybLayout = new Keyboard(this, loadKeybLayout("vkeyb/" + defLayout + (isPortrait ? "-portrait" : "-landscape")), true);
-        keybView.loadVars(this);
-        setKeyb();
-    }
-
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keybView == null) return false;
-        if (keyCode < 0) return true;
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_VOLUME_UP:
-                if (keybView.isShown()) {
-                    ctrlPressed = true;
-                    if (keybView.ctrlModi) return true;
-                    else if (keybView.pressed) keybView.ctrlModi = true;
-                    forceLatin();
-                    super.onKeyDown(KeyEvent.KEYCODE_CTRL_LEFT, event);
-                    return true;
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (keybView == null) return false
+        when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                ctrlPressed = false
+                if (keybView!!.isShown) {
+                    reload()
+                    super.onKeyUp(KeyEvent.KEYCODE_CTRL_LEFT, event)
+                    return true
                 } else if (ctrlPressed) {
-                    return true;
+                    return true
                 }
-                break;
-            case KeyEvent.KEYCODE_VOLUME_DOWN:
-                if (keybView.isShown()) {
-                    shiftPressed = true;
-                    if (keybView.shiftModi) return true;
-                    else if (keybView.pressed) keybView.shiftModi = true;
-                    long now = System.currentTimeMillis();
-                    InputConnection ic = getCurrentInputConnection();
-                    if (ic != null) ic.sendKeyEvent(new KeyEvent(
-                            now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT, 0, KeyEvent.META_SHIFT_ON | KeyEvent.META_SHIFT_LEFT_ON));
-
-                    keybLayout.setShifted(shiftPressed);
-                    keybView.invalidate();
-                    return true;
+            }
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                shiftPressed = false
+                if (keybView!!.isShown) {
+                    val now = System.currentTimeMillis()
+                    val ic = currentInputConnection
+                    ic?.sendKeyEvent(
+                        KeyEvent(
+                            now,
+                            now,
+                            KeyEvent.ACTION_UP,
+                            KeyEvent.KEYCODE_SHIFT_LEFT,
+                            0,
+                            KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+                        )
+                    )
+                    keybLayout!!.setShifted(shiftPressed)
+                    keybView!!.invalidate()
+                    return true
                 } else if (shiftPressed) {
-                    return true;
+                    return true
                 }
-                break;
+            }
         }
-        return super.onKeyDown(keyCode, event);
+        return super.onKeyUp(keyCode, event)
     }
 
-    @Override
-    public boolean onKeyUp(int keyCode, KeyEvent event) {
-        if (keybView == null) return false;
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_VOLUME_UP:
-                ctrlPressed = false;
-                if (keybView.isShown()) {
-                    reload();
-                    super.onKeyUp(KeyEvent.KEYCODE_CTRL_LEFT, event);
-                    return true;
-                } else if (ctrlPressed) {
-                    return true;
-                }
-                break;
-            case KeyEvent.KEYCODE_VOLUME_DOWN:
-                shiftPressed = false;
-                if (keybView.isShown()) {
-
-                    long now = System.currentTimeMillis();
-                    InputConnection ic = getCurrentInputConnection();
-                    if (ic != null) ic.sendKeyEvent(new KeyEvent(
-                            now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SHIFT_LEFT, 0, KeyEvent.META_SHIFT_ON | KeyEvent.META_SHIFT_LEFT_ON));
-
-                    keybLayout.setShifted(shiftPressed);
-                    keybView.invalidate();
-                    return true;
-                } else if (shiftPressed) {
-                    return true;
-                }
-                break;
-        }
-        return super.onKeyUp(keyCode, event);
-    }
-
-    private void keyShiftable(int keyAct, int key, InputConnection ic) {
-        long time = System.currentTimeMillis();
-        int ctrl = ctrlPressed || keybView.ctrlModi ? KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON : 0;
-        ic.sendKeyEvent(new KeyEvent(
+    private fun keyShiftable(keyAct: Int, key: Int, ic: InputConnection) {
+        val time = System.currentTimeMillis()
+        val ctrl = if (ctrlPressed || keybView!!.ctrlModi) KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON else 0
+        ic.sendKeyEvent(
+            KeyEvent(
                 time, time,
                 keyAct,
                 key,
                 0,
-                (shiftPressed || keybView.shiftModi ? KeyEvent.META_SHIFT_LEFT_ON | KeyEvent.META_SHIFT_ON : 0) | ctrl
-        ));
+                (if (shiftPressed || keybView!!.shiftModi) KeyEvent.META_SHIFT_LEFT_ON or KeyEvent.META_SHIFT_ON else 0) or ctrl
+            )
+        )
     }
 
-    private void pressShiftable(int key, InputConnection ic) {
-        keyShiftable(KeyEvent.ACTION_DOWN, key, ic);
+    private fun pressShiftable(key: Int, ic: InputConnection) {
+        keyShiftable(KeyEvent.ACTION_DOWN, key, ic)
     }
 
-    private void releaseShiftable(int key, InputConnection ic) {
-        keyShiftable(KeyEvent.ACTION_UP, key, ic);
+    private fun releaseShiftable(key: Int, ic: InputConnection) {
+        keyShiftable(KeyEvent.ACTION_UP, key, ic)
     }
 
-    private void clickShiftable(int key, InputConnection ic) {
-        pressShiftable(key, ic);
-        releaseShiftable(key, ic);
+    private fun clickShiftable(key: Int, ic: InputConnection) {
+        pressShiftable(key, ic)
+        releaseShiftable(key, ic)
     }
 
-    public void press(int key, @NotNull InputConnection ic) {
-        ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, key));
+    fun press(key: Int, ic: InputConnection) {
+        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, key))
     }
 
-    public void release(int key, @NotNull InputConnection ic) {
-        ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, key));
+    fun release(key: Int, ic: InputConnection) {
+        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, key))
     }
 
-    public void click(int key, InputConnection ic) {
-        getCurrentInputConnection();
-        press(key, ic);
-        release(key, ic);
+    fun click(key: Int, ic: InputConnection) {
+        currentInputConnection
+        press(key, ic)
+        release(key, ic)
     }
 
-    public void onKey(int i) {
+    fun onKey(i: Int) {
         if (i == 0) {
-            reload();
-            return;
+            reload()
+            return
         }
-        InputConnection ic = getCurrentInputConnection();
+        val ic = currentInputConnection
         if (i > 96 && i < 123) { // a-z
-            clickShiftable(i - 68, ic);
+            clickShiftable(i - 68, ic)
         } else if (i < 0) {
-            clickShiftable(i * -1, ic);
+            clickShiftable(i * -1, ic)
         } else {
-            Log.d("key", String.valueOf(i));
-            char code = getShiftable((char) i, keybView.shiftModi || shiftPressed);
-            ic.commitText(String.valueOf(code), 1);
+            Log.d("key", i.toString())
+            val code = getShiftable(i.toChar(), keybView!!.shiftModi || shiftPressed)
+            ic.commitText(code.toString(), 1)
         }
     }
 
-    public static char getShiftable(char code, boolean sh) {
-        return (Character.isLetter(code) && sh) ? Character.toUpperCase(code) : code;
+    fun onText(chars: CharSequence) {
+        val ic = currentInputConnection
+        ic.commitText(chars.toString(), 1)
     }
 
-    public void onText(CharSequence chars) {
-        InputConnection ic = getCurrentInputConnection();
-        ic.commitText(String.valueOf(chars), 1);
+    fun swipeLeft() {
+        clickShiftable(21, currentInputConnection)
     }
 
-    public void swipeLeft() {
-        clickShiftable(21, getCurrentInputConnection());
+    fun swipeRight() {
+        clickShiftable(22, currentInputConnection)
     }
 
-    public void swipeRight() {
-        clickShiftable(22, getCurrentInputConnection());
+    fun swipeDown() {
+        clickShiftable(20, currentInputConnection)
     }
 
-    public void swipeDown() {
-        clickShiftable(20, getCurrentInputConnection());
+    fun swipeUp() {
+        clickShiftable(19, currentInputConnection)
     }
 
-    public void swipeUp() {
-        clickShiftable(19, getCurrentInputConnection());
+    companion object {
+        var shiftPressed = false
+        private var keybLayout: Keyboard? = null
+        private var isPortrait = true
+        const val defLayout = "latin"
+        @JvmField
+        var currentLayout = "latin"
+        fun loadKeybLayout(name: String): String {
+            val sdcard = Environment.getExternalStorageDirectory()
+            val file = File(sdcard, "$name.json")
+            val text = StringBuilder()
+            try {
+                val br = BufferedReader(FileReader(file))
+                var line: String?
+                while (br.readLine().also { line = it } != null) {
+                    text.append(line)
+                    text.append('\n')
+                }
+                br.close()
+                Log.d("Keyb", "Done")
+                return text.toString()
+            } catch (e: IOException) {
+                Log.d("Keyb", "Error")
+                Log.d("Keyb", e.message!!)
+            }
+            return ""
+        }
+
+        @JvmStatic
+        fun getShiftable(code: Char, sh: Boolean): Char {
+            return if (Character.isLetter(code) && sh) code.uppercaseChar() else code
+        }
     }
 }

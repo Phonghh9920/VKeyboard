@@ -1,23 +1,25 @@
-package com.vladgba.keyb;
+package com.vladgba.keyb
 
-import android.app.Activity;
-import android.os.Bundle;
+import android.app.Activity
+import android.os.Bundle
+import android.view.View
 
-public class Settings extends Activity {
-    public static boolean needReload = false;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.settings_view);
-        if (findViewById(R.id.idFrameLayout) != null) {
-            if (savedInstanceState != null) return;
-            getFragmentManager().beginTransaction().add(R.id.idFrameLayout, new SettingsFrag()).commit();
+class Settings : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.settings_view)
+        if (findViewById<View?>(R.id.idFrameLayout) != null) {
+            if (savedInstanceState != null) return
+            fragmentManager.beginTransaction().add(R.id.idFrameLayout, SettingsFrag()).commit()
         }
     }
 
-    protected void onPause() {
-        super.onPause();
-        needReload = true;
+    override fun onPause() {
+        super.onPause()
+        needReload = true
+    }
+
+    companion object {
+        var needReload = false
     }
 }
