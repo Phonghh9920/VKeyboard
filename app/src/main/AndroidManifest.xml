@@ -7,11 +7,11 @@
             android:requestLegacyExternalStorage="true"
             android:allowBackup="true"
             android:icon="@mipmap/ic_launcher"
-            android:label="Vkeyboard"
+            android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
-            android:theme="@style/Theme.AppCompat.Light">
-        <activity android:name="Main" android:label="VKeyboard" android:exported="true">
+            android:theme="@android:style/Theme">
+        <activity android:name="Vkeyboard" android:label="@string/app_name" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -21,8 +21,8 @@
         </activity>
         <service
                 android:windowSoftInputMode="stateAlwaysVisible"
-                android:name=".VKeyboard"
-                android:label="VKeyboard"
+                android:name=".KeybController"
+                android:label="@string/app_name"
                 android:permission="android.permission.BIND_INPUT_METHOD"
                 android:configChanges="orientation|keyboardHidden"
                 android:exported="false">

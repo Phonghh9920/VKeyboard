@@ -14,5 +14,10 @@
         <p>3. Done!</p>
       "]]>
     </Data></string>
-
+    <string name="app_name">Vkeyboard</string>
+    <string name="manage_on_screen_keyboards">Manage on-screen keyboards</string>
+    <string name="choose_input_method">Choose input method</string>
+    <string name="grant_permission">Grant permission</string>
+    <string name="settings">Settings</string>
+    <string name="you_can_test">You can test keyboard here</string>
 </resources>

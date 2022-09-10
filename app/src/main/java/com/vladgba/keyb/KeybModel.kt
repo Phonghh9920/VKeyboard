@@ -1,27 +1,28 @@
 package com.vladgba.keyb
 
 import android.content.Context
+import android.os.Environment
 import android.text.TextUtils
 import android.util.Log
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileReader
+import java.io.IOException
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
 
-class Keyboard(context: Context, jd: String, portrait: Boolean) {
-    @JvmField
+class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
     val rows = ArrayList<Row>()
-    private val keys: ArrayList<Key>
-    @JvmField
-    var shifted = false
+    val keys: ArrayList<Key>
+    var shifting = false
     private var dWidth = 0
     private var dHeight = 0
     var height = 0
-        private set
     var minWidth = 0
-        private set
     private var loadx = 0
     private var loady = 0
     private var loadcurrentRow: Row? = null
@@ -43,7 +44,41 @@ class Keyboard(context: Context, jd: String, portrait: Boolean) {
             dHeight = dWidth
         }
         keys = ArrayList()
-        loadKeyboard(jd)
+
+        Log.d("json", jsonName)
+        loadx = 0
+        loady = 0
+        try {
+            val json = JSONObject(loadKeybLayout(jsonName)).getJSONArray("keyb")
+            for (i in 0 until json.length()) {
+                val pos = if (i == 0) 0 else if (i == json.length() - 1) 6 else 3
+                loadRow(json.getJSONArray(i), pos)
+            }
+            height = loady
+        } catch (e: JSONException) {
+            Log.e("PSR", e.message!!)
+        }
+    }
+
+    fun loadKeybLayout(name: String): String {
+        val sdcard = Environment.getExternalStorageDirectory()
+        val file = File(sdcard, "$name.json")
+        val text = StringBuilder()
+        try {
+            val br = BufferedReader(FileReader(file))
+            var line: String?
+            while (br.readLine().also { line = it } != null) {
+                text.append(line)
+                text.append('\n')
+            }
+            br.close()
+            Log.d("Keyb", "Done")
+            return text.toString()
+        } catch (e: IOException) {
+            Log.d("Keyb", "Error")
+            Log.d("Keyb", e.message!!)
+        }
+        return ""
     }
 
     fun resize(newWidth: Int) {
@@ -68,28 +103,26 @@ class Keyboard(context: Context, jd: String, portrait: Boolean) {
         minWidth = newWidth
     }
 
-    fun getKeys(): List<Key> {
-        return keys
+    fun getKey(x: Int, y: Int): Key? {
+        var mr = 0
+        for (i in rows.indices) {
+            val row = rows[i]
+            if (row.height + mr >= y) {
+                var mk = 0
+                for (j in row.keys.indices) {
+                    val k = row.keys[j]
+                    if (k.width + mk >= x) return k
+                    mk += k.width
+                }
+                break
+            }
+            mr += row.height
+        }
+        return null
     }
 
     fun setShifted(shiftState: Boolean) {
-        shifted = shiftState
-    }
-
-    private fun loadKeyboard(jd: String) {
-        Log.d("json", jd)
-        loadx = 0
-        loady = 0
-        try {
-            val json = JSONObject(jd).getJSONArray("keyb")
-            for (i in 0 until json.length()) {
-                val pos = if (i == 0) 0 else if (i == json.length() - 1) 6 else 3
-                loadRow(json.getJSONArray(i), pos)
-            }
-            height = loady
-        } catch (e: JSONException) {
-            Log.e("PSR", e.message!!)
-        }
+        shifting = shiftState
     }
 
     private fun loadKey(jdata: JSONObject, pos: Int) {
@@ -113,11 +146,9 @@ class Keyboard(context: Context, jd: String, portrait: Boolean) {
         loady += loadcurrentRow!!.height
     }
 
-    class Row(parent: Keyboard) {
+    class Row(parent: KeybModel) {
         var width: Int
-        @JvmField
         var height: Int
-        @JvmField
         var keys = ArrayList<Key>()
 
         init {
@@ -128,7 +159,6 @@ class Keyboard(context: Context, jd: String, portrait: Boolean) {
 
     class Key(parent: Row?) {
         var codes: IntArray? = null
-
         var label: CharSequence? = null
         var width: Int
         var height: Int
@@ -140,6 +170,7 @@ class Keyboard(context: Context, jd: String, portrait: Boolean) {
         var extChars: CharSequence? = null
         var forward = 0
         var backward = 0
+        var stylepos = 0
         var cursor = false
         var rand: Array<String?>? = null
 
@@ -164,6 +195,7 @@ class Keyboard(context: Context, jd: String, portrait: Boolean) {
                 lang = if (jdata.has("lang")) jdata.getString("lang") else null
                 forward = if (jdata.has("forward")) jdata.getInt("forward") else 0
                 backward = if (jdata.has("backward")) jdata.getInt("backward") else 0
+                stylepos = if (jdata.has("stylepos")) jdata.getInt("stylepos") else 0
                 val rands = if (jdata.has("rand")) jdata.getJSONArray("rand") else null
                 if (rands == null) {
                     rand = null

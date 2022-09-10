@@ -2,27 +2,26 @@ package com.vladgba.keyb
 
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
-import android.os.Environment
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputConnection
-import java.io.BufferedReader
-import java.io.File
-import java.io.FileReader
-import java.io.IOException
 
-class VKeyboard : InputMethodService() {
-    private var keybView: VKeybView? = null
+class KeybController : InputMethodService() {
+    private var keybView: KeybView? = null
     private var ctrlPressed = false
     var dm: DisplayMetrics? = null
-    private val loadedLayouts = HashMap<String, Keyboard>()
+    var shiftPressed = false
+    private var keybLayout: KeybModel? = null
+    private var isPortrait = true
+    val defLayout = "latin"
+    var currentLayout = "latin"
+    private val loadedLayouts = HashMap<String, KeybModel>()
     fun reload() {
-        keybLayout = Keyboard(
+        keybLayout = KeybModel(
             this,
-            loadKeybLayout("vkeyb/" + currentLayout + if (isPortrait) "-portrait" else "-landscape"),
+            "vkeyb/" + currentLayout + if (isPortrait) "-portrait" else "-landscape",
             true
         )
         keybView!!.loadVars(this)
@@ -43,11 +42,11 @@ class VKeyboard : InputMethodService() {
 
     override fun onCreateInputView(): View {
         dm = this.resources.displayMetrics
-        keybView = layoutInflater.inflate(R.layout.vkeybview, null, false) as VKeybView
+        keybView = layoutInflater.inflate(R.layout.vkeybview, null, false) as KeybView
         val orientation = this.resources.configuration.orientation
         isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
         reload()
-        keybView!!.onKeyboardActionListener = this
+        keybView!!.keybCtl = this
         return keybView!!
     }
 
@@ -64,13 +63,11 @@ class VKeyboard : InputMethodService() {
     }
 
     private fun setKeyb() {
-        if (keybView == null) return
-        keybView!!.keyboard = keybLayout
+        keybView?.keyboard = keybLayout
     }
 
     private fun forceLatin() {
-        keybLayout =
-            Keyboard(this, loadKeybLayout("vkeyb/" + defLayout + if (isPortrait) "-portrait" else "-landscape"), true)
+        keybLayout = KeybModel(this, "vkeyb/" + defLayout + if (isPortrait) "-portrait" else "-landscape", true)
         keybView!!.loadVars(this)
         setKeyb()
     }
@@ -152,7 +149,8 @@ class VKeyboard : InputMethodService() {
         return super.onKeyUp(keyCode, event)
     }
 
-    private fun keyShiftable(keyAct: Int, key: Int, ic: InputConnection) {
+    private fun keyShiftable(keyAct: Int, key: Int) {
+        val ic = currentInputConnection
         val time = System.currentTimeMillis()
         val ctrl = if (ctrlPressed || keybView!!.ctrlModi) KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON else 0
         ic.sendKeyEvent(
@@ -166,46 +164,29 @@ class VKeyboard : InputMethodService() {
         )
     }
 
-    private fun pressShiftable(key: Int, ic: InputConnection) {
-        keyShiftable(KeyEvent.ACTION_DOWN, key, ic)
+    private fun pressShiftable(key: Int) {
+        keyShiftable(KeyEvent.ACTION_DOWN, key)
     }
 
-    private fun releaseShiftable(key: Int, ic: InputConnection) {
-        keyShiftable(KeyEvent.ACTION_UP, key, ic)
+    private fun releaseShiftable(key: Int) {
+        keyShiftable(KeyEvent.ACTION_UP, key)
     }
 
-    private fun clickShiftable(key: Int, ic: InputConnection) {
-        pressShiftable(key, ic)
-        releaseShiftable(key, ic)
-    }
-
-    fun press(key: Int, ic: InputConnection) {
-        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, key))
-    }
-
-    fun release(key: Int, ic: InputConnection) {
-        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, key))
-    }
-
-    fun click(key: Int, ic: InputConnection) {
-        currentInputConnection
-        press(key, ic)
-        release(key, ic)
+    private fun clickShiftable(key: Int) {
+        pressShiftable(key)
+        releaseShiftable(key)
     }
 
     fun onKey(i: Int) {
-        if (i == 0) {
-            reload()
-            return
-        }
+        if (i == 0) return
         val ic = currentInputConnection
-        if (i > 96 && i < 123) { // a-z
-            clickShiftable(i - 68, ic)
+        if (i in 97..122) { // a-z
+            clickShiftable(i - 68)
         } else if (i < 0) {
-            clickShiftable(i * -1, ic)
+            clickShiftable(i * -1)
         } else {
             Log.d("key", i.toString())
-            val code = getShiftable(i.toChar(), keybView!!.shiftModi || shiftPressed)
+            val code = getShifted(i.toChar(), keybView!!.shiftModi || shiftPressed)
             ic.commitText(code.toString(), 1)
         }
     }
@@ -216,52 +197,22 @@ class VKeyboard : InputMethodService() {
     }
 
     fun swipeLeft() {
-        clickShiftable(21, currentInputConnection)
+        clickShiftable(21)
     }
 
     fun swipeRight() {
-        clickShiftable(22, currentInputConnection)
+        clickShiftable(22)
     }
 
     fun swipeDown() {
-        clickShiftable(20, currentInputConnection)
+        clickShiftable(20)
     }
 
     fun swipeUp() {
-        clickShiftable(19, currentInputConnection)
+        clickShiftable(19)
     }
 
-    companion object {
-        var shiftPressed = false
-        private var keybLayout: Keyboard? = null
-        private var isPortrait = true
-        const val defLayout = "latin"
-        @JvmField
-        var currentLayout = "latin"
-        fun loadKeybLayout(name: String): String {
-            val sdcard = Environment.getExternalStorageDirectory()
-            val file = File(sdcard, "$name.json")
-            val text = StringBuilder()
-            try {
-                val br = BufferedReader(FileReader(file))
-                var line: String?
-                while (br.readLine().also { line = it } != null) {
-                    text.append(line)
-                    text.append('\n')
-                }
-                br.close()
-                Log.d("Keyb", "Done")
-                return text.toString()
-            } catch (e: IOException) {
-                Log.d("Keyb", "Error")
-                Log.d("Keyb", e.message!!)
-            }
-            return ""
-        }
-
-        @JvmStatic
-        fun getShiftable(code: Char, sh: Boolean): Char {
-            return if (Character.isLetter(code) && sh) code.uppercaseChar() else code
-        }
+    fun getShifted(code: Char, sh: Boolean): Char {
+        return if (Character.isLetter(code) && sh) code.uppercaseChar() else code
     }
 }

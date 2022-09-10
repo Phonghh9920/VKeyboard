@@ -4,22 +4,24 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Resources
 import android.graphics.*
-import android.os.Build
 import android.util.AttributeSet
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import com.vladgba.keyb.VKeyboard.Companion.getShiftable
 import java.util.*
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.ceil
 
-class VKeybView : View, View.OnClickListener {
+class KeybView : View, View.OnClickListener {
+    private val DEBUG: Boolean = false
     val angPos = intArrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)
-    var onKeyboardActionListener: VKeyboard? = null
+    var keybCtl: KeybController? = null
     var havePoints = false
     var buffer: Bitmap? = null
     var ctrlModi = false
     var shiftModi = false
-    private var keyb: Keyboard? = null
+    private var keyb: KeybModel? = null
     private var res: Resources? = null
     private var pressX = 0
     private var pressY = 0
@@ -38,8 +40,10 @@ class VKeybView : View, View.OnClickListener {
     private var offset // extChars
             = 0
     private var cursorMoved = false
-    private var currentKey: Keyboard.Key? = null
+    private var currentKey: KeybModel.Key? = null
     private var bufferSh: Bitmap? = null
+    private var bitmap: Bitmap? = null
+    private var canv: Canvas? = null
 
     constructor(context: Context, attrs: AttributeSet?) : super(context, attrs) {
         initResources(context)
@@ -49,11 +53,7 @@ class VKeybView : View, View.OnClickListener {
         initResources(context)
     }
 
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-    }
-
-    var keyboard: Keyboard?
+    var keyboard: KeybModel?
         get() = keyb
         set(keyboard) {
             buffer = null
@@ -63,6 +63,7 @@ class VKeybView : View, View.OnClickListener {
         }
 
     override fun onClick(v: View) {}
+
     public override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         if (keyb == null) {
             setMeasuredDimension(0, 0)
@@ -78,24 +79,6 @@ class VKeybView : View, View.OnClickListener {
     public override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (keyb != null) keyb!!.resize(w)
-    }
-
-    fun getKey(x: Int, y: Int): Keyboard.Key? {
-        var mr = 0
-        for (i in keyb!!.rows.indices) {
-            val row = keyb!!.rows[i]
-            if (row.height + mr >= y) {
-                var mk = 0
-                for (j in row.keys.indices) {
-                    val k = row.keys[j]
-                    if (k.width + mk >= x) return k
-                    mk += k.width
-                }
-                break
-            }
-            mr += row.height
-        }
-        return null
     }
 
     override fun onHoverEvent(event: MotionEvent): Boolean {
@@ -126,6 +109,10 @@ class VKeybView : View, View.OnClickListener {
     private fun repaintKeyb(w: Int, h: Int) {
         keybPaint(w, h, false)
         keybPaint(w, h, true)
+        if (bitmap != null) return
+        bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        bitmap?.eraseColor(Color.TRANSPARENT)
+        canv = Canvas(bitmap!!)
     }
 
     private fun keybPaint(w: Int, h: Int, sh: Boolean) {
@@ -136,7 +123,7 @@ class VKeybView : View, View.OnClickListener {
         paint.color = getColor(R.color.keyboardBackground)
         val r = RectF(0f, 0f, w.toFloat(), h.toFloat())
         canvas.drawRect(r, paint)
-        val keys = keyboard!!.getKeys()
+        val keys = keyboard!!.keys
         for (key in keys) {
             canvas.save()
 
@@ -147,6 +134,7 @@ class VKeybView : View, View.OnClickListener {
             val y1 = key.height / 5
             val y2 = key.height / 2
             val y3 = key.height - y1
+
             val rect = Rect(
                 key.x,
                 key.y,
@@ -182,7 +170,7 @@ class VKeybView : View, View.OnClickListener {
             paint.color = getColor(R.color.primaryText)
             paint.textSize = key.height / primaryFont
             if (key.label != null) {
-                val lbl = if (sh && key.label!!.length < 2) getShiftable(
+                val lbl = if (sh && key.label!!.length < 2) keybCtl?.getShifted(
                     key.label!![0],
                     true
                 ).toString() else key.label.toString()
@@ -198,22 +186,22 @@ class VKeybView : View, View.OnClickListener {
     }
 
     private fun getColor(textColor: Int): Int {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) res!!.getColor(
-            textColor,
-            onKeyboardActionListener!!.theme
-        ) else res!!.getColor(textColor)
+        return res!!.getColor(textColor, keybCtl!!.theme)
     }
 
     public override fun onDraw(canvas: Canvas) {
         if (buffer == null) repaintKeyb(width, height)
-        /*Canvas c = new Canvas(buffer);
-        Paint p = new Paint();
-        p.setColor(0xffff0000);
-        c.drawCircle(pressX, pressY, 2, p);*/canvas.drawBitmap(
-            (if (keyboard!!.shifted) bufferSh else buffer)!!,
+        canvas.drawBitmap(
+            (if (keyboard!!.shifting) bufferSh else buffer)!!,
             0f,
             0f,
             null
+        )
+        if (bitmap != null) canvas.drawBitmap(
+                bitmap!!,
+        0f,
+        0f,
+        null
         )
         if (havePoints) drawKey(canvas)
     }
@@ -258,13 +246,13 @@ class VKeybView : View, View.OnClickListener {
         )
         canvas.drawRoundRect(recty, 30f, 30f, paint)
         paint.color = getColor(R.color.primaryText)
-        val sh = keyboard!!.shifted
+        val sh = keyboard!!.shifting
         viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, true)
         canvas.restore()
     }
 
     private fun viewExtChars(
-        key: Keyboard.Key?,
+        key: KeybModel.Key?,
         cv: Canvas,
         p: Paint,
         sh: Boolean,
@@ -290,23 +278,18 @@ class VKeybView : View, View.OnClickListener {
             }
             viewChar(str, i, xi[i], yi[i], cv, key, p, sh)
         }
-        if (h) {
-            if (charPos == 0) {
-                p.color = getColor(R.color.previewSelected)
-                cv.drawCircle((key.x + x2).toFloat(), (key.y + y2).toFloat(), 60f, p)
-            }
-            p.color = getColor(R.color.previewText)
-            cv.drawText(
-                if (sh && key.label!!.length < 2) getShiftable(
-                    key.label!![0],
-                    true
-                ).toString() else key.label.toString(),
-                (
-                        key.x + x2).toFloat(),
-                key.y + y2 + (p.textSize - p.descent()) / 2,
-                p
-            )
+        if (!h) return
+        if (charPos == 0) {
+            p.color = getColor(R.color.previewSelected)
+            cv.drawCircle((key.x + x2).toFloat(), (key.y + y2).toFloat(), 60f, p)
         }
+        p.color = getColor(R.color.previewText)
+        cv.drawText(
+            if (sh && key.label!!.length < 2) keybCtl?.getShifted(key.label!![0], true).toString() else key.label.toString(),
+            (key.x + x2).toFloat(),
+            key.y + y2 + (p.textSize - p.descent()) / 2,
+            p
+        )
     }
 
     private fun viewChar(
@@ -315,24 +298,23 @@ class VKeybView : View, View.OnClickListener {
         ox: Int,
         oy: Int,
         canvas: Canvas,
-        key: Keyboard.Key?,
+        key: KeybModel.Key?,
         paint: Paint,
         sh: Boolean
     ) {
         if (str.length <= pos || str[pos] == ' ') return
         canvas.drawText(
-            getShiftable(str[pos], sh).toString(),
-            (
-                    key!!.x + ox).toFloat(),
+            keybCtl?.getShifted(str[pos], sh).toString(),
+            (key!!.x + ox).toFloat(),
             key.y + oy + (paint.textSize - paint.descent()) / 2,
             paint
         )
     }
 
     private fun getExtPos(x: Int, y: Int): Int {
-        if (Math.abs(pressX - x) < offset && Math.abs(pressY - y) < offset) return 0
-        val angle = Math.toDegrees(Math.atan2((pressY - y).toDouble(), (pressX - x).toDouble()))
-        return angPos[Math.ceil(((if (angle < 0) 360.0 else 0.0) + angle + 22.5) / 45.0).toInt() - 1]
+        if (abs(pressX - x) < offset && abs(pressY - y) < offset) return 0
+        val angle = Math.toDegrees(atan2((pressY - y).toDouble(), (pressX - x).toDouble()))
+        return angPos[ceil(((if (angle < 0) 360.0 else 0.0) + angle + 22.5) / 45.0).toInt() - 1]
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -355,17 +337,22 @@ class VKeybView : View, View.OnClickListener {
     }
 
     fun press(curX: Int, curY: Int) {
+        if (DEBUG) {
+            val p = Paint()
+            p.color = 0x22ff0000
+            canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
+        }
         pressX = curX
         pressY = curY
         relX = -1
         relY = -1
         cursorMoved = false
         charPos = 0
-        currentKey = getKey(curX, curY)
+        currentKey = keyb?.getKey(curX, curY)
         Log.d("keyIndex", currentKey.toString())
         if (currentKey == null) return
         havePoints = true
-        if (currentKey!!.cursor || currentKey!!.repeat || currentKey!!.extChars!!.length > 0) {
+        if (currentKey!!.cursor || currentKey!!.repeat || currentKey!!.extChars!!.isNotEmpty()) {
             relX = curX
             relY = curY
         }
@@ -380,12 +367,12 @@ class VKeybView : View, View.OnClickListener {
             while (true) {
                 if (curX - delTick > relX) {
                     relX += delTick
-                    onKeyboardActionListener!!.onKey(if (currentKey!!.forward == 0) currentKey!!.codes!![0] else currentKey!!.forward)
+                    keybCtl!!.onKey(if (currentKey!!.forward == 0) currentKey!!.codes!![0] else currentKey!!.forward)
                     continue
                 }
                 if (curX + delTick < relX) {
                     relX -= delTick
-                    onKeyboardActionListener!!.onKey(if (currentKey!!.backward == 0) currentKey!!.codes!![0] else currentKey!!.backward)
+                    keybCtl!!.onKey(if (currentKey!!.backward == 0) currentKey!!.codes!![0] else currentKey!!.backward)
                     continue
                 }
                 break
@@ -397,27 +384,27 @@ class VKeybView : View, View.OnClickListener {
             while (true) {
                 if (curX - horizontalTick > relX) {
                     relX += horizontalTick
-                    onKeyboardActionListener!!.swipeRight()
+                    keybCtl?.swipeRight()
                     continue
                 }
                 if (curX + horizontalTick < relX) {
                     relX -= horizontalTick
-                    onKeyboardActionListener!!.swipeLeft()
+                    keybCtl?.swipeLeft()
                     continue
                 }
                 if (curY - verticalTick > relY) {
                     relY += verticalTick
-                    onKeyboardActionListener!!.swipeDown()
+                    keybCtl?.swipeDown()
                     continue
                 }
                 if (curY + verticalTick < relY) {
                     relY -= horizontalTick
-                    onKeyboardActionListener!!.swipeUp()
+                    keybCtl?.swipeUp()
                     continue
                 }
                 break
             }
-        } else if (currentKey!!.extChars!!.length > 0) {
+        } else if (currentKey!!.extChars!!.isNotEmpty()) {
             relX = curX
             relY = curY
             charPos = getExtPos(curX, curY)
@@ -431,50 +418,35 @@ class VKeybView : View, View.OnClickListener {
         havePoints = false
         if (curY == 0) return
         if (currentKey!!.cursor && cursorMoved) return
-        if (currentKey!!.rand != null && currentKey!!.rand!!.size > 0) {
-            onKeyboardActionListener!!.onText(currentKey!!.rand!![Random().nextInt(currentKey!!.rand!!.size)]!!)
-            return
+        if (currentKey!!.rand != null && currentKey!!.rand!!.isNotEmpty()) {
+            return keybCtl!!.onText(currentKey!!.rand!![Random().nextInt(currentKey!!.rand!!.size)]!!)
         }
         if (currentKey!!.lang != null && charPos == 0) {
-            VKeyboard.currentLayout = currentKey!!.lang.toString()
-            onKeyboardActionListener!!.onKey(0)
+            keybCtl?.currentLayout = currentKey!!.lang.toString()
+            keybCtl!!.reload()
             return
         }
-        if (currentKey!!.text!!.length > 0) {
-            onKeyboardActionListener!!.onText(currentKey!!.text!!)
+        if (currentKey!!.text!!.isNotEmpty()) return keybCtl!!.onText(currentKey!!.text!!)
+        if (currentKey!!.repeat && !cursorMoved) return keybCtl!!.onKey(currentKey!!.codes!![0])
+        if (relX < 0 || charPos == 0) return keybCtl!!.onKey(currentKey?.codes?.get(0) ?: 0)
+
+        val extSz = currentKey!!.extChars!!.length
+        if (extSz > 0 && extSz >= charPos) {
+            val textIndex = currentKey!!.extChars!![charPos - 1]
+            if (textIndex == ' ') return
+            textEvent(textIndex.toString())
             return
-        } else if (currentKey!!.repeat) {
-            if (!cursorMoved) onKeyboardActionListener!!.onKey(currentKey!!.codes!![0])
-            return
         }
-        if (relX < 0) {
-            createCustomKeyEvent(currentKey!!.codes)
-            return  // Not have alternative behavior
-        }
-        if (charPos != 0) {
-            val extSz = currentKey!!.extChars!!.length
-            if (extSz > 0 && extSz >= charPos) {
-                val textIndex = currentKey!!.extChars!![charPos - 1]
-                if (textIndex == ' ') return
-                createCustomKeyEvent(textIndex.toString())
-                return
-            }
-        }
-        createCustomKeyEvent(currentKey!!.codes)
     }
 
     fun getFromString(str: CharSequence): IntArray {
         if (str.length < 2) return intArrayOf(str[0].code)
         val out = IntArray(str.length)
-        for (j in 0 until str.length) out[j] = Character.getNumericValue(str[j])
+        for (j in str.indices) out[j] = Character.getNumericValue(str[j])
         return out // FIXME: Is it fixes >1 length?
     }
 
-    private fun createCustomKeyEvent(data: String) {
-        onKeyboardActionListener!!.onKey(getFromString(data)[0])
-    }
-
-    private fun createCustomKeyEvent(data: IntArray?) {
-        onKeyboardActionListener!!.onKey(data!![0])
+    private fun textEvent(data: String) {
+        keybCtl!!.onKey(getFromString(data)[0])
     }
 }

@@ -22,13 +22,13 @@ android {
 
     defaultConfig {
         applicationId "com.vladgba.keyb"
-        minSdk 21
+        minSdk 24
         targetSdk 31
         versionCode 3
         versionName "1.2"
 
         targetSdkVersion 32
-        minSdkVersion 21
+        minSdkVersion 24
         signingConfig signingConfigs.release
         applicationIdSuffix '.production'
     }
@@ -49,5 +49,4 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.5.0'
 }

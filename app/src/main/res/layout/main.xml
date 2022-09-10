@@ -9,14 +9,14 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal">
         <Button
-                android:text="Manage on-screen keyboards"
+                android:text="@string/manage_on_screen_keyboards"
                 android:id="@+id/main_manage_onscreen_keyboards"
                 android:layout_width="0dp"
                 android:layout_height="fill_parent"
                 android:layout_weight="1"
         />
         <Button
-                android:text="Choose input method"
+                android:text="@string/choose_input_method"
                 android:id="@+id/main_choose_input_method_btn"
                 android:layout_width="0dp"
                 android:layout_height="fill_parent"
@@ -28,14 +28,14 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal">
         <Button
-                android:text="Grant permission"
+                android:text="@string/grant_permission"
                 android:id="@+id/main_grant_permission"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
         />
         <Button
-                android:text="Settings"
+                android:text="@string/settings"
                 android:id="@+id/main_settings_btn"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
@@ -43,12 +43,11 @@
         />
     </LinearLayout>
     <EditText
-            android:text="You can test keyboard here"
-            android:id="@+id/main_setup_edit_test"
+            android:text="@string/you_can_test"
             android:layout_width="fill_parent"
             android:gravity="center"
             android:layout_height="247dp"
-    />
+            android:importantForAutofill="no"/>
     <TextView
             android:layout_height="wrap_content"
             android:id="@+id/main_description"
@@ -56,7 +55,6 @@
     />
     <TextView
             android:layout_height="fill_parent"
-            android:id="@+id/text_view"
             android:layout_width="fill_parent"
     />
 </LinearLayout>
