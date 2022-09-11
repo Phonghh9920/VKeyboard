@@ -227,7 +227,7 @@ class KeybView : View, View.OnClickListener {
     private fun drawKey(canvas: Canvas) {
         canvas.save()
         val key = currentKey
-        if (key!!.cursor) return
+        if (key!!.repeat) return
         val paint = Paint()
         paint.isAntiAlias = true
         paint.textAlign = Paint.Align.CENTER
@@ -370,7 +370,7 @@ class KeybView : View, View.OnClickListener {
         Log.d("keyIndex", currentKey.toString())
         if (currentKey == null) return
         havePoints = true
-        if (currentKey!!.cursor || currentKey!!.repeat || currentKey!!.extChars!!.isNotEmpty()) {
+        if (currentKey!!.repeat || currentKey!!.extChars!!.isNotEmpty()) {
             relX = curX
             relY = curY
         }
@@ -430,9 +430,6 @@ class KeybView : View, View.OnClickListener {
             keybCtl!!.reload()
             return
         }
-        if (currentKey!!.text!!.isNotEmpty()) {
-            keybCtl!!.onText(currentKey!!.text!!)
-if (currentKey!!.text!!.isNotEmpty()) {
         if (currentKey!!.text!!.isNotEmpty()) {
             keybCtl!!.onText(currentKey!!.text!!)
             if (currentKey!!.getInt("pos") > 0) for (i in 1..currentKey!!.getInt("pos")) keybCtl!!.onKey(-21)

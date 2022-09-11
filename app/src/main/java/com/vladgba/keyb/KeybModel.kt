@@ -168,11 +168,8 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
         var text: CharSequence? = null
         var lang: CharSequence? = null
         var extChars: CharSequence? = null
-        var forward = 0
-        var backward = 0
         var stylepos = ""
         var bg = ""
-        var cursor = false
         var rand: Array<String?>? = null
         private var options: JSONObject? = null
 
@@ -192,12 +189,9 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
                 width = parent!!.width * if (jdata.has("size")) jdata.getInt("size") else 1
                 extChars = if (jdata.has("ext")) jdata.getString("ext") else ""
                 if (extChars!!.isNotEmpty()) extChars = padExtChars(extChars, pos)
-                cursor = jdata.has("cur") && jdata.getInt("cur") == 1
                 repeat = jdata.has("repeat") && jdata.getInt("repeat") == 1
                 text = if (jdata.has("text")) jdata.getString("text") else ""
                 lang = if (jdata.has("lang")) jdata.getString("lang") else null
-                forward = if (jdata.has("forward")) jdata.getInt("forward") else 0
-                backward = if (jdata.has("backward")) jdata.getInt("backward") else 0
                 stylepos = if (jdata.has("stylepos")) jdata.getString("stylepos") else ""
                 bg = if (jdata.has("bg")) jdata.getString("bg") else ""
                 val rands = if (jdata.has("rand")) jdata.getJSONArray("rand") else null
