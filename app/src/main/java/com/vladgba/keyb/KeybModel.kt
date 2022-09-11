@@ -170,9 +170,11 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
         var extChars: CharSequence? = null
         var forward = 0
         var backward = 0
-        var stylepos = 0
+        var stylepos = ""
+        var bg = ""
         var cursor = false
         var rand: Array<String?>? = null
+        private var options: JSONObject? = null
 
         init {
             height = parent!!.height
@@ -183,6 +185,7 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
             this.x = x
             this.y = y
             try {
+                options = jdata;
                 label = if (jdata.has("key")) jdata.getString("key") else ""
                 codes = intArrayOf(if (jdata.has("code")) jdata.getInt("code") else 0)
                 if (codes!![0] == 0 && !TextUtils.isEmpty(label)) codes!![0] = label!![0].code
@@ -195,7 +198,8 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
                 lang = if (jdata.has("lang")) jdata.getString("lang") else null
                 forward = if (jdata.has("forward")) jdata.getInt("forward") else 0
                 backward = if (jdata.has("backward")) jdata.getInt("backward") else 0
-                stylepos = if (jdata.has("stylepos")) jdata.getInt("stylepos") else 0
+                stylepos = if (jdata.has("stylepos")) jdata.getString("stylepos") else ""
+                bg = if (jdata.has("bg")) jdata.getString("bg") else ""
                 val rands = if (jdata.has("rand")) jdata.getJSONArray("rand") else null
                 if (rands == null) {
                     rand = null
@@ -210,6 +214,18 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
                 return
             }
             this.height = parent.width
+        }
+
+        fun getStr(s: String): String {
+            return if (options!!.has(s)) options!!.getString(s) else ""
+        }
+
+        fun getInt(s: String): Int {
+            return if (options!!.has(s)) options!!.getInt(s) else 0
+        }
+
+        fun getBool(s: String): Boolean {
+            return options!!.has(s) && options!!.getInt(s) == 1
         }
 
         private fun padExtChars(chars: CharSequence?, pos: Int): CharSequence {

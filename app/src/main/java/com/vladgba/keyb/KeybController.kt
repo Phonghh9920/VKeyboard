@@ -172,7 +172,7 @@ class KeybController : InputMethodService() {
         keyShiftable(KeyEvent.ACTION_UP, key)
     }
 
-    private fun clickShiftable(key: Int) {
+    fun clickShiftable(key: Int) {
         pressShiftable(key)
         releaseShiftable(key)
     }
@@ -183,7 +183,7 @@ class KeybController : InputMethodService() {
         if (i in 97..122) { // a-z
             clickShiftable(i - 68)
         } else if (i < 0) {
-            clickShiftable(i * -1)
+            clickShiftable(-i)
         } else {
             Log.d("key", i.toString())
             val code = getShifted(i.toChar(), keybView!!.shiftModi || shiftPressed)
@@ -194,22 +194,6 @@ class KeybController : InputMethodService() {
     fun onText(chars: CharSequence) {
         val ic = currentInputConnection
         ic.commitText(chars.toString(), 1)
-    }
-
-    fun swipeLeft() {
-        clickShiftable(21)
-    }
-
-    fun swipeRight() {
-        clickShiftable(22)
-    }
-
-    fun swipeDown() {
-        clickShiftable(20)
-    }
-
-    fun swipeUp() {
-        clickShiftable(19)
     }
 
     fun getShifted(code: Char, sh: Boolean): Char {

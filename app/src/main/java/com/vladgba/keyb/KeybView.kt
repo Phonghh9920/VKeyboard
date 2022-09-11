@@ -12,6 +12,9 @@ import java.util.*
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.ceil
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.Build;
 
 class KeybView : View, View.OnClickListener {
     private val DEBUG: Boolean = false
@@ -37,8 +40,7 @@ class KeybView : View, View.OnClickListener {
     private var secondaryFont = 0f
     private var horizontalTick = 0
     private var verticalTick = 0
-    private var offset // extChars
-            = 0
+    private var offset = 0 // extChars
     private var cursorMoved = false
     private var currentKey: KeybModel.Key? = null
     private var bufferSh: Bitmap? = null
@@ -149,19 +151,26 @@ class KeybView : View, View.OnClickListener {
             val bi = key.height / 16
             val ki = key.height / 6
             val pd = key.height / 36
+
+            val lpd = if (key.stylepos.contains("l")) -key.width else 0
+            val rpd = if (key.stylepos.contains("r")) key.width else 0
+
+            val tpd = if (key.stylepos.contains("t")) -key.height else 0
+            val bpd = if (key.stylepos.contains("b")) key.height else 0
+
             var recty = RectF(
-                (key.x + bi - pd / 3).toFloat(),
-                (key.y + bi).toFloat(),
-                (key.x + key.width - bi + pd / 3).toFloat(),
-                (key.y + key.height - bi + pd).toFloat()
+                (key.x + lpd + bi - pd / 3).toFloat(),
+                (key.y + tpd + bi).toFloat(),
+                (key.x + rpd + key.width - bi + pd / 3).toFloat(),
+                (key.y + bpd + key.height - bi + pd).toFloat()
             )
             canvas.drawRoundRect(recty, ki.toFloat(), ki.toFloat(), paint)
-            paint.color = getColor(R.color.keyBackground)
+            paint.color = if (key.bg.length < 1) getColor(R.color.keyBackground) else Color.parseColor("#" + key.bg)
             recty = RectF(
-                (key.x + bi).toFloat(),
-                (key.y + bi).toFloat(),
-                (key.x + key.width - bi).toFloat(),
-                (key.y + key.height - bi).toFloat()
+                (key.x + lpd + bi).toFloat(),
+                (key.y + tpd + bi).toFloat(),
+                (key.x + rpd + key.width - bi).toFloat(),
+                (key.y + bpd + key.height - bi).toFloat()
             )
             canvas.drawRoundRect(recty, ki.toFloat(), ki.toFloat(), paint)
             paint.textSize = key.height / secondaryFont
@@ -185,6 +194,15 @@ class KeybView : View, View.OnClickListener {
         }
     }
 
+    fun vibrate(s: String) {
+        val i = if (currentKey!!.getInt(s) > 0) currentKey!!.getInt(s).toLong() else 0
+        if (i < 10) return
+
+        val vibrator = keybCtl?.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(i, /*VibrationEffect.DEFAULT_AMPLITUDE*/10))
+        else vibrator.vibrate(i)
+    }
+
     private fun getColor(textColor: Int): Int {
         return res!!.getColor(textColor, keybCtl!!.theme)
     }
@@ -199,9 +217,9 @@ class KeybView : View, View.OnClickListener {
         )
         if (bitmap != null) canvas.drawBitmap(
                 bitmap!!,
-        0f,
-        0f,
-        null
+                0f,
+                0f,
+                null
         )
         if (havePoints) drawKey(canvas)
     }
@@ -361,45 +379,32 @@ class KeybView : View, View.OnClickListener {
     private fun drag(curX: Int, curY: Int) {
         if (relX < 0) return  // Not have alternative behavior
         if (currentKey!!.repeat) {
-            if (!cursorMoved && (curX - delTick > pressX || curX + delTick < pressX)) {
-                cursorMoved = true
-            }
-            while (true) {
-                if (curX - delTick > relX) {
-                    relX += delTick
-                    keybCtl!!.onKey(if (currentKey!!.forward == 0) currentKey!!.codes!![0] else currentKey!!.forward)
-                    continue
-                }
-                if (curX + delTick < relX) {
-                    relX -= delTick
-                    keybCtl!!.onKey(if (currentKey!!.backward == 0) currentKey!!.codes!![0] else currentKey!!.backward)
-                    continue
-                }
-                break
-            }
-        } else if (currentKey!!.cursor) {
             if (!cursorMoved && (curX - horizontalTick > pressX || curX + horizontalTick < pressX || curY - verticalTick > pressY || curY + verticalTick < pressY)) {
                 cursorMoved = true
             }
             while (true) {
                 if (curX - horizontalTick > relX) {
                     relX += horizontalTick
-                    keybCtl?.swipeRight()
+                    keybCtl!!.onKey(if (currentKey!!.getInt("right") == 0) currentKey!!.codes!![0] else currentKey!!.getInt("right"))
+                    vibrate("vibtick")
                     continue
                 }
                 if (curX + horizontalTick < relX) {
                     relX -= horizontalTick
-                    keybCtl?.swipeLeft()
+                    keybCtl!!.onKey(if (currentKey!!.getInt("left") == 0) currentKey!!.codes!![0] else currentKey!!.getInt("left"))
+                    vibrate("vibtick")
                     continue
                 }
                 if (curY - verticalTick > relY) {
                     relY += verticalTick
-                    keybCtl?.swipeDown()
+                    keybCtl!!.onKey(if (currentKey!!.getInt("bottom") == 0) currentKey!!.codes!![0] else currentKey!!.getInt("bottom"))
+                    vibrate("vibtick")
                     continue
                 }
                 if (curY + verticalTick < relY) {
-                    relY -= horizontalTick
-                    keybCtl?.swipeUp()
+                    relY -= verticalTick
+                    keybCtl!!.onKey(if (currentKey!!.getInt("top") == 0) currentKey!!.codes!![0] else currentKey!!.getInt("top"))
+                    vibrate("vibtick")
                     continue
                 }
                 break
@@ -416,8 +421,7 @@ class KeybView : View, View.OnClickListener {
         if (!havePoints) return
         if (currentKey == null) return
         havePoints = false
-        if (curY == 0) return
-        if (currentKey!!.cursor && cursorMoved) return
+        if (curY == 0 || cursorMoved) return
         if (currentKey!!.rand != null && currentKey!!.rand!!.isNotEmpty()) {
             return keybCtl!!.onText(currentKey!!.rand!![Random().nextInt(currentKey!!.rand!!.size)]!!)
         }
@@ -426,7 +430,14 @@ class KeybView : View, View.OnClickListener {
             keybCtl!!.reload()
             return
         }
-        if (currentKey!!.text!!.isNotEmpty()) return keybCtl!!.onText(currentKey!!.text!!)
+        if (currentKey!!.text!!.isNotEmpty()) {
+            keybCtl!!.onText(currentKey!!.text!!)
+if (currentKey!!.text!!.isNotEmpty()) {
+        if (currentKey!!.text!!.isNotEmpty()) {
+            keybCtl!!.onText(currentKey!!.text!!)
+            if (currentKey!!.getInt("pos") > 0) for (i in 1..currentKey!!.getInt("pos")) keybCtl!!.onKey(-21)
+            return
+        }
         if (currentKey!!.repeat && !cursorMoved) return keybCtl!!.onKey(currentKey!!.codes!![0])
         if (relX < 0 || charPos == 0) return keybCtl!!.onKey(currentKey?.codes?.get(0) ?: 0)
 
