@@ -4,13 +4,10 @@ plugins {
 }
 
 android {
+    compileSdk 32
+    compileSdkVersion 32
+
     signingConfigs {
-        debug {
-            storeFile file(StoreFile)
-            storePassword StorePass
-            keyAlias KeyAlias
-            keyPassword KeyPass
-        }
         release {
             storeFile file(StoreFile)
             storePassword StorePass
@@ -18,7 +15,6 @@ android {
             keyPassword KeyPass
         }
     }
-    compileSdk 32
 
     defaultConfig {
         applicationId "com.vladgba.keyb"
@@ -35,7 +31,7 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
