@@ -447,9 +447,10 @@ class KeybView : View, View.OnClickListener {
         havePoints = false
         if (curY == 0 || cursorMoved) return
         if (currentKey!!.getBool("clipboard")) {
-            //if (charPos < 1) return
-            if (shiftModi) currentKey!!.clipboard[charPos - 1] = keybCtl!!.currentInputConnection.getSelectedText(0)
-            else {
+            if (charPos < 1) return
+            if (shiftModi) {
+                currentKey!!.clipboard[charPos - 1] = keybCtl!!.currentInputConnection.getSelectedText(0)
+            } else {
                 if (currentKey!!.clipboard[charPos - 1] == null) return
                 keybCtl!!.onText(currentKey!!.clipboard[charPos - 1].toString())
             }
