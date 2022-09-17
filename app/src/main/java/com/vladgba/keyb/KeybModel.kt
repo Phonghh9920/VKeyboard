@@ -167,11 +167,13 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
         var repeat = false
         var text: CharSequence? = null
         var lang: CharSequence? = null
+        var clipboard = arrayOfNulls<CharSequence>(8)
         var extChars: CharSequence? = null
         var stylepos = ""
         var bg = ""
         var rand: Array<String?>? = null
         private var options: JSONObject? = null
+        public var hold: Boolean = false
 
         init {
             height = parent!!.height
@@ -240,9 +242,7 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
             for (i in curv) {
                 if (p >= chars!!.length) break
                 if (i > 0) sb.append(chars.subSequence(p, min(i.let { p += it; p }, chars.length))) else sb.append(
-                    String(
-                        CharArray(-i)
-                    ).replace("\u0000", " ")
+                    String(CharArray(-i)).replace("\u0000", " ")
                 )
             }
             return sb.toString()

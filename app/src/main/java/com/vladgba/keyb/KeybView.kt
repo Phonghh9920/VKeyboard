@@ -9,9 +9,7 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import java.util.*
-import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.ceil
+import kotlin.math.*
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.Build;
@@ -46,6 +44,8 @@ class KeybView : View, View.OnClickListener {
     private var bufferSh: Bitmap? = null
     private var bitmap: Bitmap? = null
     private var canv: Canvas? = null
+    private var vibtime: Long = 0
+    public var mod: Int = 0
 
     constructor(context: Context, attrs: AttributeSet?) : super(context, attrs) {
         initResources(context)
@@ -196,10 +196,12 @@ class KeybView : View, View.OnClickListener {
 
     fun vibrate(s: String) {
         val i = if (currentKey!!.getInt(s) > 0) currentKey!!.getInt(s).toLong() else 0
+        if (vibtime + i > System.currentTimeMillis()) return
+        vibtime = System.currentTimeMillis()
         if (i < 10) return
 
         val vibrator = keybCtl?.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(i, /*VibrationEffect.DEFAULT_AMPLITUDE*/10))
+        if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(i, VibrationEffect.DEFAULT_AMPLITUDE))
         else vibrator.vibrate(i)
     }
 
@@ -222,6 +224,10 @@ class KeybView : View, View.OnClickListener {
                 null
         )
         if (havePoints) drawKey(canvas)
+        /*var paint = Paint()
+        paint.color = 0xff000000.toInt()
+        paint.textSize = 50.toFloat()
+        canvas.drawText(mod.toString(2), 100f, 100f, paint)*/
     }
 
     private fun drawKey(canvas: Canvas) {
@@ -360,15 +366,17 @@ class KeybView : View, View.OnClickListener {
             p.color = 0x22ff0000
             canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
         }
+        
+        currentKey = keyb?.getKey(curX, curY)
+        Log.d("keyIndex", currentKey.toString())
+        if (currentKey == null) return
+        
         pressX = curX
         pressY = curY
         relX = -1
         relY = -1
         cursorMoved = false
         charPos = 0
-        currentKey = keyb?.getKey(curX, curY)
-        Log.d("keyIndex", currentKey.toString())
-        if (currentKey == null) return
         havePoints = true
         if (currentKey!!.repeat || currentKey!!.extChars!!.isNotEmpty()) {
             relX = curX
@@ -377,6 +385,11 @@ class KeybView : View, View.OnClickListener {
     }
 
     private fun drag(curX: Int, curY: Int) {
+        if (currentKey!!.getBool("mod")) return
+        if (currentKey!!.getBool("clipboard")) {
+            charPos = getExtPos(curX, curY)
+            return
+        }
         if (relX < 0) return  // Not have alternative behavior
         if (currentKey!!.repeat) {
             if (!cursorMoved && (curX - horizontalTick > pressX || curX + horizontalTick < pressX || curY - verticalTick > pressY || curY + verticalTick < pressY)) {
@@ -420,8 +433,29 @@ class KeybView : View, View.OnClickListener {
         Log.d("keyIndexRelease", currentKey.toString())
         if (!havePoints) return
         if (currentKey == null) return
+        if (currentKey!!.getBool("mod")) {
+            if (currentKey!!.hold) {
+                mod = mod xor currentKey!!.getInt("modi")
+                currentKey!!.hold = false
+            } else {
+                mod = mod or currentKey!!.getInt("modi")
+                currentKey!!.hold = true
+            }
+            
+            return
+        }
         havePoints = false
         if (curY == 0 || cursorMoved) return
+        if (currentKey!!.getBool("clipboard")) {
+            //if (charPos < 1) return
+            if (shiftModi) currentKey!!.clipboard[charPos - 1] = keybCtl!!.currentInputConnection.getSelectedText(0)
+            else {
+                if (currentKey!!.clipboard[charPos - 1] == null) return
+                keybCtl!!.onText(currentKey!!.clipboard[charPos - 1].toString())
+            }
+            return
+        }
+        
         if (currentKey!!.rand != null && currentKey!!.rand!!.isNotEmpty()) {
             return keybCtl!!.onText(currentKey!!.rand!![Random().nextInt(currentKey!!.rand!!.size)]!!)
         }

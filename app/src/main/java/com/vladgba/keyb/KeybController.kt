@@ -47,6 +47,7 @@ class KeybController : InputMethodService() {
         isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
         reload()
         keybView!!.keybCtl = this
+        keybView!!.mod = 0
         return keybView!!
     }
 
@@ -66,21 +67,21 @@ class KeybController : InputMethodService() {
         keybView?.keyboard = keybLayout
     }
 
-    private fun forceLatin() {
-        keybLayout = KeybModel(this, "vkeyb/" + defLayout + if (isPortrait) "-portrait" else "-landscape", true)
-        keybView!!.loadVars(this)
-        setKeyb()
-    }
-
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (keybView == null) return false
+        keybView!!.invalidate()
         if (keyCode < 0) return true
         when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> if (keybView!!.isShown) {
                 ctrlPressed = true
                 if (keybView!!.ctrlModi) return true else if (keybView!!.havePoints) keybView!!.ctrlModi = true
-                forceLatin()
+                
                 super.onKeyDown(KeyEvent.KEYCODE_CTRL_LEFT, event)
+                keybView!!.mod = keybView!!.mod or 12288
+                if (currentLayout == defLayout) return true
+                keybLayout = KeybModel(this, "vkeyb/" + defLayout + if (isPortrait) "-portrait" else "-landscape", true)
+                keybView!!.loadVars(this)
+                setKeyb()
                 return true
             } else if (ctrlPressed) {
                 return true
@@ -100,6 +101,7 @@ class KeybController : InputMethodService() {
                         KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
                     )
                 )
+                keybView!!.mod = keybView!!.mod or 129
                 keybLayout!!.setShifted(shiftPressed)
                 keybView!!.invalidate()
                 return true
@@ -112,12 +114,15 @@ class KeybController : InputMethodService() {
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (keybView == null) return false
+        keybView!!.invalidate()
         when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
                 ctrlPressed = false
                 if (keybView!!.isShown) {
-                    reload()
                     super.onKeyUp(KeyEvent.KEYCODE_CTRL_LEFT, event)
+                    keybView!!.mod = keybView!!.mod xor 12288
+                    
+                    if (currentLayout != defLayout) reload()
                     return true
                 } else if (ctrlPressed) {
                     return true
@@ -138,6 +143,7 @@ class KeybController : InputMethodService() {
                             KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
                         )
                     )
+                    keybView!!.mod = keybView!!.mod xor 129
                     keybLayout!!.setShifted(shiftPressed)
                     keybView!!.invalidate()
                     return true
@@ -159,7 +165,7 @@ class KeybController : InputMethodService() {
                 keyAct,
                 key,
                 0,
-                (if (shiftPressed || keybView!!.shiftModi) KeyEvent.META_SHIFT_LEFT_ON or KeyEvent.META_SHIFT_ON else 0) or ctrl
+                keybView!!.mod //(if (shiftPressed || keybView!!.shiftModi) KeyEvent.META_SHIFT_LEFT_ON or KeyEvent.META_SHIFT_ON else 0) or ctrl
             )
         )
     }
