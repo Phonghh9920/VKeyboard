@@ -170,11 +170,11 @@ class KeybController : InputMethodService() {
         )
     }
 
-    private fun pressShiftable(key: Int) {
+    fun pressShiftable(key: Int) {
         keyShiftable(KeyEvent.ACTION_DOWN, key)
     }
 
-    private fun releaseShiftable(key: Int) {
+    fun releaseShiftable(key: Int) {
         keyShiftable(KeyEvent.ACTION_UP, key)
     }
 

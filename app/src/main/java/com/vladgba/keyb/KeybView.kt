@@ -435,9 +435,11 @@ class KeybView : View, View.OnClickListener {
         if (currentKey == null) return
         if (currentKey!!.getBool("mod")) {
             if (currentKey!!.hold) {
+                keybCtl!!.releaseShiftable(currentKey!!.getInt("modcode"))
                 mod = mod xor currentKey!!.getInt("modi")
                 currentKey!!.hold = false
             } else {
+                keybCtl!!.pressShiftable(currentKey!!.getInt("modcode"))
                 mod = mod or currentKey!!.getInt("modi")
                 currentKey!!.hold = true
             }
