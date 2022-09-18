@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
     <color name="primaryText">#000000</color>
-	<color name="secondaryText">#dddddd</color>
-	<color name="keyboardBackground">#EBEFF2</color>
-	<color name="keyBorder">#b9bbbb</color>
-	<color name="keyBackground">#ffffff</color>
+    <color name="secondaryText">#dddddd</color>
+    <color name="keyboardBackground">#EEEEEE</color>
+    <color name="keyBorder">#aaaaaa</color>
+    <color name="keyBackground">#ffffff</color>
     <color name="previewSelected">#cccccc</color>
-	<color name="previewText">#222222</color>
+    <color name="previewText">#222222</color>
 </resources>
