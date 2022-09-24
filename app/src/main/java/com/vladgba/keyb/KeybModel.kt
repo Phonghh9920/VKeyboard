@@ -166,14 +166,11 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         var y = 0
         var repeat = false
         var text: CharSequence? = null
-        var lang: CharSequence? = null
         var clipboard = arrayOfNulls<CharSequence>(8)
         var extChars: CharSequence? = ""
-        var stylepos = ""
-        var bg = ""
         var rand: Array<String?>? = null
         private var options: Map<String, Any>? = null
-        public var hold: Boolean = false
+        var hold: Boolean = false
 
         init {
             height = parent!!.height
@@ -187,27 +184,20 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
                 options = jdata;
                 label = getStr("key")
                 codes = intArrayOf(getInt("code"))
-                if (codes!![0] == 0 && !TextUtils.isEmpty(label)) {
-                    codes!![0] = label!![0].code
-                    text = label
+                if (codes!![0] == 0 && label!!.length > 0 && getStr("text").length<1) {
+                    if (label!!.length > 1) text = label
+                    else codes!![0] = label!![0].code
+                } else {
+                    text = getStr("text")
                 }
 //TODO: height
-                width = parent!!.width * if (jdata.containsKey("size")) (jdata.getValue("size") as String).toInt() else 1
+                width = parent!!.width * if (getStr("size") == "") 1 else getStr("size").toInt()
                 
                 extChars = getStr("ext")
                 if (extChars!!.isNotEmpty()) extChars = padExtChars(extChars, pos)
-                
-//TODO: del
                 repeat = getBool("repeat")
-                text = getStr("text")
-                lang = getStr("lang")
-                
-                stylepos = getStr("stylepos")
-                bg = getStr("bg")
                 val rands = if (options!!.containsKey("rand")) (options!!.getValue("rand") as ArrayList<String>) else null
-                if (rands == null) {
-                    rand = null
-                } else {
+                if (rands != null) {
                     rand = arrayOfNulls(rands.size)
                     for (i in 0 until rands.size) {
                         rand!![i] = rands[i]

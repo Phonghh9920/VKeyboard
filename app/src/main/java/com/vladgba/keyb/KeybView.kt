@@ -103,10 +103,10 @@ class KeybView : View, View.OnClickListener {
             val ki = key.height / 6
             val pd = key.height / 36
 
-            val lpd = if (key.stylepos.contains("l")) -key.width else 0
-            val rpd = if (key.stylepos.contains("r")) key.width else 0
-            val tpd = if (key.stylepos.contains("t")) -key.height else 0
-            val bpd = if (key.stylepos.contains("b")) key.height else 0
+            val lpd = if (key!!.getStr("stylepos")!!.contains("l")) -key.width else 0
+            val rpd = if (key.getStr("stylepos").contains("r")) key.width else 0
+            val tpd = if (key.getStr("stylepos").contains("t")) -key.height else 0
+            val bpd = if (key.getStr("stylepos").contains("b")) key.height else 0
 
             var recty = RectF(
                 (key.x + lpd + bi - pd / 3).toFloat(),
@@ -115,7 +115,7 @@ class KeybView : View, View.OnClickListener {
                 (key.y + bpd + key.height - bi + pd).toFloat()
             )
             canvas.drawRoundRect(recty, ki.toFloat(), ki.toFloat(), paint)
-            paint.color = if (key.bg.length < 1) getColor("keyBackground") else Color.parseColor("#" + key.bg)
+            paint.color = if (key.getStr("bg").length < 1) getColor("keyBackground") else Color.parseColor("#" + key.getStr("bg"))
             recty = RectF(
                 (key.x + lpd + bi).toFloat(),
                 (key.y + tpd + bi).toFloat(),

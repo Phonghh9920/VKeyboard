@@ -292,12 +292,11 @@ class KeybController : InputMethodService() {
     fun press(curX: Int, curY: Int) {
         if (DEBUG) {
             val p = Paint()
-            p.color = 0x22ff0000
+            p.color = 0x0fff0000
             keybView!!.keyb!!.canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
         }
 
         currentKey = keybView!!.keyb?.getKey(curX, curY)
-        Log.d("keyIndex", currentKey.toString())
         if (currentKey == null) return
 
         pressX = curX
@@ -318,7 +317,7 @@ class KeybController : InputMethodService() {
             charPos = getExtPos(curX, curY)
             return
         }
-        if (relX < 0) return  // Not have alternative behavior
+        if (relX < 0) return // Not have alternative behavior
         if (currentKey!!.repeat) {
             if (!cursorMoved && (curX - horizontalTick > pressX || curX + horizontalTick < pressX || curY - verticalTick > pressY || curY + verticalTick < pressY)) {
                 cursorMoved = true
@@ -358,7 +357,6 @@ class KeybController : InputMethodService() {
     }
 
     private fun release(curX: Int, curY: Int) {
-        Log.d("keyIndexRelease", currentKey.toString())
         if (currentKey == null) return
         if (currentKey!!.getBool("mod")) {
             if (currentKey!!.hold) {
@@ -388,12 +386,12 @@ class KeybController : InputMethodService() {
         if (currentKey!!.rand != null && currentKey!!.rand!!.isNotEmpty()) {
             return onText(currentKey!!.rand!![Random().nextInt(currentKey!!.rand!!.size)]!!)
         }
-        if (currentKey!!.lang!!.isNotEmpty() && charPos == 0) {
-            currentLayout = currentKey!!.lang.toString()
+        if (currentKey!!.getStr("lang")!!.isNotEmpty() && charPos == 0) {
+            currentLayout = currentKey!!.getStr("lang")
             reload()
             return
         }
-        if (currentKey!!.text!!.isNotEmpty()) {
+        if (currentKey!!.text != null && currentKey!!.text!!.length > 0) {
             onText(currentKey!!.text!!)
             if (currentKey!!.getInt("pos") > 0) for (i in 1..currentKey!!.getInt("pos")) onKey(-21)
             return
