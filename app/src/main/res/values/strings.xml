@@ -2,16 +2,16 @@
     <string name="main_text"><Data>
         <![CDATA["
         <h1>VKeyboard</h1>
-        <p><i>VKeyboard</i> provides a new Android input method (<b>disabled</b> by default).</p>
+        <p><b>VKeyboard</b> provides a new Android input method (<b>disabled</b> by default).</p>
         <p>To activate it, follow these steps.</p>
         <h3>Add VKeyboard to the list of system input methods:</h3>
         <p>1. Open <b>Manage on-screen keyboards</b>
-        <p>- Find <b>VKeyboard</b> and enable it.</p>
-        <p>- Confirm the warning displayed by the system. The system always shows this message when using a third-party keyboard.</p>
+        <p>- Find <b>VKeyboard</b> and <b>enable</b> it.</p>
+        <p>- <b>Confirm</b> the warning displayed by the system. The system always shows this message when using a third-party keyboard.</p>
         <p>- Click the <b>Back</b> button to return to this page..</p>
         <p>2. Click "Choose input method".</p>
         <p>- Select VKeyboard from the list.</p>
-        <p>3. Done!</p>
+        <p>3. Click "Grant permissions", find <b>VKeyboard</b> in app list and <b>enable</b> it.</p>
       "]]>
     </Data></string>
     <string name="app_name">Vkeyboard</string>

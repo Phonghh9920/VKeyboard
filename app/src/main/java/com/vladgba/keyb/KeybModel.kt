@@ -1,21 +1,15 @@
 package com.vladgba.keyb
 
+import org.json.*
+import java.io.*
+import kotlin.math.*
+import android.graphics.*
 import android.content.Context
 import android.os.Environment
 import android.text.TextUtils
 import android.util.Log
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.File
-import java.io.FileReader
-import java.io.IOException
-import kotlin.math.ceil
-import kotlin.math.max
-import kotlin.math.min
 
-class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
+class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
     val rows = ArrayList<Row>()
     val keys: ArrayList<Key>
     var shifting = false
@@ -26,12 +20,21 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
     private var loadx = 0
     private var loady = 0
     private var loadcurrentRow: Row? = null
+    public var loaded = false
+    public var bitmap: Bitmap? = null
+    public var canv: Canvas? = null
 
     init {
+        loaded = false
         val dm = context.resources.displayMetrics
         val displayWidth = dm.widthPixels
         val displayHeight = dm.heightPixels
+        
+//TODO: del?
         val sp = context.getSharedPreferences(context.packageName + "_preferences", Context.MODE_PRIVATE)
+        
+        
+        //TODO:refactor to func 
         if (portrait) {
             val size = sp.getString("size", "10")!!.toFloat()
             val lowerSize = min(displayWidth, displayHeight)
@@ -50,12 +53,16 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
         loady = 0
         try {
             val json = JSONObject(loadKeybLayout(jsonName)).getJSONArray("keyb")
+            //val json = JsonParse.parse(loadKeybLayout(jsonName)).get("keyb")
             for (i in 0 until json.length()) {
                 val pos = if (i == 0) 0 else if (i == json.length() - 1) 6 else 3
                 loadRow(json.getJSONArray(i), pos)
             }
             height = loady
+            loaded = true
+            context.erro = ""
         } catch (e: JSONException) {
+            context.erro = e.message!!
             Log.e("PSR", e.message!!)
         }
     }
@@ -121,20 +128,14 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
         return null
     }
 
-    fun setShifted(shiftState: Boolean) {
-        shifting = shiftState
-    }
-
     private fun loadKey(jdata: JSONObject, pos: Int) {
         val loadkey = Key(loadcurrentRow, loadx, loady, jdata, pos)
-        if (loadkey.codes == null) return
         keys.add(loadkey)
         loadcurrentRow!!.keys.add(loadkey)
         loadx += loadkey.width
         if (loadx > minWidth) minWidth = loadx
     }
 
-    @Throws(JSONException::class)
     private fun loadRow(row: JSONArray, pos: Int) {
         loadx = 0
         loadcurrentRow = Row(this)
@@ -168,7 +169,7 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
         var text: CharSequence? = null
         var lang: CharSequence? = null
         var clipboard = arrayOfNulls<CharSequence>(8)
-        var extChars: CharSequence? = null
+        var extChars: CharSequence? = ""
         var stylepos = ""
         var bg = ""
         var rand: Array<String?>? = null
@@ -187,13 +188,21 @@ class KeybModel(context: Context, jsonName: String, portrait: Boolean) {
                 options = jdata;
                 label = if (jdata.has("key")) jdata.getString("key") else ""
                 codes = intArrayOf(if (jdata.has("code")) jdata.getInt("code") else 0)
-                if (codes!![0] == 0 && !TextUtils.isEmpty(label)) codes!![0] = label!![0].code
+                if (codes!![0] == 0 && !TextUtils.isEmpty(label)) {
+                    codes!![0] = label!![0].code
+                    text = label
+                }
+//TODO: height
                 width = parent!!.width * if (jdata.has("size")) jdata.getInt("size") else 1
+                
                 extChars = if (jdata.has("ext")) jdata.getString("ext") else ""
                 if (extChars!!.isNotEmpty()) extChars = padExtChars(extChars, pos)
+                
+//TODO: del
                 repeat = jdata.has("repeat") && jdata.getInt("repeat") == 1
                 text = if (jdata.has("text")) jdata.getString("text") else ""
                 lang = if (jdata.has("lang")) jdata.getString("lang") else null
+                
                 stylepos = if (jdata.has("stylepos")) jdata.getString("stylepos") else ""
                 bg = if (jdata.has("bg")) jdata.getString("bg") else ""
                 val rands = if (jdata.has("rand")) jdata.getJSONArray("rand") else null

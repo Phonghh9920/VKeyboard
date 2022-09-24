@@ -30,7 +30,7 @@ class Vkeyboard : Activity() {
         }
 
         val inputMethod = findViewById<Button>(R.id.main_choose_input_method_btn)
-        inputMethod.setOnClickListener {(getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker() }
+        inputMethod.setOnClickListener {(getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()}
 
         val grantPermissions = findViewById<Button>(R.id.main_grant_permission)
         grantPermissions.setOnClickListener {
@@ -44,8 +44,9 @@ class Vkeyboard : Activity() {
                 requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 0)
             }
         }
-
+/*
         val settings = findViewById<Button>(R.id.main_settings_btn)
         settings.setOnClickListener { startActivityForResult(Intent(that, Settings::class.java), 0) }
+ */
     }
 }
