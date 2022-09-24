@@ -46,7 +46,7 @@ class KeybController : InputMethodService() {
 
     fun reload() {
         var layNm = currentLayout + if (isPortrait) "-portrait" else "-landscape"
-        if (loadedLayouts.containsKey(currentLayout) && !layoutFileChanged()) {
+        if (loadedLayouts.containsKey(layNm) && !layoutFileChanged()) {
             keybLayout = loadedLayouts.getValue(layNm)
         } else {
             keybLayout = KeybModel(this, "vkeyb/" + layNm, true)
@@ -104,7 +104,7 @@ class KeybController : InputMethodService() {
     }
 
     private fun layoutFileChanged(): Boolean {
-        return getLastModified(currentLayout, isPortrait) > loadedLayouts.getValue(currentLayout).lastdate
+        return getLastModified(currentLayout, isPortrait) > loadedLayouts.getValue(currentLayout + (if (isPortrait) "-portrait" else "-landscape"))!!.lastdate
         
     }
 

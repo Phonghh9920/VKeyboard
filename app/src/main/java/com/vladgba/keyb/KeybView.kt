@@ -103,7 +103,7 @@ class KeybView : View, View.OnClickListener {
             val ki = key.height / 6
             val pd = key.height / 36
 
-            val lpd = if (key!!.getStr("stylepos")!!.contains("l")) -key.width else 0
+            val lpd = if (key.getStr("stylepos").contains("l")) -key.width else 0
             val rpd = if (key.getStr("stylepos").contains("r")) key.width else 0
             val tpd = if (key.getStr("stylepos").contains("t")) -key.height else 0
             val bpd = if (key.getStr("stylepos").contains("b")) key.height else 0
@@ -139,7 +139,7 @@ class KeybView : View, View.OnClickListener {
 
     private fun randColor(): Int {
         var a = arrayOf(0xffff0000, 0xffffff00, 0xffffffff, 0xff00ff00, 0xffff00ff, 0xff00ffff, 0xff0000ff, 0xff000000)
-        return (a[Random().nextInt(8)]!!)!!.toInt()
+        return (a[Random().nextInt(8)]).toInt()
     }
 
     private fun getColor(n: String): Int {
@@ -147,7 +147,7 @@ class KeybView : View, View.OnClickListener {
         var curTheme = if (keybCtl!!.night) "colorNight" else "colorDay"
         if (!keybCtl!!.sett.containsKey(curTheme)) return randColor()
         var theme = keybCtl!!.sett.getValue(curTheme) as Map<String, Any>
-        return if (theme.containsKey(n)) (theme.getValue(n) as String).toInt(16) or 0xff000000.toInt() else randColor()
+        return if (theme.containsKey(n)) (theme.getValue(n) as String).toLong(16).toInt() else randColor()
     }
 
     public override fun onDraw(canvas: Canvas) {
@@ -158,9 +158,9 @@ class KeybView : View, View.OnClickListener {
             0f,
             null
         )
-        if (keyb!!.bitmap != null) canvas.drawBitmap(keyb!!.bitmap!!, 0f, 0f, null)
         if (keybCtl!!.currentKey != null) drawKey(canvas)
         if (keybCtl!!.getVal(keybCtl!!.sett, "debug", "") == "1") {
+            if (keyb!!.bitmap != null) canvas.drawBitmap(keyb!!.bitmap!!, 0f, 0f, null)
             if (keybCtl!!.night) paint.color = 0xffffffff.toInt()
             else paint.color = 0xff000000.toInt()
             paint.textSize = 20.toFloat()
@@ -177,6 +177,16 @@ class KeybView : View, View.OnClickListener {
         paint.isAntiAlias = true
         paint.textAlign = Paint.Align.CENTER
         paint.textSize = key.height / keybCtl!!.primaryFont
+        
+        val rectShadow = RectF(
+            0f,
+            0f,
+            width.toFloat(),
+            height.toFloat()
+        )
+        paint.color = getColor("shadowColor")
+        canvas.drawRect(rectShadow, paint)
+        
         paint.color = getColor("previewText")
         val x1 = key.width / 2 - key.width
         val x2 = key.width / 2
