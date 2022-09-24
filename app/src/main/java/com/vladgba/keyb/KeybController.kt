@@ -15,7 +15,6 @@ import android.content.Context
 import android.graphics.Paint
 
 class KeybController : InputMethodService() {
-    val DEBUG = true
     val angPos = intArrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)
     var volumeUpPress = false
     var volumeDownPress = false
@@ -43,14 +42,15 @@ class KeybController : InputMethodService() {
     private val loadedLayouts: MutableMap<String, KeybModel> = mutableMapOf()
     var erro = ""
     var mod: Int = 0
-    var sett = emptyMap<String, Any>()
+    public var sett = emptyMap<String, Any>()
 
     fun reload() {
-        if (loadedLayouts.containsKey(currentLayout)) {
-            keybLayout = loadedLayouts.getValue(currentLayout)
+        var layNm = currentLayout + if (isPortrait) "-portrait" else "-landscape"
+        if (loadedLayouts.containsKey(currentLayout) && !layoutFileChanged()) {
+            keybLayout = loadedLayouts.getValue(layNm)
         } else {
-            keybLayout = KeybModel(this, "vkeyb/" + currentLayout + if (isPortrait) "-portrait" else "-landscape", true)
-            loadedLayouts[currentLayout] = keybLayout!!
+            keybLayout = KeybModel(this, "vkeyb/" + layNm, true)
+            loadedLayouts[layNm] = keybLayout!!
         }
         loadVars()
         setKeyb()
@@ -62,6 +62,10 @@ class KeybController : InputMethodService() {
         else return d
     }
 
+    public fun getLastModified(path: String, p: Boolean): Long {
+        val f = File(Environment.getExternalStorageDirectory(), "vkeyb/" + path + (if (p) "-portrait" else "-landscape") + ".json")
+        return f.lastModified()
+    }
 
     fun loadKeybLayout(name: String): String {
         val sdcard = Environment.getExternalStorageDirectory()
@@ -100,7 +104,8 @@ class KeybController : InputMethodService() {
     }
 
     private fun layoutFileChanged(): Boolean {
-        return true
+        return getLastModified(currentLayout, isPortrait) > loadedLayouts!!.getValue(currentLayout)!!.lastdate
+        
     }
 
     override fun onCreateInputView(): View {
@@ -290,7 +295,7 @@ class KeybController : InputMethodService() {
     }
 
     fun press(curX: Int, curY: Int) {
-        if (DEBUG) {
+        if (getVal(sett, "debug", "") == "1") {
             val p = Paint()
             p.color = 0x0fff0000
             keybView!!.keyb!!.canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)

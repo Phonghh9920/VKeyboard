@@ -23,6 +23,7 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
     public var loaded = false
     public var bitmap: Bitmap? = null
     public var canv: Canvas? = null
+    public var lastdate: Long = 0
 
     init {
         loaded = false
@@ -30,29 +31,24 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         val displayWidth = dm.widthPixels
         val displayHeight = dm.heightPixels
         
-//TODO: del?
-        val sp = context.getSharedPreferences(context.packageName + "_preferences", Context.MODE_PRIVATE)
-        
-        
-        if (portrait) {
-            val size = sp.getString("size", "10")!!.toFloat()
-            val lowerSize = min(displayWidth, displayHeight)
-            dWidth = (lowerSize / size).toInt()
-            dHeight = dWidth
-        } else {
-            val size = sp.getString("sizeland", "20")!!.toFloat()
-            val biggerSize = max(displayWidth, displayHeight)
-            dWidth = ceil((biggerSize / size).toDouble()).toInt()
-            dHeight = dWidth
-        }
         keys = ArrayList()
 
         Log.d("json", jsonName)
         loadx = 0
         loady = 0
         try {
-            //val json = JSONObject(loadKeybLayout(jsonName)).getJSONArray("keyb")
-            val json = JsonParse.map(loadKeybLayout(jsonName)).getValue("keyb") as ArrayList<Any>
+            val glob = JsonParse.map(loadKeybLayout(jsonName))
+            val json = glob.getValue("keyb") as ArrayList<Any>
+            val size = (glob.getValue("keyCount") as String)!!.toFloat()
+            if (portrait) {
+                val lowerSize = min(displayWidth, displayHeight)
+                dWidth = (lowerSize / size).toInt()
+                dHeight = dWidth
+            } else {
+                val biggerSize = max(displayWidth, displayHeight)
+                dWidth = ceil((biggerSize / size).toDouble()).toInt()
+                dHeight = dWidth
+            }
             for (i in 0 until json.size) {
                 val pos = if (i == 0) 0 else if (i == json.size - 1) 6 else 3
                 loadRow(json[i] as ArrayList<Any>, pos)
@@ -69,6 +65,7 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
     fun loadKeybLayout(name: String): String {
         val sdcard = Environment.getExternalStorageDirectory()
         val file = File(sdcard, "$name.json")
+        lastdate = file.lastModified()
         val text = StringBuilder()
         try {
             val br = BufferedReader(FileReader(file))

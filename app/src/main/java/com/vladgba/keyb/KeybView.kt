@@ -160,7 +160,7 @@ class KeybView : View, View.OnClickListener {
         )
         if (keyb!!.bitmap != null) canvas.drawBitmap(keyb!!.bitmap!!, 0f, 0f, null)
         if (keybCtl!!.currentKey != null) drawKey(canvas)
-        if (keybCtl!!.DEBUG) {
+        if (keybCtl!!.getVal(keybCtl!!.sett, "debug", "") == "1") {
             if (keybCtl!!.night) paint.color = 0xffffffff.toInt()
             else paint.color = 0xff000000.toInt()
             paint.textSize = 20.toFloat()
