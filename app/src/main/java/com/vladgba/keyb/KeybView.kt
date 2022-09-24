@@ -15,7 +15,6 @@ class KeybView : View, View.OnClickListener {
     private var res: Resources? = null
     var paint = Paint()
     private var bufferSh: Bitmap? = null
-    var erro = ""
 
     constructor(context: Context, attrs: AttributeSet?) : super(context, attrs) {
         initResources(context)
@@ -165,9 +164,8 @@ class KeybView : View, View.OnClickListener {
             if (keybCtl!!.night) paint.color = 0xffffffff.toInt()
             else paint.color = 0xff000000.toInt()
             paint.textSize = 20.toFloat()
-            canvas.drawText(keybCtl!!.mod.toString(2), 100f, 100f, paint)
+            canvas.drawText(keybCtl!!.mod.toString(2), 10f, 95f, paint)
             canvas.drawText(keybCtl!!.erro, 20f, 20f, paint)
-            canvas.drawText(erro, 20f, 50f, paint)
         }
     }
 

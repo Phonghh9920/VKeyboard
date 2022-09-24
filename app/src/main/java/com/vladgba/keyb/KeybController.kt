@@ -84,13 +84,12 @@ class KeybController : InputMethodService() {
         }
     }
     fun loadVars() {
-        val json = JsonParse.map(loadKeybLayout("vkeyb/settings"))
-        sett = json
-        primaryFont = getVal(json, "sizePrimary", "2").toFloat()
-        secondaryFont = getVal(json, "sizeSecondary", "4.5").toFloat()
-        horizontalTick = getVal(json, "horizontalSense", "30").toInt()
-        verticalTick = getVal(json, "verticalSense", "50").toInt()
-        offset = getVal(json, "extendedSense", "70").toInt()
+        sett = JsonParse.map(loadKeybLayout("vkeyb/settings"))
+        primaryFont = getVal(sett, "sizePrimary", "2").toFloat()
+        secondaryFont = getVal(sett, "sizeSecondary", "4.5").toFloat()
+        horizontalTick = getVal(sett, "horizontalSense", "30").toInt()
+        verticalTick = getVal(sett, "verticalSense", "50").toInt()
+        offset = getVal(sett, "extendedSense", "70").toInt()
     }
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
@@ -156,33 +155,18 @@ class KeybController : InputMethodService() {
             KeyEvent.KEYCODE_VOLUME_UP -> if (keybView!!.isShown) {
                 if (volumeUpPress) return true
                 volumeUpPress = true
-
                 inputKey("volumeUp", KeyEvent.ACTION_DOWN, true)
-                if (currentLayout == defLayout) return true
-                if (((sett.getValue("volumeUp") as Map<String, Any>).getValue("switchKeyb") as String) == "1") {
-                    keybLayout = KeybModel(this, "vkeyb/" + defLayout + if (isPortrait) "-portrait" else "-landscape", true)
-                    loadVars()
-                    setKeyb()
-                }
                 return true
             }
             KeyEvent.KEYCODE_VOLUME_DOWN -> if (keybView!!.isShown) {
                 if (volumeDownPress) return true
                 volumeDownPress = true
-
                 inputKey("volumeDown", KeyEvent.ACTION_DOWN, true)
-                if (currentLayout == defLayout) return true
-                if (((sett.getValue("volumeDown") as Map<String, Any>).getValue("switchKeyb") as String) == "1") {
-                    keybLayout = KeybModel(this, "vkeyb/" + defLayout + if (isPortrait) "-portrait" else "-landscape", true)
-                    loadVars()
-                    setKeyb()
-                }
                 return true
             }
         }
         return super.onKeyDown(keyCode, event)
     }
-
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (keybView == null) return false
@@ -208,9 +192,9 @@ class KeybController : InputMethodService() {
         return super.onKeyUp(keyCode, event)
     }
 
-    fun inputKey(key: String, pr: Int, set: Boolean) {
+    fun inputKey(key: String, pr: Int, st: Boolean) {
         val newmod = ((sett.getValue(key) as Map<String, Any>).getValue("mod") as String).toInt()
-        mod = if (set) (mod or newmod) else mod xor newmod
+        mod = if (st) (mod or newmod) else mod xor newmod
         val ic = currentInputConnection
         val time = System.currentTimeMillis()
         ic.sendKeyEvent(
@@ -222,6 +206,15 @@ class KeybController : InputMethodService() {
                 mod
             )
         )
+        if (currentLayout == defLayout || !st) return
+        if (sett == null || !sett!!.containsKey(key)) return
+        val vkey = sett!!.getValue(key) as Map<String, Any>
+        if (!vkey.containsKey("switchKeyb")) return
+        if ((vkey.getValue("switchKeyb") as String) == "1") {
+            keybLayout = loadedLayouts[defLayout]
+            loadVars()
+            setKeyb()
+        }
     }
     private fun keyShiftable(keyAct: Int, key: Int) {
         val ic = currentInputConnection
@@ -395,7 +388,7 @@ class KeybController : InputMethodService() {
         if (currentKey!!.rand != null && currentKey!!.rand!!.isNotEmpty()) {
             return onText(currentKey!!.rand!![Random().nextInt(currentKey!!.rand!!.size)]!!)
         }
-        if (currentKey!!.lang != null && charPos == 0) {
+        if (currentKey!!.lang!!.isNotEmpty() && charPos == 0) {
             currentLayout = currentKey!!.lang.toString()
             reload()
             return

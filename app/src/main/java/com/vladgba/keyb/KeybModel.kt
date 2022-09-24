@@ -34,7 +34,6 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         val sp = context.getSharedPreferences(context.packageName + "_preferences", Context.MODE_PRIVATE)
         
         
-        //TODO:refactor to func 
         if (portrait) {
             val size = sp.getString("size", "10")!!.toFloat()
             val lowerSize = min(displayWidth, displayHeight)
@@ -52,16 +51,16 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         loadx = 0
         loady = 0
         try {
-            val json = JSONObject(loadKeybLayout(jsonName)).getJSONArray("keyb")
-            //val json = JsonParse.parse(loadKeybLayout(jsonName)).get("keyb")
-            for (i in 0 until json.length()) {
-                val pos = if (i == 0) 0 else if (i == json.length() - 1) 6 else 3
-                loadRow(json.getJSONArray(i), pos)
+            //val json = JSONObject(loadKeybLayout(jsonName)).getJSONArray("keyb")
+            val json = JsonParse.map(loadKeybLayout(jsonName)).getValue("keyb") as ArrayList<Any>
+            for (i in 0 until json.size) {
+                val pos = if (i == 0) 0 else if (i == json.size - 1) 6 else 3
+                loadRow(json[i] as ArrayList<Any>, pos)
             }
             height = loady
             loaded = true
             context.erro = ""
-        } catch (e: JSONException) {
+        } catch (e: Exception) {
             context.erro = e.message!!
             Log.e("PSR", e.message!!)
         }
@@ -128,7 +127,7 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         return null
     }
 
-    private fun loadKey(jdata: JSONObject, pos: Int) {
+    private fun loadKey(jdata: Map<String, Any>, pos: Int) {
         val loadkey = Key(loadcurrentRow, loadx, loady, jdata, pos)
         keys.add(loadkey)
         loadcurrentRow!!.keys.add(loadkey)
@@ -136,13 +135,13 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         if (loadx > minWidth) minWidth = loadx
     }
 
-    private fun loadRow(row: JSONArray, pos: Int) {
+    private fun loadRow(row: ArrayList<Any>, pos: Int) {
         loadx = 0
         loadcurrentRow = Row(this)
         rows.add(loadcurrentRow!!)
-        for (i in 0 until row.length()) {
-            val keypos = pos + if (i == 0) 1 else if (i == row.length() - 1) 3 else 2
-            loadKey(row.getJSONObject(i), keypos)
+        for (i in 0 until row.size) {
+            val keypos = pos + if (i == 0) 1 else if (i == row.size - 1) 3 else 2
+            loadKey(row[i] as Map<String, Any>, keypos)
         }
         loady += loadcurrentRow!!.height
     }
@@ -173,7 +172,7 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         var stylepos = ""
         var bg = ""
         var rand: Array<String?>? = null
-        private var options: JSONObject? = null
+        private var options: Map<String, Any>? = null
         public var hold: Boolean = false
 
         init {
@@ -181,40 +180,40 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
             width = parent.width
         }
 
-        constructor(parent: Row?, x: Int, y: Int, jdata: JSONObject, pos: Int) : this(parent) {
+        constructor(parent: Row?, x: Int, y: Int, jdata: Map<String, Any>, pos: Int) : this(parent) {
             this.x = x
             this.y = y
             try {
                 options = jdata;
-                label = if (jdata.has("key")) jdata.getString("key") else ""
-                codes = intArrayOf(if (jdata.has("code")) jdata.getInt("code") else 0)
+                label = getStr("key")
+                codes = intArrayOf(getInt("code"))
                 if (codes!![0] == 0 && !TextUtils.isEmpty(label)) {
                     codes!![0] = label!![0].code
                     text = label
                 }
 //TODO: height
-                width = parent!!.width * if (jdata.has("size")) jdata.getInt("size") else 1
+                width = parent!!.width * if (jdata.containsKey("size")) (jdata.getValue("size") as String).toInt() else 1
                 
-                extChars = if (jdata.has("ext")) jdata.getString("ext") else ""
+                extChars = getStr("ext")
                 if (extChars!!.isNotEmpty()) extChars = padExtChars(extChars, pos)
                 
 //TODO: del
-                repeat = jdata.has("repeat") && jdata.getInt("repeat") == 1
-                text = if (jdata.has("text")) jdata.getString("text") else ""
-                lang = if (jdata.has("lang")) jdata.getString("lang") else null
+                repeat = getBool("repeat")
+                text = getStr("text")
+                lang = getStr("lang")
                 
-                stylepos = if (jdata.has("stylepos")) jdata.getString("stylepos") else ""
-                bg = if (jdata.has("bg")) jdata.getString("bg") else ""
-                val rands = if (jdata.has("rand")) jdata.getJSONArray("rand") else null
+                stylepos = getStr("stylepos")
+                bg = getStr("bg")
+                val rands = if (options!!.containsKey("rand")) (options!!.getValue("rand") as ArrayList<String>) else null
                 if (rands == null) {
                     rand = null
                 } else {
-                    rand = arrayOfNulls(rands.length())
-                    for (i in 0 until rands.length()) {
-                        rand!![i] = rands.getString(i)
+                    rand = arrayOfNulls(rands.size)
+                    for (i in 0 until rands.size) {
+                        rand!![i] = rands[i]
                     }
                 }
-            } catch (e: JSONException) {
+            } catch (e: Exception) {
                 Log.d("Key", e.message!!)
                 return
             }
@@ -222,15 +221,15 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         }
 
         fun getStr(s: String): String {
-            return if (options!!.has(s)) options!!.getString(s) else ""
+            return if (options!!.containsKey(s)) (options!!.getValue(s) as String) else ""
         }
 
         fun getInt(s: String): Int {
-            return if (options!!.has(s)) options!!.getInt(s) else 0
+            return if (options!!.containsKey(s)) (options!!.getValue(s) as String).toInt() else 0
         }
 
         fun getBool(s: String): Boolean {
-            return options!!.has(s) && options!!.getInt(s) == 1
+            return options!!.containsKey(s) && (options!!.getValue(s) as String) != "0"
         }
 
         private fun padExtChars(chars: CharSequence?, pos: Int): CharSequence {

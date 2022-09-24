@@ -27,11 +27,6 @@ object JsonParse {
             currentType = Type.OBJECT
             currentContainer = HashMap<String, Any>()
             i++
-        } else if (current == '[') {
-            currentType = Type.ARRAY
-            currentContainer = ArrayList<Any>()
-            propertyName = null
-            i++
         } else {
             throw Exception("Unexpected character \"$current\" instead of root value")
         }
@@ -129,10 +124,7 @@ object JsonParse {
                             return currentContainer
                         }
                     } else if (!isWhitespace(current)) {
-                        throw Exception(
-                            "unexpected character '" + current +
-                                    "' where a property name is expected. Missing quotes?"
-                        )
+                        throw Exception("unexpected character '" + current + "' where a property name is expected. Missing quotes?")
                     }
                 }
                 Type.ARRAY -> {
@@ -224,7 +216,7 @@ object JsonParse {
     fun isWhitespace(c: Char): Boolean {
         return c == ' ' || c == '\n' || c == '\t'
     }
-
+    
     internal class State(val propertyName: String?, val container: Any?, val type: Type)
     enum class Type {
         ARRAY, OBJECT, HEURISTIC, NAME, STRING
