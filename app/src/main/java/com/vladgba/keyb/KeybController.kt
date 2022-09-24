@@ -104,7 +104,7 @@ class KeybController : InputMethodService() {
     }
 
     private fun layoutFileChanged(): Boolean {
-        return getLastModified(currentLayout, isPortrait) > loadedLayouts!!.getValue(currentLayout)!!.lastdate
+        return getLastModified(currentLayout, isPortrait) > loadedLayouts.getValue(currentLayout).lastdate
         
     }
 
@@ -212,8 +212,8 @@ class KeybController : InputMethodService() {
             )
         )
         if (currentLayout == defLayout || !st) return
-        if (sett == null || !sett!!.containsKey(key)) return
-        val vkey = sett!!.getValue(key) as Map<String, Any>
+        if (!sett.containsKey(key)) return
+        val vkey = sett.getValue(key) as Map<String, Any>
         if (!vkey.containsKey("switchKeyb")) return
         if ((vkey.getValue("switchKeyb") as String) == "1") {
             keybLayout = loadedLayouts[defLayout]
@@ -391,7 +391,7 @@ class KeybController : InputMethodService() {
         if (currentKey!!.rand != null && currentKey!!.rand!!.isNotEmpty()) {
             return onText(currentKey!!.rand!![Random().nextInt(currentKey!!.rand!!.size)]!!)
         }
-        if (currentKey!!.getStr("lang")!!.isNotEmpty() && charPos == 0) {
+        if (currentKey!!.getStr("lang").isNotEmpty() && charPos == 0) {
             currentLayout = currentKey!!.getStr("lang")
             reload()
             return
