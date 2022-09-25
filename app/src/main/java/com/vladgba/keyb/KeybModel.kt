@@ -39,7 +39,7 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         try {
             val glob = JsonParse.map(loadKeybLayout(jsonName))
             val json = glob.getValue("keyb") as ArrayList<Any>
-            val size = (glob.getValue("keyCount") as String)!!.toFloat()
+            val size = (glob.getValue("keyCount") as String).toFloat()
             if (portrait) {
                 val lowerSize = min(displayWidth, displayHeight)
                 dWidth = (lowerSize / size).toInt()
@@ -77,33 +77,11 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
             br.close()
             Log.d("Keyb", "Done")
             return text.toString()
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             Log.d("Keyb", "Error")
             Log.d("Keyb", e.message!!)
         }
         return ""
-    }
-
-    fun resize(newWidth: Int) {
-        for (row in rows) {
-            val numKeys = row.keys.size
-            var totalWidth = 0
-            for (keyIndex in 0 until numKeys) {
-                val key = row.keys[keyIndex]
-                totalWidth += key.width
-            }
-            if (totalWidth > newWidth) {
-                var x = 0
-                val scaleFactor = newWidth.toFloat() / totalWidth
-                for (keyIndex in 0 until numKeys) {
-                    val key = row.keys[keyIndex]
-                    key.width *= scaleFactor.toInt()
-                    key.x = x
-                    x += key.width
-                }
-            }
-        }
-        minWidth = newWidth
     }
 
     fun getKey(x: Int, y: Int): Key? {

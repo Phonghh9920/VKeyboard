@@ -6,10 +6,9 @@ import android.os.*
 import kotlin.math.*
 import android.util.*
 import android.view.*
-import android.view.inputmethod.InputMethodManager
+import android.view.inputmethod.*
 import android.inputmethodservice.InputMethodService
 import android.content.res.Configuration
-import android.view.inputmethod.EditorInfo
 import android.app.UiModeManager
 import android.content.Context
 import android.graphics.Paint
@@ -34,8 +33,8 @@ class KeybController : InputMethodService() {
     var shiftModi = false
     private var keybView: KeybView? = null
     var dm: DisplayMetrics? = null
-    private var keybLayout: KeybModel? = null
-    private var isPortrait = true
+    var keybLayout: KeybModel? = null
+    var isPortrait = true
     var night = true
     val defLayout = "latin"
     var currentLayout = "latin"
@@ -49,10 +48,12 @@ class KeybController : InputMethodService() {
         if (loadedLayouts.containsKey(layNm) && !layoutFileChanged()) {
             keybLayout = loadedLayouts.getValue(layNm)
         } else {
-            keybLayout = KeybModel(this, "vkeyb/" + layNm, true)
+            keybLayout = KeybModel(this, "vkeyb/" + layNm, isPortrait)
             loadedLayouts[layNm] = keybLayout!!
         }
+        if (!keybLayout!!.loaded) return
         loadVars()
+        keybView!!.reload()
         setKeyb()
     }
     fun getVal(j: Map<String, Any>, s:String, d:String): String {
@@ -81,8 +82,7 @@ class KeybController : InputMethodService() {
             br.close()
             Log.d("Keyb", "Done")
             return text.toString()
-        } catch (e: IOException) {
-            Log.d("Keyb", "Error")
+        } catch (e: Exception) {
             Log.d("Keyb", e.message!!)
             return e.message!!
         }
@@ -98,17 +98,16 @@ class KeybController : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        if (layoutFileChanged()) {
-            reload()
-        }
+        reload()
     }
 
     private fun layoutFileChanged(): Boolean {
-        return getLastModified(currentLayout, isPortrait) > loadedLayouts.getValue(currentLayout + (if (isPortrait) "-portrait" else "-landscape"))!!.lastdate
+        return getLastModified(currentLayout, isPortrait) > loadedLayouts.getValue(currentLayout + (if (isPortrait) "-portrait" else "-landscape")).lastdate
         
     }
 
     override fun onCreateInputView(): View {
+        loadedLayouts.clear()
         val isNightMode = false
         val uiManager = (getSystemService(UI_MODE_SERVICE) as UiModeManager)
         uiManager.nightMode = if (isNightMode) UiModeManager.MODE_NIGHT_YES else UiModeManager.MODE_NIGHT_NO
@@ -118,11 +117,11 @@ class KeybController : InputMethodService() {
             Configuration.UI_MODE_NIGHT_UNDEFINED -> night = false
         }
         dm = this.resources.displayMetrics
-        keybView = layoutInflater.inflate(R.layout.vkeybview, null, false) as KeybView
         val orientation = this.resources.configuration.orientation
         isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
-        reload()
+        keybView = KeybView(this)
         keybView!!.keybCtl = this
+        reload()
         mod = 0
         return keybView!!
     }
@@ -141,15 +140,14 @@ class KeybController : InputMethodService() {
 
     private fun updateOrientation(b: Boolean) {
         isPortrait = b
-        setKeyb()
+        reload()
     }
 
     private fun setKeyb() {
-        if (!keybLayout!!.loaded) {
+        if (keybLayout?.loaded != true) {
             (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
             return
         }
-        keybView?.keyboard = keybLayout
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
@@ -216,7 +214,8 @@ class KeybController : InputMethodService() {
         val vkey = sett.getValue(key) as Map<String, Any>
         if (!vkey.containsKey("switchKeyb")) return
         if ((vkey.getValue("switchKeyb") as String) == "1") {
-            keybLayout = loadedLayouts[defLayout]
+            keybLayout = loadedLayouts[defLayout + (if (isPortrait) "-portrait" else "-landscape")]
+            keybView!!.reload()
             loadVars()
             setKeyb()
         }
@@ -298,12 +297,12 @@ class KeybController : InputMethodService() {
         if (getVal(sett, "debug", "") == "1") {
             val p = Paint()
             p.color = 0x0fff0000
-            keybView!!.keyb!!.canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
+            keybLayout!!.canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
         }
 
-        currentKey = keybView!!.keyb?.getKey(curX, curY)
+        currentKey = keybLayout?.getKey(curX, curY)
         if (currentKey == null) return
-
+        vibrate("vibtouch")
         pressX = curX
         pressY = curY
         relX = -1
@@ -317,7 +316,7 @@ class KeybController : InputMethodService() {
     }
 
     private fun drag(curX: Int, curY: Int) {
-        if (currentKey!!.getBool("mod")) return
+        if (currentKey?.getBool("mod") == true) return
         if (currentKey!!.getBool("clipboard")) {
             charPos = getExtPos(curX, curY)
             return

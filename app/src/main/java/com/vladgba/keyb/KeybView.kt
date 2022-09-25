@@ -11,43 +11,35 @@ import android.annotation.SuppressLint
 class KeybView : View, View.OnClickListener {
     var keybCtl: KeybController? = null
     var buffer: Bitmap? = null
-    var keyb: KeybModel? = null
+    private var bufferSh: Bitmap? = null
     private var res: Resources? = null
     var paint = Paint()
-    private var bufferSh: Bitmap? = null
 
-    constructor(context: Context, attrs: AttributeSet?) : super(context, attrs) {
-        initResources(context)
+    constructor(c: KeybController) : super(c, null) {
+        keybCtl = c
+        initResources(c)
     }
 
-    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr) {
-        initResources(context)
+    fun reload() {
+        buffer = null
+        requestLayout()
+        invalidate()
     }
-
-    var keyboard: KeybModel?
-        get() = keyb
-        set(keyboard) {
-            buffer = null
-            keyb = keyboard
-            requestLayout()
-            invalidate()
-        }
 
     override fun onClick(v: View) {}
 
     public override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        if (keyb == null) return setMeasuredDimension(0, 0)
-        
-        var width = keyb!!.minWidth
+        if (keybCtl!!.keybLayout == null) return setMeasuredDimension(0, 0)
+        var width = keybCtl!!.keybLayout!!.minWidth
         if (MeasureSpec.getSize(widthMeasureSpec) < width + 10) {
             width = MeasureSpec.getSize(widthMeasureSpec)
         }
-        setMeasuredDimension(width, keyb!!.height)
+        setMeasuredDimension(width, keybCtl!!.keybLayout!!.height)
     }
 
     public override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        if (keyb != null) keyb!!.resize(w)
+        repaintKeyb(w, h)
     }
 
     override fun onHoverEvent(event: MotionEvent): Boolean {
@@ -60,24 +52,24 @@ class KeybView : View, View.OnClickListener {
 
 
     private fun repaintKeyb(w: Int, h: Int) {
-        keybPaint(w, h, false)
-        keybPaint(w, h, true)
-        if (keyb!!.bitmap != null) return
-        keyb!!.bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        keyb!!.bitmap?.eraseColor(Color.TRANSPARENT)
-        keyb!!.canv = Canvas(keyb!!.bitmap!!)
+        bufferSh = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
+        buffer = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
+        keybPaint(w, h, buffer!!, false)
+        keybPaint(w, h, bufferSh!!, true)
+        if (keybCtl!!.keybLayout!!.bitmap != null) return
+        keybCtl!!.keybLayout!!.bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        keybCtl!!.keybLayout!!.bitmap?.eraseColor(Color.TRANSPARENT)
+        keybCtl!!.keybLayout!!.canv = Canvas(keybCtl!!.keybLayout!!.bitmap!!)
+        invalidate()
     }
 
-    private fun keybPaint(w: Int, h: Int, sh: Boolean) {
-        if (sh) bufferSh = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
-        else buffer = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
-        
-        val canvas = Canvas((if (sh) bufferSh else buffer)!!)
+    private fun keybPaint(w: Int, h: Int, b: Bitmap, sh: Boolean) {
+        val canvas = Canvas(b)
         var paint = Paint()
         paint.color = getColor("keyboardBackground")
         val r = RectF(0f, 0f, w.toFloat(), h.toFloat())
         canvas.drawRect(r, paint)
-        val keys = keyboard!!.keys
+        val keys = keybCtl!!.keybLayout!!.keys
         for (key in keys) {
             canvas.save()
 
@@ -160,7 +152,7 @@ class KeybView : View, View.OnClickListener {
         )
         if (keybCtl!!.currentKey != null) drawKey(canvas)
         if (keybCtl!!.getVal(keybCtl!!.sett, "debug", "") == "1") {
-            if (keyb!!.bitmap != null) canvas.drawBitmap(keyb!!.bitmap!!, 0f, 0f, null)
+            if (keybCtl!!.keybLayout!!.bitmap != null) canvas.drawBitmap(keybCtl!!.keybLayout!!.bitmap!!, 0f, 0f, null)
             if (keybCtl!!.night) paint.color = 0xffffffff.toInt()
             else paint.color = 0xff000000.toInt()
             paint.textSize = 20.toFloat()
