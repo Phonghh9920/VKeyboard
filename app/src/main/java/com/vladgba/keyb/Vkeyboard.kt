@@ -15,7 +15,6 @@ import android.widget.TextView
 
 class Vkeyboard : Activity() {
     public override fun onCreate(savedInstanceState: Bundle?) {
-        val that: Activity = this
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main)
         val html = getString(R.string.main_text)
@@ -46,7 +45,7 @@ class Vkeyboard : Activity() {
         }
 /*
         val settings = findViewById<Button>(R.id.main_settings_btn)
-        settings.setOnClickListener { startActivityForResult(Intent(that, Settings::class.java), 0) }
+        settings.setOnClickListener { startActivityForResult(Intent(this, Settings::class.java), 0) }
  */
     }
 }
