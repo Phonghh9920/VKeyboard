@@ -197,7 +197,7 @@ class KeybController : InputMethodService() {
 
     fun inputKey(key: String, pr: Int, st: Boolean) {
         val newmod = ((sett.getValue(key) as Map<String, Any>).getValue("mod") as String).toInt()
-        mod = if (st) (mod or newmod) else mod xor newmod
+        mod = if (st) (mod or newmod) else mod and newmod.inv()
         keyShiftable(pr,((sett.getValue(key) as Map<String, Any>).getValue("key") as String).toInt())
         keybView!!.repMod()
         if (currentLayout == defLayout || !st) return
