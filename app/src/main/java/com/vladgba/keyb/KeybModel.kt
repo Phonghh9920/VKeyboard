@@ -145,7 +145,6 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         var extChars: CharSequence? = ""
         var rand: Array<String?>? = null
         private var options: Map<String, Any>? = null
-        var hold: Boolean = false
 
         init {
             height = parent!!.height

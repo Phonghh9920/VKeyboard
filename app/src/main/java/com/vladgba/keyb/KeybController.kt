@@ -198,17 +198,8 @@ class KeybController : InputMethodService() {
     fun inputKey(key: String, pr: Int, st: Boolean) {
         val newmod = ((sett.getValue(key) as Map<String, Any>).getValue("mod") as String).toInt()
         mod = if (st) (mod or newmod) else mod xor newmod
-        val ic = currentInputConnection
-        val time = System.currentTimeMillis()
-        ic.sendKeyEvent(
-            KeyEvent(
-                time, time,
-                pr,
-                ((sett.getValue(key) as Map<String, Any>).getValue("key") as String).toInt(),
-                0,
-                mod
-            )
-        )
+        keyShiftable(pr,((sett.getValue(key) as Map<String, Any>).getValue("key") as String).toInt())
+        keybView!!.repMod()
         if (currentLayout == defLayout || !st) return
         if (!sett.containsKey(key)) return
         val vkey = sett.getValue(key) as Map<String, Any>
@@ -363,16 +354,15 @@ class KeybController : InputMethodService() {
     private fun release(curX: Int, curY: Int) {
         if (currentKey == null) return
         if (currentKey!!.getBool("mod")) {
-            if (currentKey!!.hold) {
-                releaseShiftable(currentKey!!.getInt("modcode"))
-                mod = mod xor currentKey!!.getInt("modi")
-                currentKey!!.hold = false
+            if ((mod and currentKey!!.getInt("modmeta")) > 0) {
+                mod = mod xor currentKey!!.getInt("modmeta")
+                releaseShiftable(currentKey!!.getInt("modkey"))
+                keybView!!.repMod()
             } else {
-                pressShiftable(currentKey!!.getInt("modcode"))
-                mod = mod or currentKey!!.getInt("modi")
-                currentKey!!.hold = true
+                mod = mod or currentKey!!.getInt("modmeta")
+                pressShiftable(currentKey!!.getInt("modkey"))
+                keybView!!.repMod()
             }
-
             return
         }
         if (curY == 0 || cursorMoved) return
@@ -397,7 +387,9 @@ class KeybController : InputMethodService() {
         }
         if (currentKey!!.text != null && currentKey!!.text!!.length > 0) {
             onText(currentKey!!.text!!)
-            if (currentKey!!.getInt("pos") > 0) for (i in 1..currentKey!!.getInt("pos")) onKey(-21)
+            if (currentKey!!.getInt("pos") < 0) for (i in 1..-currentKey!!.getInt("pos")) onKey(-21)
+            else if (currentKey!!.getInt("pos") > 0) for (i in 1..currentKey!!.text!!.length-currentKey!!.getInt("pos")) onKey(-21)
+            else if (currentKey!!.getStr("pos") == "0") for (i in 1..currentKey!!.text!!.length) onKey(-21)
             return
         }
         if (currentKey!!.repeat && !cursorMoved) return onKey(currentKey!!.codes!![0])

@@ -14,6 +14,7 @@ class KeybView : View, View.OnClickListener {
     private var bufferSh: Bitmap? = null
     private var res: Resources? = null
     var paint = Paint()
+    var repMods = false
 
     constructor(c: KeybController) : super(c, null) {
         keybCtl = c
@@ -49,6 +50,14 @@ class KeybView : View, View.OnClickListener {
     private fun initResources(context: Context) {
         res = context.resources
     }
+    
+    public fun repMod() {
+        repMods = true
+        keybPaint(buffer!!.width, buffer!!.height, buffer!!, false)
+        keybPaint(buffer!!.width, buffer!!.height, bufferSh!!, true)
+        repMods = false
+        invalidate()
+    }
 
 
     private fun repaintKeyb(w: Int, h: Int) {
@@ -66,11 +75,21 @@ class KeybView : View, View.OnClickListener {
     private fun keybPaint(w: Int, h: Int, b: Bitmap, sh: Boolean) {
         val canvas = Canvas(b)
         var paint = Paint()
-        paint.color = getColor("keyboardBackground")
-        val r = RectF(0f, 0f, w.toFloat(), h.toFloat())
-        canvas.drawRect(r, paint)
+        if (!repMods) {
+            paint.color = getColor("keyboardBackground")
+            val r = RectF(0f, 0f, w.toFloat(), h.toFloat())
+            canvas.drawRect(r, paint)
+        }
         val keys = keybCtl!!.keybLayout!!.keys
         for (key in keys) {
+            if (repMods) {
+                if(!key.getBool("mod")) continue
+                else {
+                    paint.color = getColor("keyboardBackground")
+                    val r = RectF(key.x.toFloat(), key.y.toFloat(), key.x.toFloat() + key.width.toFloat(), key.y.toFloat() + key.height.toFloat())
+                    canvas.drawRect(r, paint)
+                }
+            }
             canvas.save()
 
             // Positions for subsymbols
@@ -91,9 +110,9 @@ class KeybView : View, View.OnClickListener {
             paint.isAntiAlias = true
             paint.textAlign = Paint.Align.CENTER
             paint.color = getColor("keyBorder")
-            val bi = key.height / 16
-            val ki = key.height / 6
-            val pd = key.height / 36
+            val bi = key.height / 16 // padding
+            val ki = key.height / 6 // radius
+            val pd = key.height / 36 // shadow
 
             val lpd = if (key.getStr("stylepos").contains("l")) -key.width else 0
             val rpd = if (key.getStr("stylepos").contains("r")) key.width else 0
@@ -108,6 +127,7 @@ class KeybView : View, View.OnClickListener {
             )
             canvas.drawRoundRect(recty, ki.toFloat(), ki.toFloat(), paint)
             paint.color = if (key.getStr("bg").length < 1) getColor("keyBackground") else Color.parseColor("#" + key.getStr("bg"))
+            if (key.getBool("mod") && (key.getInt("modmeta") and keybCtl!!.mod) > 0) paint.color = getColor("modBackground")
             recty = RectF(
                 (key.x + lpd + bi).toFloat(),
                 (key.y + tpd + bi).toFloat(),
