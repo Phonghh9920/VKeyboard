@@ -132,6 +132,28 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         }
     }
 
+    class KeyRecord(s: String) {
+        var keyIndex: Int = 0
+        var keyMod: Int = 0
+        var keyState: Int = 0
+        var keyText: String = ""
+
+        init {
+            keyText = s
+        }
+
+        constructor(key: Int, mod: Int, state: Int): this("") {
+            keyIndex = key
+            keyMod = mod
+            keyState = state
+        }
+
+        fun replay(keybCtl: KeybController) {
+            if (keyIndex == 0) keybCtl.onText(keyText)
+            else keybCtl.keyShiftable(keyState, keyIndex, keyMod)
+        }
+    }
+
     class Key(parent: Row?) {
         var codes: IntArray? = null
         var label: CharSequence? = null
