@@ -211,7 +211,12 @@ class KeybController : InputMethodService() {
             setKeyb()
         }
     }
-    private fun keyShiftable(keyAct: Int, key: Int) {
+
+    private fun keyShiftable(ac: Int, ind: Int) {
+        keyShiftable(ac, ind, mod)
+    }
+
+    public fun keyShiftable(keyAct: Int, key: Int, custMod: Int) {
         val ic = currentInputConnection
         val time = System.currentTimeMillis()
         ic.sendKeyEvent(
@@ -220,7 +225,7 @@ class KeybController : InputMethodService() {
                 keyAct,
                 key,
                 0,
-                mod
+                custMod
             )
         )
     }
@@ -355,7 +360,7 @@ class KeybController : InputMethodService() {
         if (currentKey == null) return
         if (currentKey!!.getBool("mod")) {
             if ((mod and currentKey!!.getInt("modmeta")) > 0) {
-                mod = mod xor currentKey!!.getInt("modmeta")
+                mod = mod and currentKey!!.getInt("modmeta").inv()
                 releaseShiftable(currentKey!!.getInt("modkey"))
                 keybView!!.repMod()
             } else {

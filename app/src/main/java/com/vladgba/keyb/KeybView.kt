@@ -184,7 +184,7 @@ class KeybView : View, View.OnClickListener {
     private fun drawKey(canvas: Canvas) {
         canvas.save()
         val key = keybCtl!!.currentKey
-        if (!key!!.extChars!!.isNotEmpty()) return
+        if (!key!!.extChars!!.isNotEmpty() && !key.getBool("clipboard")) return
         val paint = Paint()
         paint.isAntiAlias = true
         paint.textAlign = Paint.Align.CENTER
@@ -232,7 +232,26 @@ class KeybView : View, View.OnClickListener {
         canvas.drawRoundRect(recty, 30f, 30f, paint)
         paint.color = getColor("primaryText")
         val sh = keybCtl!!.shiftPressed()
-        viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, true)
+        if (key.getBool("clipboard")) {
+            paint.textSize = key.height / keybCtl!!.secondaryFont
+            val str = key.clipboard
+            val xi = intArrayOf(x1, x2, x3, x1, x3, x1, x2, x3)
+            val yi = intArrayOf(y1, y1, y1, y2, y2, y3, y3, y3)
+            for (i in 0..7) {
+                paint.color = getColor("previewSelected")
+                if (keybCtl!!.charPos == i + 1) canvas.drawCircle((key.x + xi[i]).toFloat(), (key.y + yi[i]).toFloat(), 50f, paint)
+                paint.color = getColor("previewText")
+                if (str.size <= i || str[i] == null) continue
+                canvas.drawText(
+                     str[i].toString(),
+                     (key.x + xi[i]).toFloat(),
+                     key.y + yi[i] + (paint.textSize - paint.descent()) / 2,
+                     paint
+                )
+            }
+        } else {
+            viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, true)
+        }
         canvas.restore()
     }
 
