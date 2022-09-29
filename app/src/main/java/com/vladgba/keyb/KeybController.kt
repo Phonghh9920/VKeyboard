@@ -13,6 +13,7 @@ import android.content.res.Configuration
 import android.app.UiModeManager
 import android.content.Context
 import android.graphics.Paint
+import android.widget.Toast
 
 class KeybController : InputMethodService() {
     val angPos = intArrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)
@@ -376,6 +377,24 @@ class KeybController : InputMethodService() {
         }
         if (curY == 0 || cursorMoved) return
         if (currentKey!!.getBool("clipboard")) {
+            if (ctrlPressed()) {
+                val tx = currentInputConnection.getSelectedText(0).toString()
+                    if (shiftPressed()) {
+                        for (i in 0 until tx.length) onText("\\u" + tx[i].code.toString(16).toUpperCase().padStart(4, '0'))
+                    } else {
+                        if (tx.indexOf("u") >= 0) {
+                            val arr = tx.split("\\u")
+                            for (i in 1 until arr.size) onText(arr[i].toInt(16).toChar().toString())
+                        } else if (tx.indexOf(" ") >= 0) {
+                            val arr = tx.split(" ")
+                            for (i in 1 until arr.size) onText(arr[i].toInt().toChar().toString())
+                        } else {
+                            onText(tx.toInt().toChar().toString())
+                        }
+                    }
+                
+                return
+            }
             if (charPos < 1) return
             if (shiftPressed()) {
                 currentKey!!.clipboard[charPos - 1] = currentInputConnection.getSelectedText(0)

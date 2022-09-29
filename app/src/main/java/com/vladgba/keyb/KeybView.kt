@@ -209,13 +209,16 @@ class KeybView : View, View.OnClickListener {
         val y1 = key.height / 2 - key.height
         val y2 = key.height / 2
         val y3 = key.height * 2 - key.height / 2
-        val rect = Rect(
-            key.x - key.width,
-            key.y - key.height,
-            key.x + key.width * 2,
-            key.y + key.height * 2
-        )
-        canvas.clipRect(rect)
+
+        if (!key.getBool("clipboard") || keybCtl!!.charPos < 1 && key.clipboard[keybCtl!!.charPos-1] == null) {
+            val rect = Rect(
+                key.x - key.width,
+                key.y - key.height,
+                key.x + key.width * 2,
+                key.y + key.height * 2
+            )
+            canvas.clipRect(rect)
+        }
         val pd = key.height / 36
         paint.color = getColor("keyBorder")
         var recty = RectF(
@@ -235,26 +238,16 @@ class KeybView : View, View.OnClickListener {
         canvas.drawRoundRect(recty, 30f, 30f, paint)
         paint.color = getColor("primaryText")
         val sh = keybCtl!!.shiftPressed()
-        if (key.getBool("clipboard")) {
+        if (key.getBool("clipboard") && keybCtl!!.charPos > 0 && key.clipboard[keybCtl!!.charPos-1] != null) {
             paint.textSize = key.height / keybCtl!!.secondaryFont
-            val str = key.clipboard
-            val xi = intArrayOf(x1, x2, x3, x1, x3, x1, x2, x3)
-            val yi = intArrayOf(y1, y1, y1, y2, y2, y3, y3, y3)
-            for (i in 0..7) {
-                paint.color = getColor("previewSelected")
-                if (keybCtl!!.charPos == i + 1) canvas.drawCircle((key.x + xi[i]).toFloat(), (key.y + yi[i]).toFloat(), 50f, paint)
-                paint.color = getColor("previewText")
-                if (str.size <= i || str[i] == null) continue
-                canvas.drawText(
-                     str[i].toString(),
-                     (key.x + xi[i]).toFloat(),
-                     key.y + yi[i] + (paint.textSize - paint.descent()) / 2,
-                     paint
+            canvas.drawText(
+                    key.clipboard[keybCtl!!.charPos-1].toString(),
+                    width / 2f,
+                    key.height / 5 + (paint.textSize - paint.descent()) / 2,
+                    paint
                 )
-            }
-        } else {
-            viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, true)
         }
+        viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, true)
         canvas.restore()
     }
 
