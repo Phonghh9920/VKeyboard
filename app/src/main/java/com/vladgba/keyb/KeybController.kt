@@ -1,6 +1,7 @@
 package com.vladgba.keyb
 
 import java.io.*
+import java.lang.*
 import java.util.*
 import android.os.*
 import kotlin.math.*
@@ -82,10 +83,8 @@ class KeybController : InputMethodService() {
             br.close()
             Log.d("Keyb", "Done")
             return text.toString()
-        } catch (e: Exception) {
-            Log.d("Keyb", e.message!!)
-            return e.message!!
-        }
+        } catch (e: Exception) { prStack(e) }
+        return ""
     }
     fun loadVars() {
         sett = JsonParse.map(loadKeybLayout("vkeyb/settings"))
@@ -245,15 +244,13 @@ class KeybController : InputMethodService() {
 
     fun onKey(i: Int) {
         if (i == 0) return
-        val ic = currentInputConnection
-        if (i in 97..122) { // a-z
+        if (i in 97..122) { // find a-z for combination support
             clickShiftable(i - 68)
-        } else if (i < 0) {
+        } else if (i < 0) { // keycode
             clickShiftable(-i)
         } else {
             Log.d("key", i.toString())
-            val code = getShifted(i.toChar(), shiftPressed())
-            ic.commitText(code.toString(), 1)
+            onText(getShifted(i.toChar(), shiftPressed()).toString())
         }
     }
 
@@ -262,9 +259,14 @@ class KeybController : InputMethodService() {
         ic.commitText(chars.toString(), 1)
     }
 
+    fun ctrlPressed(): Boolean {
+        return mod and 28672 != 0
+    }
+    
     fun shiftPressed(): Boolean {
         return mod and 193 != 0
     }
+
     fun getShifted(code: Char, sh: Boolean): Char {
         return if (Character.isLetter(code) && sh) code.uppercaseChar() else code
     }
@@ -274,18 +276,20 @@ class KeybController : InputMethodService() {
         if (me.pointerCount > 1) return false
         val x = me.getX(0).toInt()
         val y = me.getY(0).toInt()
-        when (action) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> press(x, y)
-            MotionEvent.ACTION_MOVE -> drag(x, y)
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                release(x, y)
-                volumeUpPress = false
-                currentKey = null
-                shiftModi = false
-                relX = -1
-                relY = -1
+        try{
+            when (action) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> press(x, y)
+                MotionEvent.ACTION_MOVE -> drag(x, y)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                    release(x, y)
+                    volumeUpPress = false
+                    currentKey = null
+                    shiftModi = false
+                    relX = -1
+                    relY = -1
+                }
             }
-        }
+        } catch (e: Exception) { prStack(e) }
         return true
     }
 
@@ -404,7 +408,7 @@ class KeybController : InputMethodService() {
         if (extSz > 0 && extSz >= charPos) {
             val textIndex = currentKey!!.extChars!![charPos - 1]
             if (textIndex == ' ') return
-            textEvent(textIndex.toString())
+            onKey(getFromString(data.toString())[0])
             return
         }
     }
@@ -427,15 +431,16 @@ class KeybController : InputMethodService() {
         else vibrator.vibrate(i)
     }
 
-
-    private fun textEvent(data: String) {
-        onKey(getFromString(data)[0])
-    }
-
     fun getFromString(str: CharSequence): IntArray {
         if (str.length < 2) return intArrayOf(str[0].code)
         val out = IntArray(str.length)
         for (j in str.indices) out[j] = Character.getNumericValue(str[j])
         return out // FIXME: Is it fixes >1 length?
+    }
+
+    public fun prStack(e: Throwable) {
+        var sw: StringWriter = StringWriter();
+        e.printStackTrace(PrintWriter(sw));
+        var toast = Toast.makeText(this, sw.toString(), 10000).show()
     }
 }

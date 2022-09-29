@@ -163,22 +163,25 @@ class KeybView : View, View.OnClickListener {
     }
 
     public override fun onDraw(canvas: Canvas) {
-        if (buffer == null) repaintKeyb(width, height)
-        canvas.drawBitmap(
-            (if ((keybCtl!!.mod and 193) != 0) bufferSh else buffer)!!,
-            0f,
-            0f,
-            null
-        )
-        if (keybCtl!!.currentKey != null) drawKey(canvas)
-        if (keybCtl!!.getVal(keybCtl!!.sett, "debug", "") == "1") {
-            if (keybCtl!!.keybLayout!!.bitmap != null) canvas.drawBitmap(keybCtl!!.keybLayout!!.bitmap!!, 0f, 0f, null)
-            if (keybCtl!!.night) paint.color = 0xffffffff.toInt()
-            else paint.color = 0xff000000.toInt()
-            paint.textSize = 20.toFloat()
-            canvas.drawText(keybCtl!!.mod.toString(2), 10f, 95f, paint)
-            canvas.drawText(keybCtl!!.erro, 20f, 20f, paint)
-        }
+        try{
+            if (buffer == null) repaintKeyb(width, height)
+                
+            canvas.drawBitmap(
+                (if ((keybCtl!!.mod and 193) != 0) bufferSh else buffer)!!,
+                0f,
+                0f,
+                null
+            )
+            if (keybCtl!!.getVal(keybCtl!!.sett, "debug", "") == "1") {
+                if (keybCtl!!.keybLayout!!.bitmap != null) canvas.drawBitmap(keybCtl!!.keybLayout!!.bitmap!!, 0f, 0f, null)
+                if (keybCtl!!.night) paint.color = 0xffffffff.toInt()
+                else paint.color = 0xff000000.toInt()
+                paint.textSize = 20.toFloat()
+                canvas.drawText(keybCtl!!.mod.toString(2), 10f, 95f, paint)
+                canvas.drawText(keybCtl!!.erro, 20f, 20f, paint)
+            }
+            if (keybCtl!!.currentKey != null) drawKey(canvas)
+        } catch (e: Exception) { keybCtl!!.prStack(e)}
     }
 
     private fun drawKey(canvas: Canvas) {
