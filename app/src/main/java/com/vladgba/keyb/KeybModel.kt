@@ -3,11 +3,13 @@ package com.vladgba.keyb
 import org.json.*
 import java.io.*
 import kotlin.math.*
+import android.os.*
 import android.graphics.*
 import android.content.Context
 import android.os.Environment
 import android.text.TextUtils
 import android.util.Log
+import android.widget.Toast
 
 class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
     val rows = ArrayList<Row>()
@@ -149,8 +151,12 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         }
 
         fun replay(keybCtl: KeybController) {
-            if (keyIndex == 0) keybCtl.onText(keyText)
-            else keybCtl.keyShiftable(keyState, keyIndex, keyMod)
+            if (keyIndex == 0){
+                SystemClock.sleep(50); // wait until sendkeyevent is processed
+                keybCtl.onText(keyText)
+            } else {
+                keybCtl.keyShiftable(keyState, keyIndex, keyMod)
+            }
         }
     }
 
@@ -167,6 +173,8 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         var extChars: CharSequence? = ""
         var rand: Array<String?>? = null
         private var options: Map<String, Any>? = null
+        public var record: ArrayList<KeyRecord> = ArrayList()
+        public var recording: Boolean = false
 
         init {
             height = parent!!.height

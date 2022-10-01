@@ -32,6 +32,7 @@ class KeybController : InputMethodService() {
     private var relX = 0
     private var relY = 0
     var currentKey: KeybModel.Key? = null
+    var recKey: KeybModel.Key? = null
     var shiftModi = false
     private var keybView: KeybView? = null
     var dm: DisplayMetrics? = null
@@ -218,6 +219,7 @@ class KeybController : InputMethodService() {
 
     public fun keyShiftable(keyAct: Int, key: Int, custMod: Int) {
         val ic = currentInputConnection
+        if (recKey != null && recKey!!.recording) recKey!!.record.add(KeybModel.KeyRecord(key, custMod, keyAct))
         val time = System.currentTimeMillis()
         ic.sendKeyEvent(
             KeyEvent(
@@ -256,6 +258,11 @@ class KeybController : InputMethodService() {
     }
 
     fun onText(chars: CharSequence) {
+        if (recKey != null && recKey!!.recording) {
+            val rc = recKey!!.record.get(recKey!!.record.size - 1)
+            if (rc.keyText != "") rc.keyText = rc.keyText + chars.toString()
+            else recKey!!.record.add(KeybModel.KeyRecord(chars.toString()))
+        }
         val ic = currentInputConnection
         ic.commitText(chars.toString(), 1)
     }
@@ -376,6 +383,25 @@ class KeybController : InputMethodService() {
             return
         }
         if (curY == 0 || cursorMoved) return
+        if (currentKey!!.getBool("record")) {
+            if (ctrlPressed()) {
+                if (recKey != null) recKey!!.record.clear()
+            } else if (getExtPos(curX, curY) > 0) {
+                if (getExtPos(curX, curY) % 2 == 0) {
+                    recKey = currentKey
+                    recKey!!.recording = true
+                } else {
+                    if (recKey == null) return
+                    recKey!!.recording = false
+                }
+            } else {
+                if (recKey == null || recKey!!.record.size == 0) return
+                for (i in 0 until recKey!!.record.size) {
+                    recKey!!.record.get(i)!!.replay(this)
+                }
+            } 
+            return
+        }
         if (currentKey!!.getBool("clipboard")) {
             if (ctrlPressed()) {
                 val tx = currentInputConnection.getSelectedText(0).toString()
@@ -405,6 +431,13 @@ class KeybController : InputMethodService() {
             return
         }
 
+        val extSz = currentKey!!.extChars!!.length
+        if (extSz > 0 && extSz >= charPos && charPos > 0) {
+            val textIndex = currentKey!!.extChars!![charPos - 1]
+            if (textIndex == ' ') return
+            onKey(getFromString(textIndex.toString())[0])
+            return
+        }
         if (currentKey!!.rand != null && currentKey!!.rand!!.isNotEmpty()) {
             return onText(currentKey!!.rand!![Random().nextInt(currentKey!!.rand!!.size)]!!)
         }
@@ -422,14 +455,6 @@ class KeybController : InputMethodService() {
         }
         if (currentKey!!.repeat && !cursorMoved) return onKey(currentKey!!.codes!![0])
         if (relX < 0 || charPos == 0) return onKey(currentKey?.codes?.get(0) ?: 0)
-
-        val extSz = currentKey!!.extChars!!.length
-        if (extSz > 0 && extSz >= charPos) {
-            val textIndex = currentKey!!.extChars!![charPos - 1]
-            if (textIndex == ' ') return
-            onKey(getFromString(data.toString())[0])
-            return
-        }
     }
 
     private fun getExtPos(x: Int, y: Int): Int {
@@ -460,6 +485,6 @@ class KeybController : InputMethodService() {
     public fun prStack(e: Throwable) {
         var sw: StringWriter = StringWriter();
         e.printStackTrace(PrintWriter(sw));
-        var toast = Toast.makeText(this, sw.toString(), 10000).show()
+        var toast = Toast.makeText(this, sw.toString(), Toast.LENGTH_LONG).show()
     }
 }

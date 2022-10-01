@@ -1,5 +1,7 @@
 package com.vladgba.keyb
 
+import java.io.*
+import java.lang.*
 import java.util.*
 import android.view.*
 import android.graphics.*
@@ -7,6 +9,7 @@ import android.content.Context
 import android.content.res.Resources
 import android.util.AttributeSet
 import android.annotation.SuppressLint
+import android.widget.Toast
 
 class KeybView : View, View.OnClickListener {
     var keybCtl: KeybController? = null
@@ -179,6 +182,7 @@ class KeybView : View, View.OnClickListener {
                 paint.textSize = 20.toFloat()
                 canvas.drawText(keybCtl!!.mod.toString(2), 10f, 95f, paint)
                 canvas.drawText(keybCtl!!.erro, 20f, 20f, paint)
+                if (keybCtl!!.recKey != null) canvas.drawText(keybCtl!!.recKey!!.record.size.toString(), 20f, 20f, paint)
             }
             if (keybCtl!!.currentKey != null) drawKey(canvas)
         } catch (e: Exception) { keybCtl!!.prStack(e)}
@@ -210,7 +214,7 @@ class KeybView : View, View.OnClickListener {
         val y2 = key.height / 2
         val y3 = key.height * 2 - key.height / 2
 
-        if (!key.getBool("clipboard") || keybCtl!!.charPos < 1 && key.clipboard[keybCtl!!.charPos-1] == null) {
+        if (!key.getBool("clipboard") || keybCtl!!.charPos < 1 || key.clipboard[keybCtl!!.charPos-1] == null) {
             val rect = Rect(
                 key.x - key.width,
                 key.y - key.height,
