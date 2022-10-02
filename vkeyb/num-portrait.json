@@ -1,8 +1,5 @@
 {
-    "sett":{
-        "size":"10",
-        "size-land":"20"
-    },
+    "keyCount":"10",
     "keyb":[
         [
             {
@@ -139,20 +136,20 @@
                 "key":"🇧🇬",
                 "ext":"",
                 "lang":"cyrillic",
-                "code":"-2"
-            },
-            {
-                "key":"\u2192",
-                "code":"-61",
-                "repeat":"1",
-                "left":"-67",
-                "right":"32"
+                "stylepos":"r"
             },
             {
                 "key":"🇬🇧",
-                "ext":"",
                 "lang":"latin",
-                "code":"-2"
+                "stylepos":"l"
+            },
+            {
+                "key":"\u21B9",
+                "code":"-61",
+                "repeat":"1",
+                "left":"-67",
+                "right":"32",
+                "vibtick":"30"
             },
             {
                 "key":"*",

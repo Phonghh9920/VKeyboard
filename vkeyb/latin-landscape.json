@@ -1,8 +1,5 @@
 {
-    "sett":{
-        "size":"10",
-        "size-land":"20"
-    },
+    "keyCount":"20",
     "keyb":[
         [
             {
@@ -181,9 +178,15 @@
                 "lang":"num"
             },
             {
-                "key":"latin",
+                "key":"🇧🇬",
+                "ext":"",
                 "lang":"cyrillic",
-                "size":"2"
+                "stylepos":"r"
+            },
+            {
+                "key":"🇬🇧",
+                "lang":"latin",
+                "stylepos":"l"
             },
             {
                 "key":"z",
