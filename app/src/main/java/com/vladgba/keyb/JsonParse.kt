@@ -95,8 +95,7 @@ object JsonParse {
                         i++
                     } else {
                         throw Exception(
-                            "unexpected character \"" + current +
-                                    "\" instead of object value"
+                            "unexpected character \"" + current + "\" instead of object value"
                         )
                     }
                 }

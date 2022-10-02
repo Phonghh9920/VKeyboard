@@ -11,7 +11,7 @@ import android.text.TextUtils
 import android.util.Log
 import android.widget.Toast
 
-class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
+class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJsonData: Boolean) {
     val rows = ArrayList<Row>()
     val keys: ArrayList<Key>
     var shifting = false
@@ -35,11 +35,11 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
         
         keys = ArrayList()
 
-        Log.d("json", jsonName)
+        Log.d("json", jsondat)
         loadx = 0
         loady = 0
         try {
-            val glob = JsonParse.map(loadKeybLayout(jsonName))
+            val glob = JsonParse.map(if (isJsonData) jsondat else loadKeybLayout(jsondat))
             val json = glob.getValue("keyb") as ArrayList<Any>
             val size = (glob.getValue("keyCount") as String).toFloat()
             if (portrait) {
@@ -56,12 +56,17 @@ class KeybModel(context: KeybController, jsonName: String, portrait: Boolean) {
                 loadRow(json[i] as ArrayList<Any>, pos)
             }
             height = loady
+            lastdate = context!!.getLastModified(context!!.currentLayout + if (context.isPortrait) "-portrait" else "-landscape")
             loaded = true
             context.erro = ""
         } catch (e: Exception) {
-            context.erro = e.message!!
+            loaded = false
+            if (!isJsonData) context.erro = e.message!!
             Log.e("PSR", e.message!!)
         }
+    }
+    
+    constructor(context: KeybController, jsonName: String, portrait: Boolean): this(context, jsonName, portrait, false) {
     }
 
     fun loadKeybLayout(name: String): String {

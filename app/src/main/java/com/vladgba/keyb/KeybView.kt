@@ -159,7 +159,8 @@ class KeybView : View, View.OnClickListener {
 
     private fun getColor(n: String): Int {
         if (keybCtl!!.sett.size < 1) return randColor()
-        var curTheme = if (keybCtl!!.night) "colorNight" else "colorDay"
+        val clrSw = keybCtl!!.sett.containsKey("colorSwitch") && keybCtl!!.sett.getValue("colorSwitch") == "1"
+        var curTheme = if (keybCtl!!.night && clrSw) "colorNight" else "colorDay"
         if (!keybCtl!!.sett.containsKey(curTheme)) return randColor()
         var theme = keybCtl!!.sett.getValue(curTheme) as Map<String, Any>
         return if (theme.containsKey(n)) (theme.getValue(n) as String).toLong(16).toInt() else randColor()
@@ -169,12 +170,7 @@ class KeybView : View, View.OnClickListener {
         try{
             if (buffer == null) repaintKeyb(width, height)
                 
-            canvas.drawBitmap(
-                (if ((keybCtl!!.mod and 193) != 0) bufferSh else buffer)!!,
-                0f,
-                0f,
-                null
-            )
+            canvas.drawBitmap((if (keybCtl!!.shiftPressed()) bufferSh else buffer)!!, 0f, 0f, null)
             if (keybCtl!!.getVal(keybCtl!!.sett, "debug", "") == "1") {
                 if (keybCtl!!.keybLayout!!.bitmap != null) canvas.drawBitmap(keybCtl!!.keybLayout!!.bitmap!!, 0f, 0f, null)
                 if (keybCtl!!.night) paint.color = 0xffffffff.toInt()
