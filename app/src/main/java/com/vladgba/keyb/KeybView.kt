@@ -55,9 +55,10 @@ class KeybView : View, View.OnClickListener {
     }
     
     public fun repMod() {
+        if (buffer == null || bufferSh == null) return
         repMods = true
         keybPaint(buffer!!.width, buffer!!.height, buffer!!, false)
-        keybPaint(buffer!!.width, buffer!!.height, bufferSh!!, true)
+        keybPaint(bufferSh!!.width, bufferSh!!.height, bufferSh!!, true)
         repMods = false
         invalidate()
     }
@@ -85,13 +86,12 @@ class KeybView : View, View.OnClickListener {
         }
         val keys = keybCtl!!.keybLayout!!.keys
         for (key in keys) {
-            if (repMods) {
-                if(!key.getBool("mod")) continue
-                else {
-                    paint.color = getColor("keyboardBackground")
-                    val r = RectF(key.x.toFloat(), key.y.toFloat(), key.x.toFloat() + key.width.toFloat(), key.y.toFloat() + key.height.toFloat())
-                    canvas.drawRect(r, paint)
-                }
+            if (repMods && !key.getBool("mod")) continue
+
+            if(key.getBool("mod")) {
+                paint.color = getColor("keyboardBackground")
+                val r = RectF(key.x.toFloat(), key.y.toFloat(), key.x.toFloat() + key.width.toFloat(), key.y.toFloat() + key.height.toFloat())
+                canvas.drawRect(r, paint)
             }
             canvas.save()
 
