@@ -200,7 +200,7 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
                     text = getStr("text")
                 }
 //TODO: height
-                width = parent!!.width * if (getStr("size") == "") 1 else getStr("size").toInt()
+                width = (parent!!.width * if (getStr("size") == "") 1f else getStr("size").toFloat()).toInt()
                 
                 extChars = getStr("ext")
                 if (extChars!!.isNotEmpty()) extChars = padExtChars(extChars, pos)
