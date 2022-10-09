@@ -56,7 +56,6 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
                 loadRow(json[i] as ArrayList<Any>, pos)
             }
             height = loady
-            lastdate = context!!.getLastModified(context!!.currentLayout + if (context.isPortrait) "-portrait" else "-landscape")
             loaded = true
             context.erro = ""
         } catch (e: Exception) {

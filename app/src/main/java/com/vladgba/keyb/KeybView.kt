@@ -177,9 +177,9 @@ class KeybView : View, View.OnClickListener {
                 else paint.color = 0xff000000.toInt()
                 paint.textSize = 20.toFloat()
                 canvas.drawText(keybCtl!!.mod.toString(2), 10f, 95f, paint)
-                canvas.drawText(keybCtl!!.erro, 20f, 20f, paint)
-                if (keybCtl!!.recKey != null) canvas.drawText(keybCtl!!.recKey!!.record.size.toString(), 20f, 20f, paint)
             }
+            canvas.drawText(keybCtl!!.erro, 40f, 20f, paint)
+            if (keybCtl!!.recKey != null) canvas.drawText(keybCtl!!.recKey!!.record.size.toString(), 20f, 20f, paint)
             if (keybCtl!!.currentKey != null) drawKey(canvas)
         } catch (e: Exception) { keybCtl!!.prStack(e)}
     }

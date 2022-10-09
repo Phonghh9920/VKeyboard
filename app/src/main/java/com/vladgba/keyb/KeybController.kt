@@ -49,21 +49,23 @@ class KeybController : InputMethodService() {
     public var sett = emptyMap<String, Any>()
 
     fun reload() {
-        pickLayout(currentLayout + if (isPortrait) "-portrait" else "-landscape")
+        pickLayout(currentLayout, isPortrait)
         if (!keybLayout!!.loaded && !isPortrait) {
-            pickLayout(currentLayout + "-portrait")
+            pickLayout(currentLayout, true)
         }
         loadVars()
         keybView!!.reload()
         setKeyb()
     }
 
-    fun pickLayout(layNm: String) {
-        if (loadedLayouts.containsKey(layNm) && !layoutFileChanged(layNm)) {
-            keybLayout = loadedLayouts.getValue(layNm)
+    fun pickLayout(layNm: String, pt: Boolean) {
+        val lay = layNm + if (pt) "-portrait" else "-landscape"
+        if (loadedLayouts.containsKey(lay) && !layoutFileChanged(lay)) {
+            keybLayout = loadedLayouts.getValue(lay)
         } else {
-            keybLayout = KeybModel(this, "vkeyb/" + layNm, isPortrait)
-            if (keybLayout!!.loaded) loadedLayouts[layNm] = keybLayout!!
+            keybLayout = KeybModel(this, "vkeyb/" + lay, pt)
+            keybLayout!!.lastdate = getLastModified(lay)
+            if (keybLayout!!.loaded) loadedLayouts[lay] = keybLayout!!
         }
     }
 
@@ -97,6 +99,7 @@ class KeybController : InputMethodService() {
         try {
             sett = JsonParse.map(loadKeybLayout("vkeyb/settings"))
         } catch (e: Exception) {
+            prStack(e)
             sett = JsonParse.map(resources.openRawResource(R.raw.settings).bufferedReader().use { it.readText() })
         }
         primaryFont = getVal(sett, "sizePrimary", "2").toFloat()
@@ -106,13 +109,8 @@ class KeybController : InputMethodService() {
         offset = getVal(sett, "extendedSense", "70").toInt()
     }
 
-    override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
-        super.onStartInputView(info, restarting)
-        reload()
-    }
-
     private fun layoutFileChanged(s: String): Boolean {
-        return getLastModified(currentLayout) == 0L || loadedLayouts.getValue(s).lastdate == 0L || (getLastModified(currentLayout) > loadedLayouts.getValue(s).lastdate)
+        return getLastModified(s) == 0L || loadedLayouts.getValue(s).lastdate == 0L || (getLastModified(s) > loadedLayouts.getValue(s).lastdate)
     }
 
     override fun onCreateInputView(): View {
