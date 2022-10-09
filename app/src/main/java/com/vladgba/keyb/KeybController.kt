@@ -461,7 +461,8 @@ class KeybController : InputMethodService() {
             return
         }
         if (currentKey!!.text != null && currentKey!!.text!!.length > 0) {
-            onText(currentKey!!.text!!)
+            if (currentKey!!.text!!.length == 1) onText(getShifted(currentKey!!.text!![0], shiftPressed()).toString())
+            else onText(currentKey!!.text!!)
             if (currentKey!!.getInt("pos") < 0) for (i in 1..-currentKey!!.getInt("pos")) onKey(-21)
             else if (currentKey!!.getInt("pos") > 0) for (i in 1..currentKey!!.text!!.length-currentKey!!.getInt("pos")) onKey(-21)
             else if (currentKey!!.getStr("pos") == "0") for (i in 1..currentKey!!.text!!.length) onKey(-21)
