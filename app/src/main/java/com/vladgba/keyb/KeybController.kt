@@ -72,20 +72,17 @@ class KeybController : InputMethodService() {
     fun getVal(j: Map<String, Any>, s:String, d:String): String {
         if (!j.containsKey(s)) return d
         val r = j.getValue(s) as String
-        if (r.length > 0) return r
-        else return d
+        return if (r.length > 0) r else d
     }
 
     public fun getLastModified(path: String): Long {
-        val f = File(Environment.getExternalStorageDirectory(), "vkeyb/" + path + ".json")
-        return f.lastModified()
+        return File(Environment.getExternalStorageDirectory(), "vkeyb/" + path + ".json").lastModified()
     }
 
     fun loadKeybLayout(name: String): String {
         val sdcard = Environment.getExternalStorageDirectory()
-        val file = File(sdcard, "$name.json")
         val text = StringBuilder()
-        val br = BufferedReader(FileReader(file))
+        val br = BufferedReader(FileReader(File(sdcard, "$name.json")))
         var line: String?
         while (br.readLine().also { line = it } != null) {
             text.append(line)
@@ -275,8 +272,7 @@ class KeybController : InputMethodService() {
                 recKey!!.record.add(KeybModel.KeyRecord(chars.toString()))
             }
         }
-        val ic = currentInputConnection
-        ic.commitText(chars.toString(), 1)
+        currentInputConnection.commitText(chars.toString(), 1)
     }
 
     fun ctrlPressed(): Boolean {
@@ -399,12 +395,12 @@ class KeybController : InputMethodService() {
             if (ctrlPressed()) {
                 if (recKey != null) recKey!!.record.clear()
             } else if (getExtPos(curX, curY) > 0) {
-                if (getExtPos(curX, curY) % 2 == 0) {
-                    recKey = currentKey
-                    recKey!!.recording = true
-                } else {
+                if (getExtPos(curX, curY) % 2 != 0) {
                     if (recKey == null) return
                     recKey!!.recording = false
+                } else {
+                    recKey = currentKey
+                    recKey!!.recording = true
                 }
             } else {
                 if (recKey == null || recKey!!.record.size == 0) return

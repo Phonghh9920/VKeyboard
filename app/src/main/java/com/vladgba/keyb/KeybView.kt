@@ -103,41 +103,36 @@ class KeybView : View, View.OnClickListener {
             val y2 = key.height / 2
             val y3 = key.height - y1
 
-            val rect = Rect(
-                key.x,
-                key.y,
-                key.x + key.width,
-                key.y + key.height
-            )
+            val rect = Rect(key.x, key.y, key.x + key.width, key.y + key.height)
             canvas.clipRect(rect)
             paint.isAntiAlias = true
             paint.textAlign = Paint.Align.CENTER
             paint.color = getColor("keyBorder")
-            val bi = key.height / 16 // padding
-            val ki = key.height / 6 // radius
-            val pd = key.height / 36 // shadow
+            val padding = key.height / 16
+            val radius = key.height / 6
+            val shadow = key.height / 36
 
-            val lpd = if (key.getStr("stylepos").contains("l")) -key.width else 0
-            val rpd = if (key.getStr("stylepos").contains("r")) key.width else 0
-            val tpd = if (key.getStr("stylepos").contains("t")) -key.height else 0
-            val bpd = if (key.getStr("stylepos").contains("b")) key.height else 0
+            val lpad = if (key.getStr("stylepos").contains("l")) -key.width else 0
+            val rpad = if (key.getStr("stylepos").contains("r")) key.width else 0
+            val tpad = if (key.getStr("stylepos").contains("t")) -key.height else 0
+            val bpad = if (key.getStr("stylepos").contains("b")) key.height else 0
 
             var recty = RectF(
-                (key.x + lpd + bi - pd / 3).toFloat(),
-                (key.y + tpd + bi).toFloat(),
-                (key.x + rpd + key.width - bi + pd / 3).toFloat(),
-                (key.y + bpd + key.height - bi + pd).toFloat()
+                (key.x + lpad + padding - shadow / 3).toFloat(),
+                (key.y + tpad + padding).toFloat(),
+                (key.x + rpad + key.width - padding + shadow / 3).toFloat(),
+                (key.y + bpad + key.height - padding + shadow).toFloat()
             )
-            canvas.drawRoundRect(recty, ki.toFloat(), ki.toFloat(), paint)
+            canvas.drawRoundRect(recty, radius.toFloat(), radius.toFloat(), paint)
             paint.color = if (key.getStr("bg").length < 1) getColor("keyBackground") else Color.parseColor("#" + key.getStr("bg"))
             if (key.getBool("mod") && (key.getInt("modmeta") and keybCtl!!.mod) > 0) paint.color = getColor("modBackground")
             recty = RectF(
-                (key.x + lpd + bi).toFloat(),
-                (key.y + tpd + bi).toFloat(),
-                (key.x + rpd + key.width - bi).toFloat(),
-                (key.y + bpd + key.height - bi).toFloat()
+                (key.x + lpad + padding).toFloat(),
+                (key.y + tpad + padding).toFloat(),
+                (key.x + rpad + key.width - padding).toFloat(),
+                (key.y + bpad + key.height - padding).toFloat()
             )
-            canvas.drawRoundRect(recty, ki.toFloat(), ki.toFloat(), paint)
+            canvas.drawRoundRect(recty, radius.toFloat(), radius.toFloat(), paint)
             paint.textSize = key.height / keybCtl!!.secondaryFont
             paint.color = getColor("primaryText")
             viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, false)
@@ -169,12 +164,11 @@ class KeybView : View, View.OnClickListener {
     public override fun onDraw(canvas: Canvas) {
         try{
             if (buffer == null) repaintKeyb(width, height)
-                
+
             canvas.drawBitmap((if (keybCtl!!.shiftPressed()) bufferSh else buffer)!!, 0f, 0f, null)
             if (keybCtl!!.getVal(keybCtl!!.sett, "debug", "") == "1") {
                 if (keybCtl!!.keybLayout!!.bitmap != null) canvas.drawBitmap(keybCtl!!.keybLayout!!.bitmap!!, 0f, 0f, null)
-                if (keybCtl!!.night) paint.color = 0xffffffff.toInt()
-                else paint.color = 0xff000000.toInt()
+                paint.color = if (keybCtl!!.night) 0xffffffff.toInt() else 0xff000000.toInt()
                 paint.textSize = 20.toFloat()
                 canvas.drawText(keybCtl!!.mod.toString(2), 10f, 95f, paint)
             }
@@ -193,12 +187,7 @@ class KeybView : View, View.OnClickListener {
         paint.textAlign = Paint.Align.CENTER
         paint.textSize = key.height / keybCtl!!.primaryFont
         
-        val rectShadow = RectF(
-            0f,
-            0f,
-            width.toFloat(),
-            height.toFloat()
-        )
+        val rectShadow = RectF(0f, 0f, width.toFloat(), height.toFloat())
         paint.color = getColor("shadowColor")
         canvas.drawRect(rectShadow, paint)
         
@@ -211,30 +200,15 @@ class KeybView : View, View.OnClickListener {
         val y3 = key.height * 2 - key.height / 2
 
         if (!key.getBool("clipboard") || keybCtl!!.charPos < 1 || key.clipboard[keybCtl!!.charPos-1] == null) {
-            val rect = Rect(
-                key.x - key.width,
-                key.y - key.height,
-                key.x + key.width * 2,
-                key.y + key.height * 2
-            )
+            val rect = Rect(key.x - key.width, key.y - key.height, key.x + key.width * 2, key.y + key.height * 2)
             canvas.clipRect(rect)
         }
         val pd = key.height / 36
         paint.color = getColor("keyBorder")
-        var recty = RectF(
-            (key.x + x1 * 2).toFloat(),
-            (key.y + y1 * 2).toFloat(),
-            (key.x - x1 + x3).toFloat(),
-            (key.y - y1 + y3).toFloat()
-        )
+        var recty = RectF( (key.x + x1 * 2).toFloat(), (key.y + y1 * 2).toFloat(), (key.x - x1 + x3).toFloat(), (key.y - y1 + y3).toFloat())
         canvas.drawRoundRect(recty, 30f, 30f, paint)
         paint.color = getColor("keyBackground")
-        recty = RectF(
-            (key.x + x1 * 2 + pd / 3).toFloat(),
-            (key.y + y1 * 2).toFloat(),
-            (key.x - x1 + x3 - pd / 3).toFloat(),
-            (key.y - y1 + y3 - pd).toFloat()
-        )
+        recty = RectF((key.x + x1 * 2 + pd / 3).toFloat(), (key.y + y1 * 2).toFloat(), (key.x - x1 + x3 - pd / 3).toFloat(), (key.y - y1 + y3 - pd).toFloat())
         canvas.drawRoundRect(recty, 30f, 30f, paint)
         paint.color = getColor("primaryText")
         val sh = keybCtl!!.shiftPressed()
@@ -251,19 +225,7 @@ class KeybView : View, View.OnClickListener {
         canvas.restore()
     }
 
-    private fun viewExtChars(
-        key: KeybModel.Key?,
-        cv: Canvas,
-        p: Paint,
-        sh: Boolean,
-        x1: Int,
-        x2: Int,
-        x3: Int,
-        y1: Int,
-        y2: Int,
-        y3: Int,
-        h: Boolean
-    ) {
+    private fun viewExtChars(key: KeybModel.Key?, cv: Canvas, p: Paint, sh: Boolean, x1: Int, x2: Int, x3: Int, y1: Int, y2: Int, y3: Int, h: Boolean) {
         if (key!!.extChars == null) return
         val str = key.extChars.toString()
         val xi = intArrayOf(x1, x2, x3, x1, x3, x1, x2, x3)

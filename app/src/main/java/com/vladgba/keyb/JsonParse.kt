@@ -101,67 +101,73 @@ object JsonParse {
                 }
                 Type.OBJECT -> {
                     while (isWhitespace(current) && i++ < end) current = jsonString[i]
-                    
-                    if (current == ',') {
-                        i++
-                    } else if (current == '"') {
-                        currentType = Type.NAME
-                    } else if (current == '}') {
-                        if (!stateStack.isEmpty()) {
-                            val upper = stateStack.pop()
-                            val upperContainer = upper.container
-                            val parentName = upper.propertyName
-                            currentType = upper.type
-                            if (upperContainer is Map<*, *>) {
-                                (upperContainer as MutableMap<String?, Any?>)[parentName] = currentContainer
-                            } else {
-                                (upperContainer as MutableList<Any?>?)!!.add(currentContainer)
-                            }
-                            currentContainer = upperContainer
-                            i++
-                        } else {
-                            return currentContainer
+                    when (current) {
+                        ',' -> i++
+                        '"' -> {
+                            currentType = Type.NAME
                         }
-                    } else if (!isWhitespace(current)) {
-                        throw Exception("unexpected character '" + current + "' where a property name is expected. Missing quotes?")
+                        '}' -> {
+                            if (!stateStack.isEmpty()) {
+                                val upper = stateStack.pop()
+                                val upperContainer = upper.container
+                                val parentName = upper.propertyName
+                                currentType = upper.type
+                                if (upperContainer is Map<*, *>) {
+                                    (upperContainer as MutableMap<String?, Any?>)[parentName] = currentContainer
+                                } else {
+                                    (upperContainer as MutableList<Any?>?)!!.add(currentContainer)
+                                }
+                                currentContainer = upperContainer
+                                i++
+                            } else {
+                                return currentContainer
+                            }
+                        }
+                        else -> {
+                            if (!isWhitespace(current)) {
+                                throw Exception("unexpected character '" + current + "' (" + current.toInt().toString() + ") where a property name is expected. Missing quotes?")
+                            }
+                        }
                     }
                 }
                 Type.ARRAY -> {
                     while (isWhitespace(current) && i++ < end) current = jsonString[i]
-                    
-                    if (current == ',') {
-                        i++
-                    } else if (current == '"') {
-                        currentType = Type.STRING
-                    } else if (current == '{') {
-                        stateStack.push(State(null, currentContainer, Type.ARRAY))
-                        currentType = Type.OBJECT
-                        currentContainer = HashMap<Any, Any>()
-                        i++
-                    } else if (current == '[') {
-                        stateStack.push(State(null, currentContainer, Type.ARRAY))
-                        currentType = Type.ARRAY
-                        currentContainer = ArrayList<Any>()
-                        i++
-                    } else if (current == ']') {
-                        if (!stateStack.isEmpty()) {
-                            val upper = stateStack.pop()
-                            val upperContainer = upper.container
-                            val parentName = upper.propertyName
-                            currentType = upper.type
-                            if (upperContainer is Map<*, *>) {
-                                (upperContainer as MutableMap<String?, Any?>)[parentName] = currentContainer
-                            } else {
-                                (upperContainer as MutableList<Any?>?)!!.add(currentContainer)
-                            }
-                            currentContainer = upperContainer
+                    when (current) {
+                        ',' -> i++
+                        '"' -> currentType = Type.STRING
+                        '{' -> {
+                            stateStack.push(State(null, currentContainer, Type.ARRAY))
+                            currentType = Type.OBJECT
+                            currentContainer = HashMap<Any, Any>()
                             i++
-                        } else {
-                            return currentContainer
                         }
-                    } else {
-                        stateStack.push(State(propertyName, currentContainer, Type.ARRAY))
-                        throw Exception("Unexpected character \"$current\" instead of array value")
+                        '[' -> {
+                            stateStack.push(State(null, currentContainer, Type.ARRAY))
+                            currentType = Type.ARRAY
+                            currentContainer = ArrayList<Any>()
+                            i++
+                        }
+                        ']' -> {
+                            if (!stateStack.isEmpty()) {
+                                val upper = stateStack.pop()
+                                val upperContainer = upper.container
+                                val parentName = upper.propertyName
+                                currentType = upper.type
+                                if (upperContainer is Map<*, *>) {
+                                    (upperContainer as MutableMap<String?, Any?>)[parentName] = currentContainer
+                                } else {
+                                    (upperContainer as MutableList<Any?>?)!!.add(currentContainer)
+                                }
+                                currentContainer = upperContainer
+                                i++
+                            } else {
+                                return currentContainer
+                            }
+                        }
+                        else -> {
+                            stateStack.push(State(propertyName, currentContainer, Type.ARRAY))
+                            throw Exception("Unexpected character \"$current\" instead of array value")
+                        }
                     }
                 }
             }
@@ -213,7 +219,7 @@ object JsonParse {
     }
 
     fun isWhitespace(c: Char): Boolean {
-        return c == ' ' || c == '\n' || c == '\t'
+        return c == ' ' || c == '\n' || c == '\r' || c == '\t'
     }
     
     internal class State(val propertyName: String?, val container: Any?, val type: Type)

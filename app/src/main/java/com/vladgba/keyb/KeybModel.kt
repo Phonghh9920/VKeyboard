@@ -15,10 +15,9 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
     val rows = ArrayList<Row>()
     val keys: ArrayList<Key>
     var shifting = false
-    private var dWidth = 0
-    private var dHeight = 0
-    var height = 0
+    var keySize = 0
     var minWidth = 0
+    var height = 0
     private var loadx = 0
     private var loady = 0
     private var loadcurrentRow: Row? = null
@@ -30,9 +29,7 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
     init {
         loaded = false
         val dm = context.resources.displayMetrics
-        val displayWidth = dm.widthPixels
-        val displayHeight = dm.heightPixels
-        
+
         keys = ArrayList()
 
         Log.d("json", jsondat)
@@ -40,17 +37,10 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
         loady = 0
         try {
             val glob = JsonParse.map(if (isJsonData) jsondat else loadKeybLayout(jsondat))
-            val json = glob.getValue("keyb") as ArrayList<Any>
             val size = (glob.getValue("keyCount") as String).toFloat()
-            if (portrait) {
-                val lowerSize = min(displayWidth, displayHeight)
-                dWidth = (lowerSize / size).toInt()
-                dHeight = dWidth
-            } else {
-                val biggerSize = max(displayWidth, displayHeight)
-                dWidth = ceil((biggerSize / size).toDouble()).toInt()
-                dHeight = dWidth
-            }
+            keySize = (if (portrait) min(dm.widthPixels, dm.heightPixels) / size else ceil((max(dm.widthPixels, dm.heightPixels) / size).toDouble())).toInt()
+
+            val json = glob.getValue("keyb") as ArrayList<Any>
             for (i in 0 until json.size) {
                 val pos = if (i == 0) 0 else if (i == json.size - 1) 6 else 3
                 loadRow(json[i] as ArrayList<Any>, pos)
@@ -62,6 +52,7 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
             loaded = false
             if (!isJsonData) context.erro = e.message!!
             Log.e("PSR", e.message!!)
+            context.prStack(e)
         }
     }
     
@@ -94,7 +85,7 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
         var mr = 0
         for (i in rows.indices) {
             val row = rows[i]
-            if (row.height + mr >= y) {
+            if (row.keySize + mr >= y) {
                 var mk = 0
                 for (j in row.keys.indices) {
                     val k = row.keys[j]
@@ -103,7 +94,7 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
                 }
                 break
             }
-            mr += row.height
+            mr += row.keySize
         }
         return null
     }
@@ -124,17 +115,15 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
             val keypos = pos + if (i == 0) 1 else if (i == row.size - 1) 3 else 2
             loadKey(row[i] as Map<String, Any>, keypos)
         }
-        loady += loadcurrentRow!!.height
+        loady += loadcurrentRow!!.keySize
     }
 
     class Row(parent: KeybModel) {
-        var width: Int
-        var height: Int
+        var keySize: Int
         var keys = ArrayList<Key>()
 
         init {
-            width = parent.dWidth
-            height = parent.dHeight
+            keySize = parent.keySize
         }
     }
 
@@ -155,7 +144,7 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
         }
 
         fun replay(keybCtl: KeybController) {
-            if (keyIndex == 0){
+            if (keyIndex == 0) {
                 SystemClock.sleep(50); // wait until sendkeyevent is processed
                 keybCtl.onText(keyText)
             } else {
@@ -164,13 +153,13 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
         }
     }
 
-    class Key(parent: Row?) {
+    class Key(parent: Row?, x: Int, y: Int, jdata: Map<String, Any>, pos: Int) {
         var codes: IntArray? = null
         var label: CharSequence? = null
-        var width: Int
-        var height: Int
         var x = 0
         var y = 0
+        var width: Int = 0
+        var height: Int = 64
         var repeat = false
         var text: CharSequence? = null
         var clipboard = arrayOfNulls<CharSequence>(8)
@@ -181,11 +170,6 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
         public var recording: Boolean = false
 
         init {
-            height = parent!!.height
-            width = parent.width
-        }
-
-        constructor(parent: Row?, x: Int, y: Int, jdata: Map<String, Any>, pos: Int) : this(parent) {
             this.x = x
             this.y = y
             try {
@@ -199,8 +183,9 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
                     text = getStr("text")
                 }
 //TODO: height
-                width = (parent!!.width * if (getStr("size") == "") 1f else getStr("size").toFloat()).toInt()
-                
+                width = (parent!!.keySize * if (getStr("size") == "") 1f else getStr("size").toFloat()).toInt()
+                height = (parent!!.keySize * if (getStr("size") == "") 1f else getStr("size").toFloat()).toInt()
+
                 extChars = getStr("ext")
                 if (extChars!!.isNotEmpty()) extChars = padExtChars(extChars, pos)
                 repeat = getBool("repeat")
@@ -211,11 +196,10 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
                         rand!![i] = rands[i]
                     }
                 }
+                this.height = parent.keySize
             } catch (e: Exception) {
                 Log.d("Key", e.message!!)
-                return
             }
-            this.height = parent.width
         }
 
         fun getStr(s: String): String {
