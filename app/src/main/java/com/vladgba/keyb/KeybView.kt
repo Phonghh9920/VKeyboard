@@ -1,15 +1,13 @@
 package com.vladgba.keyb
 
-import java.io.*
 import java.lang.*
 import java.util.*
 import android.view.*
 import android.graphics.*
 import android.content.Context
 import android.content.res.Resources
-import android.util.AttributeSet
 import android.annotation.SuppressLint
-import android.widget.Toast
+import android.util.AttributeSet
 
 class KeybView : View, View.OnClickListener {
     var keybCtl: KeybController? = null
@@ -23,6 +21,9 @@ class KeybView : View, View.OnClickListener {
         keybCtl = c
         initResources(c)
     }
+
+    constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
+    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
 
     fun reload() {
         buffer = null
@@ -54,7 +55,7 @@ class KeybView : View, View.OnClickListener {
         res = context.resources
     }
     
-    public fun repMod() {
+    fun repMod() {
         if (buffer == null || bufferSh == null) return
         repMods = true
         keybPaint(buffer!!.width, buffer!!.height, buffer!!, false)
@@ -78,7 +79,7 @@ class KeybView : View, View.OnClickListener {
 
     private fun keybPaint(w: Int, h: Int, b: Bitmap, sh: Boolean) {
         val canvas = Canvas(b)
-        var paint = Paint()
+        val paint = Paint()
         if (!repMods) {
             paint.color = getColor("keyboardBackground")
             val r = RectF(0f, 0f, w.toFloat(), h.toFloat())
@@ -124,7 +125,7 @@ class KeybView : View, View.OnClickListener {
                 (key.y + bpad + key.height - padding + shadow).toFloat()
             )
             canvas.drawRoundRect(recty, radius.toFloat(), radius.toFloat(), paint)
-            paint.color = if (key.getStr("bg").length < 1) getColor("keyBackground") else Color.parseColor("#" + key.getStr("bg"))
+            paint.color = if (key.getStr("bg").isEmpty()) getColor("keyBackground") else Color.parseColor("#" + key.getStr("bg"))
             if (key.getBool("mod") && (key.getInt("modmeta") and keybCtl!!.mod) > 0) paint.color = getColor("modBackground")
             recty = RectF(
                 (key.x + lpad + padding).toFloat(),
@@ -148,16 +149,16 @@ class KeybView : View, View.OnClickListener {
     }
 
     private fun randColor(): Int {
-        var a = arrayOf(0xffff0000, 0xffffff00, 0xffffffff, 0xff00ff00, 0xffff00ff, 0xff00ffff, 0xff0000ff, 0xff000000)
+        val a = arrayOf(0xffff0000, 0xffffff00, 0xffffffff, 0xff00ff00, 0xffff00ff, 0xff00ffff, 0xff0000ff, 0xff000000)
         return (a[Random().nextInt(8)]).toInt()
     }
 
     private fun getColor(n: String): Int {
-        if (keybCtl!!.sett.size < 1) return randColor()
+        if (keybCtl!!.sett.isEmpty()) return randColor()
         val clrSw = keybCtl!!.sett.containsKey("colorSwitch") && keybCtl!!.sett.getValue("colorSwitch") == "1"
-        var curTheme = if (keybCtl!!.night && clrSw) "colorNight" else "colorDay"
+        val curTheme = if (keybCtl!!.night && clrSw) "colorNight" else "colorDay"
         if (!keybCtl!!.sett.containsKey(curTheme)) return randColor()
-        var theme = keybCtl!!.sett.getValue(curTheme) as Map<String, Any>
+        val theme = keybCtl!!.sett.getValue(curTheme) as Map<String, Any>
         return if (theme.containsKey(n)) (theme.getValue(n) as String).toLong(16).toInt() else randColor()
     }
 

@@ -324,7 +324,7 @@ class KeybController : InputMethodService() {
 
         currentKey = keybLayout?.getKey(curX, curY)
         if (currentKey == null) return
-        vibrate("vibtouch")
+        vibrate("vibpress")
         pressX = curX
         pressY = curY
         relX = -1
@@ -381,7 +381,9 @@ class KeybController : InputMethodService() {
         } else if (currentKey!!.extChars!!.isNotEmpty()) {
             relX = curX
             relY = curY
+            val tmpPos = charPos
             charPos = getExtPos(curX, curY)
+            if (charPos != 0 && tmpPos != charPos) vibrate("vibext")
         }
     }
 
@@ -389,66 +391,11 @@ class KeybController : InputMethodService() {
         handler.removeCallbacks(runnable)
         if(longPressed) return
         if (currentKey == null) return
-        if (currentKey!!.getBool("mod")) {
-            if ((mod and currentKey!!.getInt("modmeta")) > 0) {
-                mod = mod and currentKey!!.getInt("modmeta").inv()
-                keyShiftable(KeyEvent.ACTION_UP, currentKey!!.getInt("modkey"))
-                keybView!!.repMod()
-            } else {
-                mod = mod or currentKey!!.getInt("modmeta")
-                keyShiftable(KeyEvent.ACTION_DOWN, currentKey!!.getInt("modkey"))
-                keybView!!.repMod()
-            }
-            return
-        }
+        if (charPos == 0) vibrate("vibrelease")
+        if (modifierAction()) return
         if (curY == 0 || cursorMoved) return
-        if (currentKey!!.getBool("record")) {
-            if (ctrlPressed()) {
-                if (recKey != null) recKey!!.record.clear()
-            } else if (getExtPos(curX, curY) > 0) {
-                if (getExtPos(curX, curY) % 2 != 0) {
-                    if (recKey == null) return
-                    recKey!!.recording = false
-                } else {
-                    recKey = currentKey
-                    recKey!!.recording = true
-                }
-            } else {
-                if (recKey == null || recKey!!.record.size == 0) return
-                for (i in 0 until recKey!!.record.size) {
-                    recKey!!.record.get(i).replay(this)
-                }
-            } 
-            return
-        }
-        if (currentKey!!.getBool("clipboard")) {
-            if (ctrlPressed()) {
-                val tx = currentInputConnection.getSelectedText(0).toString()
-                    if (shiftPressed()) {
-                        for (i in 0 until tx.length) onText("\\u" + tx[i].code.toString(16).uppercase().padStart(4, '0'))
-                    } else {
-                        if (tx.indexOf("u") >= 0) {
-                            val arr = tx.split("\\u")
-                            for (i in 1 until arr.size) onText(arr[i].toInt(16).toChar().toString())
-                        } else if (tx.indexOf(" ") >= 0) {
-                            val arr = tx.split(" ")
-                            for (i in 1 until arr.size) onText(arr[i].toInt().toChar().toString())
-                        } else {
-                            onText(tx.toInt().toChar().toString())
-                        }
-                    }
-                
-                return
-            }
-            if (charPos < 1) return
-            if (shiftPressed()) {
-                currentKey!!.clipboard[charPos - 1] = currentInputConnection.getSelectedText(0)
-            } else {
-                if (currentKey!!.clipboard[charPos - 1] == null) return
-                onText(currentKey!!.clipboard[charPos - 1].toString())
-            }
-            return
-        }
+        if (recordAction(curX, curY)) return
+        if (clipboardAction()) return
 
         val extSz = currentKey!!.extChars!!.length
         if (extSz > 0 && extSz >= charPos && charPos > 0) {
@@ -475,6 +422,74 @@ class KeybController : InputMethodService() {
         }
         if (currentKey!!.repeat && !cursorMoved) return onKey(currentKey!!.codes!![0])
         if (relX < 0 || charPos == 0) return onKey(currentKey?.codes?.get(0) ?: 0)
+    }
+
+    private fun clipboardAction(): Boolean {
+        if (!currentKey!!.getBool("clipboard")) return false
+        try {
+            if (ctrlPressed()) {
+                val tx = currentInputConnection.getSelectedText(0).toString()
+                if (shiftPressed()) {
+                    for (i in 0 until tx.length) onText("\\u" + tx[i].code.toString(16).uppercase().padStart(4, '0'))
+                } else {
+                    if (tx.indexOf("u") >= 0) {
+                        val arr = tx.split("\\u")
+                        for (i in 1 until arr.size) onText(arr[i].toInt(16).toChar().toString())
+                    } else if (tx.indexOf(" ") >= 0) {
+                        val arr = tx.split(" ")
+                        for (i in 1 until arr.size) onText(arr[i].toInt().toChar().toString())
+                    } else {
+                        onText(tx.toInt().toChar().toString())
+                    }
+                }
+                return true
+            }
+            if (charPos < 1) return true
+            if (shiftPressed()) {
+                currentKey!!.clipboard[charPos - 1] = currentInputConnection.getSelectedText(0)
+            } else {
+                if (currentKey!!.clipboard[charPos - 1] == null) return true
+                onText(currentKey!!.clipboard[charPos - 1].toString())
+            }
+        } catch (_: Exception) { }
+        return true
+    }
+
+    private fun recordAction(curX: Int, curY: Int): Boolean {
+        if (!currentKey!!.getBool("record")) return false
+        if (ctrlPressed()) {
+            if (recKey != null) recKey!!.record.clear()
+        } else if (getExtPos(curX, curY) > 0) {
+            if (getExtPos(curX, curY) % 2 != 0) {
+                if (recKey == null) return true
+                recKey!!.recording = false
+            } else {
+                recKey = currentKey
+                recKey!!.recording = true
+            }
+        } else {
+            if (recKey == null || recKey!!.record.size == 0) return true
+            for (i in 0 until recKey!!.record.size) {
+                recKey!!.record.get(i).replay(this)
+            }
+        }
+        return true
+    }
+
+    private fun modifierAction(): Boolean {
+        if (currentKey!!.getBool("mod")) {
+            if ((mod and currentKey!!.getInt("modmeta")) > 0) {
+                mod = mod and currentKey!!.getInt("modmeta").inv()
+                keyShiftable(KeyEvent.ACTION_UP, currentKey!!.getInt("modkey"))
+                keybView!!.repMod()
+            } else {
+                mod = mod or currentKey!!.getInt("modmeta")
+                keyShiftable(KeyEvent.ACTION_DOWN, currentKey!!.getInt("modkey"))
+                keybView!!.repMod()
+            }
+            return true
+        }
+        return false
     }
 
     private fun getExtPos(x: Int, y: Int): Int {
@@ -505,7 +520,7 @@ class KeybController : InputMethodService() {
         if (str.length < 2) return intArrayOf(str[0].code)
         val out = IntArray(str.length)
         for (j in str.indices) out[j] = Character.getNumericValue(str[j])
-        return out // FIXME: Is it fixes >1 length?
+        return out
     }
 
     fun prStack(e: Throwable) {
@@ -513,9 +528,10 @@ class KeybController : InputMethodService() {
         e.printStackTrace(PrintWriter(sw))
         Toast.makeText(this, sw.toString(), Toast.LENGTH_LONG).show()
     }
+
     private fun longPress() {
-        if (currentKey!!.getInt("long") == 0) return
+        if (currentKey!!.getInt("hold") == 0) return
         longPressed = true
-        onKey(currentKey!!.getInt("long"))
+        onKey(currentKey!!.getInt("hold"))
     }
 }
