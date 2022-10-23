@@ -1,22 +1,23 @@
 package com.vladgba.keyb
 
-import java.io.*
-import java.lang.*
-import java.util.*
-import android.os.*
-import kotlin.math.*
-import android.util.*
-import android.view.*
-import android.view.inputmethod.*
-import android.inputmethodservice.InputMethodService
-import android.content.res.Configuration
 import android.app.UiModeManager
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Paint
+import android.inputmethodservice.InputMethodService
+import android.os.*
+import android.util.*
+import android.view.*
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import java.io.*
+import java.util.*
+import kotlin.math.*
 
 class KeybController : InputMethodService() {
-    val angPos = intArrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)
+    private val handler = Handler(Looper.getMainLooper())
+    private val runnable = Runnable { longPress() }
+    private val angPos = intArrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)
     var volumeUpPress = false
     var volumeDownPress = false
     var primaryFont = 0f
@@ -24,6 +25,8 @@ class KeybController : InputMethodService() {
     private var horizontalTick = 0
     private var verticalTick = 0
     private var offset = 0 // extChars
+    private var longPressTime = 0L
+    private var longPressed = false
     private var cursorMoved = false
     private var vibtime: Long = 0
     private var pressX = 0
@@ -46,7 +49,7 @@ class KeybController : InputMethodService() {
     private val loadedLayouts: MutableMap<String, KeybModel> = mutableMapOf()
     var erro = ""
     var mod: Int = 0
-    public var sett = emptyMap<String, Any>()
+    var sett = emptyMap<String, Any>()
 
     fun reload() {
         pickLayout(currentLayout, isPortrait)
@@ -75,7 +78,7 @@ class KeybController : InputMethodService() {
         return if (r.length > 0) r else d
     }
 
-    public fun getLastModified(path: String): Long {
+    fun getLastModified(path: String): Long {
         return File(Environment.getExternalStorageDirectory(), "vkeyb/" + path + ".json").lastModified()
     }
 
@@ -104,6 +107,7 @@ class KeybController : InputMethodService() {
         horizontalTick = getVal(sett, "horizontalSense", "30").toInt()
         verticalTick = getVal(sett, "verticalSense", "50").toInt()
         offset = getVal(sett, "extendedSense", "70").toInt()
+        longPressTime = getVal(sett, "longPressMs", "300").toLong()
     }
 
     private fun layoutFileChanged(s: String): Boolean {
@@ -183,7 +187,7 @@ class KeybController : InputMethodService() {
                     }
                 }
             }
-        } catch (e: Exception) { }
+        } catch (_: Exception) { }
         return super.onKeyDown(keyCode, event)
     }
 
@@ -211,7 +215,7 @@ class KeybController : InputMethodService() {
                     }
                 }
             }
-        } catch (e: Exception) { }
+        } catch (_: Exception) { }
         return super.onKeyUp(keyCode, event)
     }
 
@@ -238,7 +242,7 @@ class KeybController : InputMethodService() {
         keyShiftable(ac, ind, mod)
     }
 
-    public fun keyShiftable(keyAct: Int, key: Int, custMod: Int) {
+    fun keyShiftable(keyAct: Int, key: Int, custMod: Int) {
         val ic = currentInputConnection
         if (recKey != null && recKey!!.recording) recKey!!.record.add(KeybModel.KeyRecord(key, custMod, keyAct))
         val time = System.currentTimeMillis()
@@ -310,6 +314,8 @@ class KeybController : InputMethodService() {
     }
 
     fun press(curX: Int, curY: Int) {
+        longPressed = false
+        handler.postDelayed(runnable, longPressTime)
         if (getVal(sett, "debug", "") == "1") {
             val p = Paint()
             p.color = 0x0fff0000
@@ -332,6 +338,9 @@ class KeybController : InputMethodService() {
     }
 
     private fun drag(curX: Int, curY: Int) {
+        if (!cursorMoved && (curX - horizontalTick > pressX || curX + horizontalTick < pressX || curY - verticalTick > pressY || curY + verticalTick < pressY)) {
+            handler.removeCallbacks(runnable)
+        }
         if (currentKey?.getBool("mod") == true) return
         if (currentKey!!.getBool("clipboard")) {
             charPos = getExtPos(curX, curY)
@@ -377,6 +386,8 @@ class KeybController : InputMethodService() {
     }
 
     private fun release(curX: Int, curY: Int) {
+        handler.removeCallbacks(runnable)
+        if(longPressed) return
         if (currentKey == null) return
         if (currentKey!!.getBool("mod")) {
             if ((mod and currentKey!!.getInt("modmeta")) > 0) {
@@ -477,8 +488,14 @@ class KeybController : InputMethodService() {
         if (vibtime + i > System.currentTimeMillis()) return
         vibtime = System.currentTimeMillis()
         if (i < 10) return
-
-        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager =
+                getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(VIBRATOR_SERVICE) as Vibrator
+        }
         @Suppress("DEPRECATION")
         if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(i, VibrationEffect.DEFAULT_AMPLITUDE))
         else vibrator.vibrate(i)
@@ -491,9 +508,14 @@ class KeybController : InputMethodService() {
         return out // FIXME: Is it fixes >1 length?
     }
 
-    public fun prStack(e: Throwable) {
-        var sw: StringWriter = StringWriter();
-        e.printStackTrace(PrintWriter(sw));
+    fun prStack(e: Throwable) {
+        val sw = StringWriter()
+        e.printStackTrace(PrintWriter(sw))
         Toast.makeText(this, sw.toString(), Toast.LENGTH_LONG).show()
+    }
+    private fun longPress() {
+        if (currentKey!!.getInt("long") == 0) return
+        longPressed = true
+        onKey(currentKey!!.getInt("long"))
     }
 }
