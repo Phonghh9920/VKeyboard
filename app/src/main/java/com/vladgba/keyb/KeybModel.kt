@@ -206,7 +206,7 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
         }
 
         fun getBool(s: String): Boolean {
-            return options!!.containsKey(s) && !arrayOf(0, "", null).contains(options!!.getValue(s) as String)
+            return options!!.containsKey(s) && !arrayOf(0, null, "", " ").contains(options!!.getValue(s) as String)
         }
 
         private fun padExtChars(chars: CharSequence?, pos: Int): CharSequence {

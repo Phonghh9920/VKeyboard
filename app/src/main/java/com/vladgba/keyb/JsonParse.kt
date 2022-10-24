@@ -125,7 +125,7 @@ object JsonParse {
                         }
                         else -> {
                             if (!isWhitespace(current)) {
-                                throw Exception("unexpected character '" + current + "' (" + current.toInt().toString() + ") where a property name is expected. Missing quotes?")
+                                throw Exception("unexpected character '" + current + "' (" + current.code.toString() + ") where a property name is expected. Missing quotes?")
                             }
                         }
                     }
@@ -183,10 +183,10 @@ object JsonParse {
             var c = jsonString[i]
             if (c == '"') {
                 builder.append(jsonString.substring(fieldStart + 1, i))
-                val `val` = ExtractedString()
-                `val`.sourceEnd = i
-                `val`.str = builder.toString()
-                return `val`
+                val estr = ExtractedString()
+                estr.sourceEnd = i
+                estr.str = builder.toString()
+                return estr
             } else if (c == '\\') {
                 builder.append(jsonString.substring(fieldStart + 1, i))
                 c = jsonString[i + 1]
@@ -219,7 +219,7 @@ object JsonParse {
     }
 
     fun isWhitespace(c: Char): Boolean {
-        return c == ' ' || c == '\n' || c == '\r' || c == '\t'
+        return arrayOf(' ', '\n', '\r', '\t').contains(c)
     }
     
     internal class State(val propertyName: String?, val container: Any?, val type: Type)

@@ -53,9 +53,7 @@ class KeybController : InputMethodService() {
 
     fun reload() {
         pickLayout(currentLayout, isPortrait)
-        if (!keybLayout!!.loaded && !isPortrait) {
-            pickLayout(currentLayout, true)
-        }
+        if (!keybLayout!!.loaded && !isPortrait) pickLayout(currentLayout, true)
         loadVars()
         keybView!!.reload()
         setKeyb()
@@ -396,6 +394,9 @@ class KeybController : InputMethodService() {
         if (curY == 0 || cursorMoved) return
         if (recordAction(curX, curY)) return
         if (clipboardAction()) return
+        if (currentKey!!.getBool("app")) {
+            this.startActivity(this.packageManager.getLaunchIntentForPackage(currentKey!!.getStr("app")))
+        }
 
         val extSz = currentKey!!.extChars!!.length
         if (extSz > 0 && extSz >= charPos && charPos > 0) {
