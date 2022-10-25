@@ -350,31 +350,14 @@ class KeybController : InputMethodService() {
                 cursorMoved = true
             }
             while (true) {
-                if (curX - horizontalTick > relX) {
-                    relX += horizontalTick
-                    onKey(if (currentKey!!.getInt("right") == 0) currentKey!!.codes!![0] else currentKey!!.getInt("right"))
-                    vibrate("vibtick")
-                    continue
-                }
-                if (curX + horizontalTick < relX) {
-                    relX -= horizontalTick
-                    onKey(if (currentKey!!.getInt("left") == 0) currentKey!!.codes!![0] else currentKey!!.getInt("left"))
-                    vibrate("vibtick")
-                    continue
-                }
-                if (curY - verticalTick > relY) {
-                    relY += verticalTick
-                    onKey(if (currentKey!!.getInt("bottom") == 0) currentKey!!.codes!![0] else currentKey!!.getInt("bottom"))
-                    vibrate("vibtick")
-                    continue
-                }
-                if (curY + verticalTick < relY) {
-                    relY -= verticalTick
-                    onKey(if (currentKey!!.getInt("top") == 0) currentKey!!.codes!![0] else currentKey!!.getInt("top"))
-                    vibrate("vibtick")
-                    continue
-                }
-                break
+                if (curX - horizontalTick > relX) relX = swipeAction(relX, horizontalTick, "right", true)
+                else if (curX + horizontalTick < relX) relX = swipeAction(relX, horizontalTick, "left", false)
+                else break
+            }
+            while (true) {
+                if (curY - verticalTick > relY) relY = swipeAction(relY, verticalTick, "bottom", true)
+                else if (curY + verticalTick < relY) relY = swipeAction(relY, verticalTick, "top", false)
+                else break
             }
         } else if (currentKey!!.extChars!!.isNotEmpty()) {
             relX = curX
@@ -385,6 +368,13 @@ class KeybController : InputMethodService() {
         }
     }
 
+    private fun swipeAction(r: Int, t: Int, s: String, add: Boolean): Int {
+        onKey(if (currentKey!!.getInt(s) == 0) currentKey!!.codes!![0] else currentKey!!.getInt(s))
+        vibrate("vibtick")
+        return if (add) r + t else r - t
+
+    }
+
     private fun release(curX: Int, curY: Int) {
         handler.removeCallbacks(runnable)
         if(longPressed) return
@@ -392,11 +382,8 @@ class KeybController : InputMethodService() {
         if (charPos == 0) vibrate("vibrelease")
         if (modifierAction()) return
         if (curY == 0 || cursorMoved) return
-        if (recordAction(curX, curY)) return
-        if (clipboardAction()) return
-        if (currentKey!!.getBool("app")) {
-            this.startActivity(this.packageManager.getLaunchIntentForPackage(currentKey!!.getStr("app")))
-        }
+        if (recordAction(curX, curY) || clipboardAction() || shiftAction()) return
+        if (currentKey!!.getBool("app")) this.startActivity(this.packageManager.getLaunchIntentForPackage(currentKey!!.getStr("app")))
 
         val extSz = currentKey!!.extChars!!.length
         if (extSz > 0 && extSz >= charPos && charPos > 0) {
@@ -425,6 +412,17 @@ class KeybController : InputMethodService() {
         if (relX < 0 || charPos == 0) return onKey(currentKey?.codes?.get(0) ?: 0)
     }
 
+    private fun shiftAction(): Boolean {
+        if (!currentKey!!.getBool("shift")) return false
+        val tx = currentInputConnection.getSelectedText(0).toString()
+        val res = when (currentKey!!.getStr("shift")) {
+            "upperAll" -> tx.uppercase(Locale.ROOT)
+            "lowerAll" -> tx.lowercase(Locale.ROOT)
+            else -> ""
+        }
+        if (res != "") onText(res)
+        return true
+    }
     private fun clipboardAction(): Boolean {
         if (!currentKey!!.getBool("clipboard")) return false
         try {
