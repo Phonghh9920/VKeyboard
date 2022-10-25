@@ -413,14 +413,16 @@ class KeybController : InputMethodService() {
     }
 
     private fun shiftAction(): Boolean {
-        if (!currentKey!!.getBool("shift")) return false
-        val tx = currentInputConnection.getSelectedText(0).toString()
-        val res = when (currentKey!!.getStr("shift")) {
-            "upperAll" -> tx.uppercase(Locale.ROOT)
-            "lowerAll" -> tx.lowercase(Locale.ROOT)
-            else -> ""
-        }
-        if (res != "") onText(res)
+        if (!shiftPressed() || !currentKey!!.getBool("shift")) return false
+        try {
+            val tx = currentInputConnection.getSelectedText(0).toString()
+            val res = when (currentKey!!.getStr("shift")) {
+                "upperAll" -> tx.uppercase(Locale.ROOT)
+                "lowerAll" -> tx.lowercase(Locale.ROOT)
+                else -> ""
+            }
+            if (res != "") onText(res)
+        } catch (_: Exception) {}
         return true
     }
     private fun clipboardAction(): Boolean {
