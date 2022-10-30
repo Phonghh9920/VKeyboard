@@ -15,8 +15,10 @@ import java.util.*
 import kotlin.math.*
 
 class KeybController : InputMethodService() {
+    val points = arrayOfNulls<Key>(10)
+    var lastpid = 0
     private val handler = Handler(Looper.getMainLooper())
-    private val runnable = Runnable { longPress() }
+
     private val angPos = intArrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)
     var volumeUpPress = false
     var volumeDownPress = false
@@ -26,16 +28,8 @@ class KeybController : InputMethodService() {
     private var verticalTick = 0
     private var offset = 0 // extChars
     private var longPressTime = 0L
-    private var longPressed = false
-    private var cursorMoved = false
     private var vibtime: Long = 0
-    private var pressX = 0
-    private var pressY = 0
-    var charPos = 0
-    private var relX = 0
-    private var relY = 0
-    var currentKey: KeybModel.Key? = null
-    var recKey: KeybModel.Key? = null
+    var recKey: Key? = null
     var shiftModi = false
     private var keybView: KeybView? = null
     var dm: DisplayMetrics? = null
@@ -242,7 +236,7 @@ class KeybController : InputMethodService() {
 
     fun keyShiftable(keyAct: Int, key: Int, custMod: Int) {
         val ic = currentInputConnection
-        if (recKey != null && recKey!!.recording) recKey!!.record.add(KeybModel.KeyRecord(key, custMod, keyAct))
+        if (recKey != null && recKey!!.recording) recKey!!.record.add(Key.Record(key, custMod, keyAct))
         val time = System.currentTimeMillis()
         ic.sendKeyEvent(KeyEvent(time, time, keyAct, key, 0, custMod))
     }
@@ -260,7 +254,7 @@ class KeybController : InputMethodService() {
             clickShiftable(-i)
         } else {
             Log.d("key", i.toString())
-            onText(getShifted(i.toChar(), shiftPressed()).toString())
+            onText(getShifted(i, shiftPressed()).toChar().toString())
         }
     }
 
@@ -269,9 +263,9 @@ class KeybController : InputMethodService() {
             if (recKey!!.record.size > 0) {
                 val rc = recKey!!.record.get(recKey!!.record.size - 1)
                 if (rc.keyText != "") rc.keyText = rc.keyText + chars.toString()
-                else recKey!!.record.add(KeybModel.KeyRecord(chars.toString()))
+                else recKey!!.record.add(Key.Record(chars.toString()))
             } else {
-                recKey!!.record.add(KeybModel.KeyRecord(chars.toString()))
+                recKey!!.record.add(Key.Record(chars.toString()))
             }
         }
         currentInputConnection.commitText(chars.toString(), 1)
@@ -285,138 +279,147 @@ class KeybController : InputMethodService() {
         return mod and 193 != 0
     }
 
-    fun getShifted(code: Char, sh: Boolean): Char {
-        return if (Character.isLetter(code) && sh) code.uppercaseChar() else code
+    fun getShifted(code: Int, sh: Boolean): Int {
+        return if (Character.isLetter(code) && sh) code.toChar().uppercaseChar().code else code
     }
 
     fun onTouchEvent(me: MotionEvent): Boolean {
-        val action = me.action
-        if (me.pointerCount > 1) return false
-        val x = me.getX(0).toInt()
-        val y = me.getY(0).toInt()
+        val action = me.getActionMasked()
+        val pointerIndex: Int = me.getActionIndex()
+        val pid: Int = me.getPointerId(pointerIndex)
+
+        val x = me.getX(pointerIndex).toInt()
+        val y = me.getY(pointerIndex).toInt()
         try{
             when (action) {
-                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> press(x, y)
-                MotionEvent.ACTION_MOVE -> drag(x, y)
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                    release(x, y)
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> press(x, y, pid)
+                MotionEvent.ACTION_MOVE -> drag(x, y, pid)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
+                    release(x, y, pid)
                     volumeUpPress = false
-                    currentKey = null
                     shiftModi = false
-                    relX = -1
-                    relY = -1
+                    points[pid] = null
                 }
             }
         } catch (e: Exception) { prStack(e) }
         return true
     }
 
-    fun press(curX: Int, curY: Int) {
-        longPressed = false
-        handler.postDelayed(runnable, longPressTime)
+    fun press(curX: Int, curY: Int, pid: Int) {
         if (getVal(sett, "debug", "") == "1") {
             val p = Paint()
             p.color = 0x0fff0000
             keybLayout!!.canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
         }
 
-        currentKey = keybLayout?.getKey(curX, curY)
+        val currentKey = keybLayout?.getKey(curX, curY)
         if (currentKey == null) return
-        vibrate("vibpress")
-        pressX = curX
-        pressY = curY
-        relX = -1
-        relY = -1
-        cursorMoved = false
-        charPos = 0
-        if (currentKey!!.repeat || currentKey!!.extChars!!.isNotEmpty()) {
-            relX = curX
-            relY = curY
+        lastpid = pid
+        points[pid] = currentKey
+        if (modifierAction(currentKey)) return
+        handler.postDelayed(currentKey.runnable, longPressTime)
+        currentKey.longPressed = false
+        vibrate(currentKey, "vibpress")
+        currentKey.pressX = curX
+        currentKey.pressY = curY
+        currentKey.relX = -1
+        currentKey.relY = -1
+        currentKey.cursorMoved = false
+        currentKey.charPos = 0
+        if (currentKey.repeat || currentKey.extChars!!.isNotEmpty()) {
+            currentKey.relX = curX
+            currentKey.relY = curY
         }
     }
 
-    private fun drag(curX: Int, curY: Int) {
-        if (!cursorMoved && (curX - horizontalTick > pressX || curX + horizontalTick < pressX || curY - verticalTick > pressY || curY + verticalTick < pressY)) {
-            handler.removeCallbacks(runnable)
+    private fun drag(curX: Int, curY: Int, pid: Int) {
+        if (points[pid] == null) return
+        val curkey = points[pid]!!
+        if (!curkey.cursorMoved && (curX - horizontalTick > curkey.pressX || curX + horizontalTick < curkey.pressX || curY - verticalTick > curkey.pressY || curY + verticalTick < curkey.pressY)) {
+            handler.removeCallbacks(curkey.runnable)
         }
-        if (currentKey?.getBool("mod") == true) return
-        if (currentKey!!.getBool("clipboard")) {
-            charPos = getExtPos(curX, curY)
+        if (curkey.getBool("mod") == true) return
+        if (curkey.getBool("clipboard")) {
+            curkey.charPos = getExtPos(curX, curY, curkey)
             return
         }
-        if (relX < 0) return // Not have alternative behavior
-        if (currentKey!!.repeat) {
-            if (!cursorMoved && (curX - horizontalTick > pressX || curX + horizontalTick < pressX || curY - verticalTick > pressY || curY + verticalTick < pressY)) {
-                cursorMoved = true
+        if (curkey.relX < 0) return // Not have alternative behavior
+        if (curkey.repeat) {
+            if (!curkey.cursorMoved && (curX - horizontalTick > curkey.pressX || curX + horizontalTick < curkey.pressX || curY - verticalTick > curkey.pressY || curY + verticalTick < curkey.pressY)) {
+                curkey.cursorMoved = true
             }
             while (true) {
-                if (curX - horizontalTick > relX) relX = swipeAction(relX, horizontalTick, "right", true)
-                else if (curX + horizontalTick < relX) relX = swipeAction(relX, horizontalTick, "left", false)
+                if (curX - horizontalTick > curkey.relX) curkey.relX = swipeAction(curkey, curkey.relX, horizontalTick, "right", true)
+                else if (curX + horizontalTick < curkey.relX) curkey.relX = swipeAction(curkey, curkey.relX, horizontalTick, "left", false)
                 else break
             }
             while (true) {
-                if (curY - verticalTick > relY) relY = swipeAction(relY, verticalTick, "bottom", true)
-                else if (curY + verticalTick < relY) relY = swipeAction(relY, verticalTick, "top", false)
+                if (curY - verticalTick > curkey.relY) curkey.relY = swipeAction(curkey, curkey.relY, verticalTick, "bottom", true)
+                else if (curY + verticalTick < curkey.relY) curkey.relY = swipeAction(curkey, curkey.relY, verticalTick, "top", false)
                 else break
             }
-        } else if (currentKey!!.extChars!!.isNotEmpty()) {
-            relX = curX
-            relY = curY
-            val tmpPos = charPos
-            charPos = getExtPos(curX, curY)
-            if (charPos != 0 && tmpPos != charPos) vibrate("vibext")
+        } else if (curkey.extChars!!.isNotEmpty()) {
+            curkey.relX = curX
+            curkey.relY = curY
+            val tmpPos = curkey.charPos
+            curkey.charPos = getExtPos(curX, curY, curkey)
+            if (curkey.charPos != 0 && tmpPos != curkey.charPos) vibrate(curkey, "vibext")
         }
     }
 
-    private fun swipeAction(r: Int, t: Int, s: String, add: Boolean): Int {
-        onKey(if (currentKey!!.getInt(s) == 0) currentKey!!.codes!![0] else currentKey!!.getInt(s))
-        vibrate("vibtick")
+    private fun swipeAction(curkey: Key, r: Int, t: Int, s: String, add: Boolean): Int {
+        onKey(if (curkey.getInt(s) == 0) curkey.codes!![0] else curkey.getInt(s))
+        vibrate(curkey, "vibtick")
         return if (add) r + t else r - t
 
     }
 
-    private fun release(curX: Int, curY: Int) {
-        handler.removeCallbacks(runnable)
-        if(longPressed) return
-        if (currentKey == null) return
-        if (charPos == 0) vibrate("vibrelease")
-        if (modifierAction()) return
-        if (curY == 0 || cursorMoved) return
-        if (recordAction(curX, curY) || clipboardAction() || shiftAction()) return
-        if (currentKey!!.getBool("app")) this.startActivity(this.packageManager.getLaunchIntentForPackage(currentKey!!.getStr("app")))
+    private fun release(curX: Int, curY: Int, pid: Int) {
+        if (points[pid] == null) return
+        val curkey = points[pid]!!
+        handler.removeCallbacks(curkey.runnable)
+        if(curkey.longPressed) return
+        if (curkey.getBool("mod")) {
+            if (lastpid != pid) modifierAction(curkey)
+            return
+        }
+        if (curkey.charPos == 0) vibrate(curkey, "vibrelease")
+        if (curY == 0 || curkey.cursorMoved) return
+        if (recordAction(curX, curY, curkey) || clipboardAction(curkey) || shiftAction(curkey)) return
+        if (curkey.getBool("app")) this.startActivity(this.packageManager.getLaunchIntentForPackage(curkey.getStr("app")))
 
-        val extSz = currentKey!!.extChars!!.length
-        if (extSz > 0 && extSz >= charPos && charPos > 0) {
-            val textIndex = currentKey!!.extChars!![charPos - 1]
+        val extSz = curkey.extChars!!.length
+        if (extSz > 0 && extSz >= curkey.charPos && curkey.charPos > 0) {
+            val textIndex = curkey.extChars!![curkey.charPos - 1]
             if (textIndex == ' ') return
             onKey(getFromString(textIndex.toString())[0])
             return
         }
-        if (currentKey!!.rand != null && currentKey!!.rand!!.isNotEmpty()) {
-            return onText(currentKey!!.rand!![Random().nextInt(currentKey!!.rand!!.size)]!!)
+        if (curkey.rand != null && curkey.rand!!.isNotEmpty()) {
+            return onText(curkey.rand!![Random().nextInt(curkey.rand!!.size)]!!)
         }
-        if (currentKey!!.getStr("lang").isNotEmpty() && charPos == 0) {
-            currentLayout = currentKey!!.getStr("lang")
+        if (curkey.getStr("lang").isNotEmpty() && curkey.charPos == 0) {
+            currentLayout = curkey.getStr("lang")
             reload()
             return
         }
-        if (currentKey!!.text != null && currentKey!!.text!!.length > 0) {
-            if (currentKey!!.text!!.length == 1) onText(getShifted(currentKey!!.text!![0], shiftPressed()).toString())
-            else onText(currentKey!!.text!!)
-            if (currentKey!!.getInt("pos") < 0) for (i in 1..-currentKey!!.getInt("pos")) onKey(-21)
-            else if (currentKey!!.getInt("pos") > 0) for (i in 1..currentKey!!.text!!.length-currentKey!!.getInt("pos")) onKey(-21)
-            else if (currentKey!!.getStr("pos") == "0") for (i in 1..currentKey!!.text!!.length) onKey(-21)
+        if (curkey.text != null && curkey.text!!.length > 0) {
+            if (curkey.text!!.length == 1) onText(getShifted(curkey.text!![0].code, shiftPressed()).toChar().toString())
+            else onText(curkey.text!!)
+            if (curkey.getInt("pos") < 0) for (i in 1..-curkey.getInt("pos")) onKey(-21)
+            else if (curkey.getInt("pos") > 0) for (i in 1..curkey.text!!.length - curkey.getInt("pos")) onKey(-21)
+            else if (curkey.getStr("pos") == "0") for (i in 1..curkey.text!!.length) onKey(-21)
             return
         }
-        if (currentKey!!.repeat && !cursorMoved) return onKey(currentKey!!.codes!![0])
-        if (relX < 0 || charPos == 0) return onKey(currentKey?.codes?.get(0) ?: 0)
+        if (curkey.repeat && !curkey.cursorMoved) return onKey(curkey.codes!![0])
+        if (curkey.relX < 0 || curkey.charPos == 0) return onKey(curkey.codes?.get(0) ?: 0)
     }
 
-    private fun shiftAction(): Boolean {
-        if (!shiftPressed() || !currentKey!!.getBool("shift")) return false
+    private fun shiftAction(curkey: Key): Boolean {
+        if (!shiftPressed() || !curkey.getBool("shift")) return false
         try {
             val tx = currentInputConnection.getSelectedText(0).toString()
-            val res = when (currentKey!!.getStr("shift")) {
+            val res = when (curkey.getStr("shift")) {
                 "upperAll" -> tx.uppercase(Locale.ROOT)
                 "lowerAll" -> tx.lowercase(Locale.ROOT)
                 else -> ""
@@ -425,8 +428,8 @@ class KeybController : InputMethodService() {
         } catch (_: Exception) {}
         return true
     }
-    private fun clipboardAction(): Boolean {
-        if (!currentKey!!.getBool("clipboard")) return false
+    private fun clipboardAction(curkey: Key): Boolean {
+        if (!curkey.getBool("clipboard")) return false
         try {
             if (ctrlPressed()) {
                 val tx = currentInputConnection.getSelectedText(0).toString()
@@ -445,23 +448,23 @@ class KeybController : InputMethodService() {
                 }
                 return true
             }
-            if (charPos < 1) return true
+            if (curkey.charPos < 1) return true
             if (shiftPressed()) {
-                currentKey!!.clipboard[charPos - 1] = currentInputConnection.getSelectedText(0)
+                curkey.clipboard[curkey.charPos - 1] = currentInputConnection.getSelectedText(0)
             } else {
-                if (currentKey!!.clipboard[charPos - 1] == null) return true
-                onText(currentKey!!.clipboard[charPos - 1].toString())
+                if (curkey.clipboard[curkey.charPos - 1] == null) return true
+                onText(curkey.clipboard[curkey.charPos - 1].toString())
             }
         } catch (_: Exception) { }
         return true
     }
 
-    private fun recordAction(curX: Int, curY: Int): Boolean {
-        if (!currentKey!!.getBool("record")) return false
+    private fun recordAction(curX: Int, curY: Int, currentKey: Key): Boolean {
+        if (!currentKey.getBool("record")) return false
         if (ctrlPressed()) {
             if (recKey != null) recKey!!.record.clear()
-        } else if (getExtPos(curX, curY) > 0) {
-            if (getExtPos(curX, curY) % 2 != 0) {
+        } else if (getExtPos(curX, curY, currentKey) > 0) {
+            if (getExtPos(curX, curY, currentKey) % 2 != 0) {
                 if (recKey == null) return true
                 recKey!!.recording = false
             } else {
@@ -477,15 +480,15 @@ class KeybController : InputMethodService() {
         return true
     }
 
-    private fun modifierAction(): Boolean {
-        if (currentKey!!.getBool("mod")) {
-            if ((mod and currentKey!!.getInt("modmeta")) > 0) {
-                mod = mod and currentKey!!.getInt("modmeta").inv()
-                keyShiftable(KeyEvent.ACTION_UP, currentKey!!.getInt("modkey"))
+    private fun modifierAction(currentKey: Key): Boolean {
+        if (currentKey.getBool("mod")) {
+            if ((mod and currentKey.getInt("modmeta")) > 0) {
+                mod = mod and currentKey.getInt("modmeta").inv()
+                keyShiftable(KeyEvent.ACTION_UP, currentKey.getInt("modkey"))
                 keybView!!.repMod()
             } else {
-                mod = mod or currentKey!!.getInt("modmeta")
-                keyShiftable(KeyEvent.ACTION_DOWN, currentKey!!.getInt("modkey"))
+                mod = mod or currentKey.getInt("modmeta")
+                keyShiftable(KeyEvent.ACTION_DOWN, currentKey.getInt("modkey"))
                 keybView!!.repMod()
             }
             return true
@@ -493,14 +496,14 @@ class KeybController : InputMethodService() {
         return false
     }
 
-    private fun getExtPos(x: Int, y: Int): Int {
-        if (abs(pressX - x) < offset && abs(pressY - y) < offset) return 0
-        val angle = Math.toDegrees(atan2((pressY - y).toDouble(), (pressX - x).toDouble()))
+    private fun getExtPos(x: Int, y: Int, curkey: Key): Int {
+        if (abs(curkey.pressX - x) < offset && abs(curkey.pressY - y) < offset) return 0
+        val angle = Math.toDegrees(atan2((curkey.pressY - y).toDouble(), (curkey.pressX - x).toDouble()))
         return angPos[ceil(((if (angle < 0) 360.0 else 0.0) + angle + 22.5) / 45.0).toInt() - 1]
     }
 
-    fun vibrate(s: String) {
-        val i = if (currentKey!!.getInt(s) > 0) currentKey!!.getInt(s).toLong() else 0
+    fun vibrate(curkey: Key, s: String) {
+        val i = if (curkey.getInt(s) > 0) curkey.getInt(s).toLong() else 0L
         if (vibtime + i > System.currentTimeMillis()) return
         vibtime = System.currentTimeMillis()
         if (i < 10) return
@@ -530,9 +533,9 @@ class KeybController : InputMethodService() {
         Toast.makeText(this, sw.toString(), Toast.LENGTH_LONG).show()
     }
 
-    private fun longPress() {
-        if (currentKey!!.getInt("hold") == 0) return
-        longPressed = true
-        onKey(currentKey!!.getInt("hold"))
+    fun longPress(curkey: Key) {
+        if (curkey.getInt("hold") == 0) return
+        curkey.longPressed = true
+        onKey(curkey.getInt("hold"))
     }
 }

@@ -1,13 +1,15 @@
 package com.vladgba.keyb
 
-import java.lang.*
-import java.util.*
-import android.view.*
-import android.graphics.*
+import kotlin.collections.*
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Resources
-import android.annotation.SuppressLint
+import android.graphics.*
 import android.util.AttributeSet
+import android.util.Log
+import android.view.*
+import java.lang.*
+import java.util.*
 
 class KeybView : View, View.OnClickListener {
     var keybCtl: KeybController? = null
@@ -136,12 +138,12 @@ class KeybView : View, View.OnClickListener {
             canvas.drawRoundRect(recty, radius.toFloat(), radius.toFloat(), paint)
             paint.textSize = key.height / keybCtl!!.secondaryFont
             paint.color = getColor("primaryText")
-            viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, false)
+            viewExtChars(keybCtl!!.points[keybCtl!!.lastpid], key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, false)
             paint.color = getColor("primaryText")
             paint.textSize = key.height / keybCtl!!.primaryFont
             
             if (key.label != null) {
-                val lbl = if (sh && key.label!!.length < 2) keybCtl?.getShifted(key.label!![0],true).toString() else key.label.toString()
+                val lbl = if (sh && key.label!!.length < 2) keybCtl?.getShifted(key.label!![0].code,true)!!.toChar().toString() else key.label.toString()
                 canvas.drawText( lbl, key.x + key.width / 2f, key.y + (key.height + paint.textSize - paint.descent()) / 2, paint)
             }
             canvas.restore()
@@ -175,14 +177,17 @@ class KeybView : View, View.OnClickListener {
             }
             canvas.drawText(keybCtl!!.erro, 40f, 20f, paint)
             if (keybCtl!!.recKey != null) canvas.drawText(keybCtl!!.recKey!!.record.size.toString(), 20f, 20f, paint)
-            if (keybCtl!!.currentKey != null) drawKey(canvas)
+            drawKey(canvas)
         } catch (e: Exception) { keybCtl!!.prStack(e)}
     }
 
     private fun drawKey(canvas: Canvas) {
         canvas.save()
-        val key = keybCtl!!.currentKey
-        if (!key!!.extChars!!.isNotEmpty() && !key.getBool("clipboard")) return
+        if (keybCtl!!.points[keybCtl!!.lastpid] == null) return
+        val curkey = keybCtl!!.points[keybCtl!!.lastpid]!!
+
+        val key = curkey
+        if (!key.extChars!!.isNotEmpty() && !key.getBool("clipboard")) return
         val paint = Paint()
         paint.isAntiAlias = true
         paint.textAlign = Paint.Align.CENTER
@@ -200,7 +205,8 @@ class KeybView : View, View.OnClickListener {
         val y2 = key.height / 2
         val y3 = key.height * 2 - key.height / 2
 
-        if (!key.getBool("clipboard") || keybCtl!!.charPos < 1 || key.clipboard[keybCtl!!.charPos-1] == null) {
+
+        if (!key.getBool("clipboard") || curkey.charPos < 1 || key.clipboard[curkey.charPos-1] == null) {
             val rect = Rect(key.x - key.width, key.y - key.height, key.x + key.width * 2, key.y + key.height * 2)
             canvas.clipRect(rect)
         }
@@ -213,20 +219,20 @@ class KeybView : View, View.OnClickListener {
         canvas.drawRoundRect(recty, 30f, 30f, paint)
         paint.color = getColor("primaryText")
         val sh = keybCtl!!.shiftPressed()
-        if (key.getBool("clipboard") && keybCtl!!.charPos > 0 && key.clipboard[keybCtl!!.charPos-1] != null) {
+        if (key.getBool("clipboard") && curkey.charPos > 0 && key.clipboard[curkey.charPos-1] != null) {
             paint.textSize = key.height / keybCtl!!.secondaryFont
             canvas.drawText(
-                    key.clipboard[keybCtl!!.charPos-1].toString(),
+                    key.clipboard[curkey.charPos-1].toString(),
                     width / 2f,
                     key.height / 5 + (paint.textSize - paint.descent()) / 2,
                     paint
                 )
         }
-        viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, true)
+        viewExtChars(curkey, key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, true)
         canvas.restore()
     }
 
-    private fun viewExtChars(key: KeybModel.Key?, cv: Canvas, p: Paint, sh: Boolean, x1: Int, x2: Int, x3: Int, y1: Int, y2: Int, y3: Int, h: Boolean) {
+    private fun viewExtChars(curkey: Key?, key: Key?, cv: Canvas, p: Paint, sh: Boolean, x1: Int, x2: Int, x3: Int, y1: Int, y2: Int, y3: Int, h: Boolean) {
         if (key!!.extChars == null) return
         val str = key.extChars.toString()
         val xi = intArrayOf(x1, x2, x3, x1, x3, x1, x2, x3)
@@ -234,7 +240,7 @@ class KeybView : View, View.OnClickListener {
         for (i in 0..7) {
             p.color = getColor("previewSelected")
             if (h) {
-                if (keybCtl!!.charPos == i + 1) cv.drawCircle((key.x + xi[i]).toFloat(), (key.y + yi[i]).toFloat(), 50f, p)
+                if (curkey != null && curkey.charPos == i + 1) cv.drawCircle((key.x + xi[i]).toFloat(), (key.y + yi[i]).toFloat(), 50f, p)
                 p.color = getColor("previewText")
             } else {
                 p.color = getColor("secondaryText")
@@ -242,23 +248,23 @@ class KeybView : View, View.OnClickListener {
             viewChar(str, i, xi[i], yi[i], cv, key, p, sh)
         }
         if (!h) return
-        if (keybCtl!!.charPos == 0) {
+        if (curkey != null && curkey.charPos == 0) {
             p.color = getColor("previewSelected")
             cv.drawCircle((key.x + x2).toFloat(), (key.y + y2).toFloat(), 60f, p)
         }
         p.color = getColor("previewText")
         cv.drawText(
-            if (sh && key.label!!.length < 2) keybCtl?.getShifted(key.label!![0], true).toString() else key.label.toString(),
+            if (sh && key.label!!.length < 2) keybCtl?.getShifted(key.label!![0].code, true)!!.toChar().toString() else key.label.toString(),
             (key.x + x2).toFloat(),
             key.y + y2 + (p.textSize - p.descent()) / 2,
             p
         )
     }
 
-    private fun viewChar(str: String, pos: Int, ox: Int, oy: Int, canvas: Canvas, key: KeybModel.Key?, paint: Paint, sh: Boolean) {
+    private fun viewChar(str: String, pos: Int, ox: Int, oy: Int, canvas: Canvas, key: Key?, paint: Paint, sh: Boolean) {
         if (str.length <= pos || str[pos] == ' ') return
         canvas.drawText(
-            keybCtl?.getShifted(str[pos], sh).toString(),
+            keybCtl?.getShifted(str[pos].code, sh)!!.toChar().toString(),
             (key!!.x + ox).toFloat(),
             key.y + oy + (paint.textSize - paint.descent()) / 2,
             paint
