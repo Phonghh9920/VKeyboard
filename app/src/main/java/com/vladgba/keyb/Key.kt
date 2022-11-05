@@ -5,6 +5,7 @@ import android.util.Log
 import kotlin.math.min
 
 class Key(c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<String, Any>, pos: Int) {
+    var extCharsRaw = ""
     var codes: IntArray? = null
     var label: CharSequence? = null
     var x = 0
@@ -14,7 +15,7 @@ class Key(c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<
     var repeat = false
     var text: CharSequence? = null
     var clipboard = arrayOfNulls<CharSequence>(8)
-    var extChars: CharSequence? = ""
+    var extChars = arrayOfNulls<CharSequence>(8)
     var rand: Array<String?>? = null
     private var options: Map<String, Any>? = null
     var record: ArrayList<Record> = ArrayList()
@@ -46,8 +47,9 @@ class Key(c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<
             width = (parent!!.keySize * if (getStr("size") == "") 1f else getStr("size").toFloat()).toInt()
             height = (parent!!.keySize * if (getStr("size") == "") 1f else getStr("size").toFloat()).toInt()
 
-            extChars = getStr("ext")
-            if (extChars!!.isNotEmpty()) extChars = padExtChars(extChars, pos)
+            parseExt(getStr("ext"))
+            //if (extChars!!.isNotEmpty()) extChars = padExtChars(extChars, pos)
+
             repeat = getBool("repeat")
             val rands = if (options!!.containsKey("rand")) (options!!.getValue("rand") as ArrayList<String>) else null
             if (rands != null) {
@@ -59,6 +61,32 @@ class Key(c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<
             this.height = parent.keySize
         } catch (e: Exception) {
             Log.d("Key", e.message!!)
+        }
+    }
+
+    private fun parseExt(str: String) {
+        extCharsRaw = str
+        var hi = -1
+        for (i in str.indices) {
+            Log.d("Symbole", str[i].code.toString())
+            if (str[i].code > 255) {
+                Log.d("Symbol", "is UTF")
+                if (str[i].code < 56320) {
+                    Log.d("Symbol", "and first")
+                    hi++
+                } else {
+                    Log.d("Symbol", "and second")
+                }
+            } else {
+                Log.d("Symbol", "ASCII: " + str[i])
+                hi++
+            }
+
+            if (extChars[hi] == null) {
+                extChars[hi] = str[hi].toString()
+            } else {
+                extChars[hi] = "" + extChars[hi] + str[i].toString()
+            }
         }
     }
 

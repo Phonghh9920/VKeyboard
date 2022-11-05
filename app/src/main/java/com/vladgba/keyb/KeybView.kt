@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.*
 import java.lang.*
 import java.util.*
+import kotlin.math.*
 
 class KeybView : View, View.OnClickListener {
     var keybCtl: KeybController? = null
@@ -187,7 +188,7 @@ class KeybView : View, View.OnClickListener {
         val curkey = keybCtl!!.points[keybCtl!!.lastpid]!!
 
         val key = curkey
-        if (!key.extChars!!.isNotEmpty() && !key.getBool("clipboard")) return
+        if (!key.extCharsRaw.isNotEmpty() && !key.getBool("clipboard")) return
         val paint = Paint()
         paint.isAntiAlias = true
         paint.textAlign = Paint.Align.CENTER
@@ -233,14 +234,14 @@ class KeybView : View, View.OnClickListener {
     }
 
     private fun viewExtChars(curkey: Key?, key: Key?, cv: Canvas, p: Paint, sh: Boolean, x1: Int, x2: Int, x3: Int, y1: Int, y2: Int, y3: Int, h: Boolean) {
-        if (key!!.extChars == null) return
-        val str = key.extChars.toString()
+        if (key!!.extCharsRaw == "") return
+        val str = key.extChars
         val xi = intArrayOf(x1, x2, x3, x1, x3, x1, x2, x3)
         val yi = intArrayOf(y1, y1, y1, y2, y2, y3, y3, y3)
         for (i in 0..7) {
             p.color = getColor("previewSelected")
             if (h) {
-                if (curkey != null && curkey.charPos == i + 1) cv.drawCircle((key.x + xi[i]).toFloat(), (key.y + yi[i]).toFloat(), 50f, p)
+                if (curkey != null && curkey.charPos == i + 1) cv.drawCircle((key.x + xi[i]).toFloat(), (key.y + yi[i]).toFloat(), min(key.width, key.height) * 0.6f, p)
                 p.color = getColor("previewText")
             } else {
                 p.color = getColor("secondaryText")
@@ -250,7 +251,7 @@ class KeybView : View, View.OnClickListener {
         if (!h) return
         if (curkey != null && curkey.charPos == 0) {
             p.color = getColor("previewSelected")
-            cv.drawCircle((key.x + x2).toFloat(), (key.y + y2).toFloat(), 60f, p)
+            cv.drawCircle((key.x + x2).toFloat(), (key.y + y2).toFloat(), min(key.width, key.height) * 0.4f, p)
         }
         p.color = getColor("previewText")
         cv.drawText(
@@ -261,10 +262,15 @@ class KeybView : View, View.OnClickListener {
         )
     }
 
-    private fun viewChar(str: String, pos: Int, ox: Int, oy: Int, canvas: Canvas, key: Key?, paint: Paint, sh: Boolean) {
-        if (str.length <= pos || str[pos] == ' ') return
+    private fun viewChar(str: Array<CharSequence?>, pos: Int, ox: Int, oy: Int, canvas: Canvas, key: Key?, paint: Paint, sh: Boolean) {
+        if (str.size <= pos || str[pos] == null || str[pos] == " ") return
+        val lbl = if (str[pos]?.length == 1) {
+            keybCtl?.getShifted(str[pos]!!.get(0).code, sh)!!.toChar().toString()
+        } else {
+            str[pos]
+        }
         canvas.drawText(
-            keybCtl?.getShifted(str[pos].code, sh)!!.toChar().toString(),
+            lbl.toString(),
             (key!!.x + ox).toFloat(),
             key.y + oy + (paint.textSize - paint.descent()) / 2,
             paint

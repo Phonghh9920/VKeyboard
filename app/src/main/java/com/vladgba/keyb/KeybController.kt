@@ -388,11 +388,12 @@ class KeybController : InputMethodService() {
         if (recordAction(curX, curY, curkey) || clipboardAction(curkey) || shiftAction(curkey)) return
         if (curkey.getBool("app")) this.startActivity(this.packageManager.getLaunchIntentForPackage(curkey.getStr("app")))
 
-        val extSz = curkey.extChars!!.length
+        val extSz = curkey.extCharsRaw!!.length
         if (extSz > 0 && extSz >= curkey.charPos && curkey.charPos > 0) {
             val textIndex = curkey.extChars!![curkey.charPos - 1]
-            if (textIndex == ' ') return
-            onKey(getFromString(textIndex.toString())[0])
+            if (textIndex == null || textIndex == " ") return
+            if (textIndex.length > 1) onText(textIndex)
+            else onKey(getFromString(textIndex.toString())[0])
             return
         }
         if (curkey.rand != null && curkey.rand!!.isNotEmpty()) {
