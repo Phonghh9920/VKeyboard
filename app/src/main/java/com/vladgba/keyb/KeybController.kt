@@ -391,7 +391,7 @@ class KeybController : InputMethodService() {
         val extSz = curkey.extCharsRaw!!.length
         if (extSz > 0 && extSz >= curkey.charPos && curkey.charPos > 0) {
             val textIndex = curkey.extChars!![curkey.charPos - 1]
-            if (textIndex == null || textIndex == " ") return
+            if (textIndex.isNullOrEmpty() || textIndex == " ") return
             if (textIndex.length > 1) onText(textIndex)
             else onKey(getFromString(textIndex.toString())[0])
             return

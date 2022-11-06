@@ -45,10 +45,10 @@ class Key(c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<
             }
 
             width = (parent!!.keySize * if (getStr("size") == "") 1f else getStr("size").toFloat()).toInt()
-            height = (parent!!.keySize * if (getStr("size") == "") 1f else getStr("size").toFloat()).toInt()
+            height = parent!!.keySize
 
             parseExt(getStr("ext"))
-            //if (extChars!!.isNotEmpty()) extChars = padExtChars(extChars, pos)
+            if (!extChars[0].isNullOrEmpty()) padExtChars(pos)
 
             repeat = getBool("repeat")
             val rands = if (options!!.containsKey("rand")) (options!!.getValue("rand") as ArrayList<String>) else null
@@ -68,25 +68,8 @@ class Key(c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<
         extCharsRaw = str
         var hi = -1
         for (i in str.indices) {
-            Log.d("Symbole", str[i].code.toString())
-            if (str[i].code > 255) {
-                Log.d("Symbol", "is UTF")
-                if (str[i].code < 56320) {
-                    Log.d("Symbol", "and first")
-                    hi++
-                } else {
-                    Log.d("Symbol", "and second")
-                }
-            } else {
-                Log.d("Symbol", "ASCII: " + str[i])
-                hi++
-            }
-
-            if (extChars[hi] == null) {
-                extChars[hi] = str[hi].toString()
-            } else {
-                extChars[hi] = "" + extChars[hi] + str[i].toString()
-            }
+            if (str[i].code < 56320) hi++
+            extChars[hi] = "" + (extChars[hi] ?: "") + str[i].toString()
         }
     }
 
@@ -102,27 +85,29 @@ class Key(c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<
         return options!!.containsKey(s) && !arrayOf(0, null, "", " ").contains(options!!.getValue(s) as String)
     }
 
-    private fun padExtChars(chars: CharSequence?, pos: Int): CharSequence {
+    private fun padExtChars(pos: Int) {
+        Log.d("pos", pos.toString())
+        val nExtChars = arrayOfNulls<CharSequence>(8)
         val modes = arrayOf(
-            intArrayOf(-4, 1, -1, 2),
-            intArrayOf(-3, 5),
-            intArrayOf(-3, 1, -1, 2),
-            intArrayOf(-1, 2, -1, 1, 2),
-            intArrayOf(8),
-            intArrayOf(2, -1, 1, -1, 2),
-            intArrayOf(-1, 2, -1, 1),
-            intArrayOf(5),
-            intArrayOf(2, -1, 1)
+            intArrayOf(5, 7, 8),
+            intArrayOf(4, 5, 6, 7, 8),
+            intArrayOf(4, 6, 7),
+            intArrayOf(2, 3, 5, 7, 8),
+            intArrayOf(1, 2, 3, 4, 5, 6, 7, 8),
+            intArrayOf(1, 2, 4, 6, 7),
+            intArrayOf(2, 3, 5),
+            intArrayOf(1, 2, 3, 4, 5),
+            intArrayOf(1, 2, 4)
         )
         val sb = StringBuilder()
         val curv = modes[pos - 1]
-        var p = 0
-        for (i in curv) {
-            if (p >= chars!!.length) break
-            if (i > 0) sb.append(chars.subSequence(p, min(i.let { p += it; p }, chars.length)))
-            else sb.append(String(CharArray(-i)).replace("\u0000", " "))
+        for (i in 0 until curv.size) {
+            Log.d("pos = ", i.toString())
+            Log.d("pos2 = ", curv[i].toString())
+            if (i >= extChars.size) break
+            nExtChars[curv[i]-1] = extChars[i]
         }
-        return sb.toString()
+        extChars = nExtChars
     }
 
     class Record(s: String) {
