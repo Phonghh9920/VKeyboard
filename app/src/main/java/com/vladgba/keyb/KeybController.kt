@@ -326,7 +326,7 @@ class KeybController : InputMethodService() {
         currentKey.relY = -1
         currentKey.cursorMoved = false
         currentKey.charPos = 0
-        if (currentKey.repeat || currentKey.extChars!!.isNotEmpty()) {
+        if (currentKey.repeat || currentKey.extCharsRaw.isNotEmpty()) {
             currentKey.relX = curX
             currentKey.relY = curY
         }
@@ -358,7 +358,7 @@ class KeybController : InputMethodService() {
                 else if (curY + verticalTick < curkey.relY) curkey.relY = swipeAction(curkey, curkey.relY, verticalTick, "top", false)
                 else break
             }
-        } else if (curkey.extChars!!.isNotEmpty()) {
+        } else if (curkey.extCharsRaw.isNotEmpty()) {
             curkey.relX = curX
             curkey.relY = curY
             val tmpPos = curkey.charPos
@@ -388,9 +388,9 @@ class KeybController : InputMethodService() {
         if (recordAction(curX, curY, curkey) || clipboardAction(curkey) || shiftAction(curkey)) return
         if (curkey.getBool("app")) this.startActivity(this.packageManager.getLaunchIntentForPackage(curkey.getStr("app")))
 
-        val extSz = curkey.extCharsRaw!!.length
+        val extSz = curkey.extCharsRaw.length
         if (extSz > 0 && extSz >= curkey.charPos && curkey.charPos > 0) {
-            val textIndex = curkey.extChars!![curkey.charPos - 1]
+            val textIndex = curkey.extChars[curkey.charPos - 1]
             if (textIndex.isNullOrEmpty() || textIndex == " ") return
             if (textIndex.length > 1) onText(textIndex)
             else onKey(getFromString(textIndex.toString())[0])
@@ -451,10 +451,10 @@ class KeybController : InputMethodService() {
             }
             if (curkey.charPos < 1) return true
             if (shiftPressed()) {
-                curkey.clipboard[curkey.charPos - 1] = currentInputConnection.getSelectedText(0)
+                curkey.extChars[curkey.charPos - 1] = currentInputConnection.getSelectedText(0)
             } else {
-                if (curkey.clipboard[curkey.charPos - 1] == null) return true
-                onText(curkey.clipboard[curkey.charPos - 1].toString())
+                if (curkey.extChars[curkey.charPos - 1] == null) return true
+                onText(curkey.extChars[curkey.charPos - 1].toString())
             }
         } catch (_: Exception) { }
         return true
@@ -537,6 +537,7 @@ class KeybController : InputMethodService() {
     fun longPress(curkey: Key) {
         if (curkey.getInt("hold") == 0) return
         curkey.longPressed = true
-        onKey(curkey.getInt("hold"))
+        if (curkey.getStr("hold").length > 1) onText(curkey.getStr("hold"))
+        else onKey(curkey.getInt("hold"))
     }
 }

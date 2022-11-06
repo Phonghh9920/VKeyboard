@@ -14,7 +14,6 @@ class Key(c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<
     var height: Int = 64
     var repeat = false
     var text: CharSequence? = null
-    var clipboard = arrayOfNulls<CharSequence>(8)
     var extChars = arrayOfNulls<CharSequence>(8)
     var rand: Array<String?>? = null
     private var options: Map<String, Any>? = null
@@ -54,9 +53,7 @@ class Key(c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<
             val rands = if (options!!.containsKey("rand")) (options!!.getValue("rand") as ArrayList<String>) else null
             if (rands != null) {
                 rand = arrayOfNulls(rands.size)
-                for (i in 0 until rands.size) {
-                    rand!![i] = rands[i]
-                }
+                for (i in 0 until rands.size) rand!![i] = rands[i]
             }
             this.height = parent.keySize
         } catch (e: Exception) {
@@ -78,7 +75,11 @@ class Key(c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<
     }
 
     fun getInt(s: String): Int {
-        return if (options!!.containsKey(s)) (options!!.getValue(s) as String).toInt() else 0
+        try {
+            return if (options!!.containsKey(s)) (options!!.getValue(s) as String).toInt() else 0
+        } catch (_: Exception) {
+            return (options!!.getValue(s) as String)[0].code
+        }
     }
 
     fun getBool(s: String): Boolean {

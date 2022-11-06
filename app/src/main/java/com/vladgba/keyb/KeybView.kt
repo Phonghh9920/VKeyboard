@@ -207,7 +207,7 @@ class KeybView : View, View.OnClickListener {
         val y3 = key.height * 2 - key.height / 2
 
 
-        if (!key.getBool("clipboard") || curkey.charPos < 1 || key.clipboard[curkey.charPos-1] == null) {
+        if (!key.getBool("clipboard") || curkey.charPos < 1 || key.extChars[curkey.charPos-1] == null) {
             val rect = Rect(key.x - key.width, key.y - key.height, key.x + key.width * 2, key.y + key.height * 2)
             canvas.clipRect(rect)
         }
@@ -220,10 +220,10 @@ class KeybView : View, View.OnClickListener {
         canvas.drawRoundRect(recty, 30f, 30f, paint)
         paint.color = getColor("primaryText")
         val sh = keybCtl!!.shiftPressed()
-        if (key.getBool("clipboard") && curkey.charPos > 0 && key.clipboard[curkey.charPos-1] != null) {
+        if (key.getBool("clipboard") && curkey.charPos > 0 && key.extChars[curkey.charPos-1] != null) {
             paint.textSize = key.height / keybCtl!!.secondaryFont
             canvas.drawText(
-                    key.clipboard[curkey.charPos-1].toString(),
+                    key.extChars[curkey.charPos-1].toString(),
                     width / 2f,
                     key.height / 5 + (paint.textSize - paint.descent()) / 2,
                     paint
