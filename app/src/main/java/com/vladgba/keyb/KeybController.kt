@@ -247,13 +247,13 @@ class KeybController : InputMethodService() {
     }
 
     fun onKey(i: Int) {
+        Log.d("key", i.toString())
         if (i == 0) return
         if (i in 97..122) { // find a-z for combination support
             clickShiftable(i - 68)
         } else if (i < 0) { // keycode
             clickShiftable(-i)
         } else {
-            Log.d("key", i.toString())
             onText(getShifted(i, shiftPressed()).toChar().toString())
         }
     }
@@ -379,17 +379,17 @@ class KeybController : InputMethodService() {
         val curkey = points[pid]!!
         handler.removeCallbacks(curkey.runnable)
         if(curkey.longPressed) return
+        if (curkey.charPos == 0) vibrate(curkey, "vibrelease")
         if (curkey.getBool("mod")) {
             if (lastpid != pid) modifierAction(curkey)
             return
         }
-        if (curkey.charPos == 0) vibrate(curkey, "vibrelease")
         if (curY == 0 || curkey.cursorMoved) return
         if (recordAction(curX, curY, curkey) || clipboardAction(curkey) || shiftAction(curkey)) return
         if (curkey.getBool("app")) this.startActivity(this.packageManager.getLaunchIntentForPackage(curkey.getStr("app")))
 
         val extSz = curkey.extCharsRaw.length
-        if (extSz > 0 && extSz >= curkey.charPos && curkey.charPos > 0) {
+        if (extSz > 0 && curkey.charPos > 0) {
             val textIndex = curkey.extChars[curkey.charPos - 1]
             if (textIndex.isNullOrEmpty() || textIndex == " ") return
             if (textIndex.length > 1) onText(textIndex)
