@@ -129,14 +129,16 @@ class KeybController : KeybLayout() {
     }
 
     private fun predict() {
-        val data = currentInputConnection.getTextBeforeCursor(100, 0).toString()
-        val last = data.split(" ").last()
-        Log.d("Dict", last)
-        Log.d("Dict", (predict!!.get(last)?:"").toString())
-        val repl = predict!!.get(last) as CharSequence? ?:return
+        try {
+            val data = currentInputConnection.getTextBeforeCursor(100, 0).toString()
+            val last = data.split(" ").last()
+            Log.d("Dict", last)
+            Log.d("Dict", (predict!!.get(last) ?: "").toString())
+            val repl = predict!!.get(last) as CharSequence? ?: return
 
-        currentInputConnection.deleteSurroundingText(last.length, 0)
-        currentInputConnection.commitText(repl, 1)
+            currentInputConnection.deleteSurroundingText(last.length, 0)
+            currentInputConnection.commitText(repl, 1)
+        } catch (_: Exception) { }
     }
 
     fun onText(chars: CharSequence) {

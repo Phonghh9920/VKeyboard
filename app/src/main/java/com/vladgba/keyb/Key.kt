@@ -1,9 +1,11 @@
 package com.vladgba.keyb
 
 import android.graphics.Paint
+import android.media.MediaPlayer
 import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
+import android.widget.Toast
 import kotlin.collections.ArrayList
 import java.util.*
 import kotlin.math.*
@@ -24,6 +26,8 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
     private var options: Map<String, Any>? = null
     var record: ArrayList<Record> = ArrayList()
     var recording: Boolean = false
+    val mpr = MediaPlayer()
+    val mr = MediaPlayer()
 
     var pressX = 0
     var pressY = 0
@@ -60,6 +64,24 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
                 rand = arrayOfNulls(rands.size)
                 for (i in 0 until rands.size) rand!![i] = rands[i]
             }
+
+            if (getBool("sound-p")) {
+                try {
+                    mpr.setDataSource(getStr("sound-p"))
+                    mpr.prepare()
+                } catch (e: Exception) {
+                    Toast.makeText(ctx, "Sound file " + getStr("sound-p") + "not loaded", Toast.LENGTH_LONG).show()
+                }
+            }
+            if (getBool("sound-r")) {
+                try {
+                    mr.setDataSource(getStr("sound-r"))
+                    mr.prepare()
+                } catch (e: Exception) {
+                    Toast.makeText(ctx, "Sound file " + getStr("sound-r") + " not loaded", Toast.LENGTH_LONG).show()
+                }
+            }
+
             this.height = parent.keySize
         } catch (e: Exception) {
             Log.d("Key", e.message!!)
@@ -274,6 +296,12 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
             c.keybLayout!!.canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
         }
 
+        if (mpr.isPlaying) {
+            mpr.stop()
+            mpr.prepare()
+        }
+        mpr.start()
+
         if (modifierAction()) return
         c.handler.postDelayed(runnable, c.longPressTime)
         longPressed = false
@@ -306,6 +334,11 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
     }
 
     fun release(curX: Int, curY: Int, pid: Int) {
+        if (mr.isPlaying) {
+            mr.stop()
+            mr.prepare()
+        }
+        mr.start()
         if(longPressed) return
         if (charPos == 0) c.vibrate(this, "vibrelease")
         if (getBool("mod")) {
