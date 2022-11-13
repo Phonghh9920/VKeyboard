@@ -28,13 +28,13 @@
         "shadowColor":"66000000",
         "modBackground":"440099ff"
     },
-    "redefineVolumeActions":"1",
-    "volumeUp":{
+    "redefineHardwareActions":"1",
+    "24":{
         "key":"113",
         "mod":"12288",
         "switchKeyb":"1"
     },
-    "volumeDown":{
+    "25":{
         "key":"59",
         "mod":"129"
     }
