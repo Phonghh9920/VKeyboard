@@ -9,7 +9,7 @@ abstract class KeybLayout() : KeybConf() {
     var currentLayout = "latin"
     var defLayoutJson = ""
     var keybLayout: KeybModel? = null
-    val loadedLayouts: MutableMap<String, KeybModel> = mutableMapOf()
+    val loaded: MutableMap<String, KeybModel> = mutableMapOf()
 
     fun reload() {
         pickLayout(currentLayout, isPortrait)
@@ -21,26 +21,24 @@ abstract class KeybLayout() : KeybConf() {
 
     fun pickLayout(layNm: String, pt: Boolean) {
         val lay = layNm + if (pt) "-portrait" else "-landscape"
-        if (loadedLayouts.containsKey(lay) && !layoutFileChanged(lay)) {
-            keybLayout = loadedLayouts.getValue(lay)
+        if (loaded.containsKey(lay) && !layoutFileChanged(lay)) {
+            keybLayout = loaded.getValue(lay)
         } else {
             keybLayout = KeybModel(kbc, "vkeyb/" + lay, pt)
             keybLayout!!.lastdate = getLastModified(lay)
-            if (keybLayout!!.loaded) loadedLayouts[lay] = keybLayout!!
+            if (keybLayout!!.loaded) loaded[lay] = keybLayout!!
         }
     }
 
     fun layoutFileChanged(s: String): Boolean {
-        return getLastModified(s) == 0L || loadedLayouts.getValue(s).lastdate == 0L || (getLastModified(s) > loadedLayouts.getValue(s).lastdate)
+        return getLastModified(s) == 0L || loaded[s]!!.lastdate == 0L || (getLastModified(s) > loaded[s]!!.lastdate)
     }
 
     fun setKeyb() {
-        if (keybLayout?.loaded != true) {
-            keybLayout = defLayo
-            loadVars()
-            keybView!!.reload()
-            (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
-            return
-        }
+        if (keybLayout?.loaded == true) return
+        keybLayout = defLayo
+        loadVars()
+        keybView!!.reload()
+        (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
     }
 }

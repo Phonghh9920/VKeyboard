@@ -22,14 +22,13 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
     var lastdate: Long = 0
 
     init {
-        loaded = false
-        val dm = context.resources.displayMetrics
-
-        keys = ArrayList()
-
         Log.d("json", jsondat)
         loadx = 0
         loady = 0
+        keys = ArrayList()
+        loaded = false
+        val dm = context.resources.displayMetrics
+
         try {
             val glob = JsonParse.map(if (isJsonData) jsondat else loadKeybLayout(jsondat))
             val size = (glob.getValue("keyCount") as String).toFloat()
@@ -106,8 +105,7 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
         loadcurrentRow = Row(this)
         rows.add(loadcurrentRow!!)
         for (i in 0 until row.size) {
-            val keypos = pos + if (i == 0) 1 else if (i == row.size - 1) 3 else 2
-            loadKey(row[i] as Map<String, Any>, keypos)
+            loadKey(row[i] as Map<String, Any>, pos + if (i == 0) 1 else if (i == row.size - 1) 3 else 2)
         }
         loady += loadcurrentRow!!.keySize
     }

@@ -1,5 +1,6 @@
 package com.vladgba.keyb
 
+import android.graphics.Paint
 import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
@@ -7,7 +8,7 @@ import kotlin.collections.ArrayList
 import java.util.*
 import kotlin.math.*
 
-class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<String, Any>, pos: Int) {
+class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<String, Any>, pos: Int): KeyAction(c){
     private val angPos = intArrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)
     var extCharsRaw = ""
     var codes: IntArray? = null
@@ -40,7 +41,7 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
             options = jdata
             label = getStr("key")
             codes = intArrayOf(getInt("code"))
-            if (codes!![0] == 0 && label!!.length > 0 && getStr("text").length<1) {
+            if (codes!![0] == 0 && label!!.length > 0 && getStr("text").length < 1) {
                 if (label!!.length > 1) text = label
                 else codes!![0] = label!![0].code
             } else {
@@ -48,14 +49,14 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
             }
 
             width = (parent!!.keySize * if (getStr("size") == "") 1f else getStr("size").toFloat()).toInt()
-            height = parent!!.keySize
+            height = parent.keySize
 
             parseExt(getStr("ext"))
             if (!extChars[0].isNullOrEmpty()) padExtChars(pos)
 
             repeat = getBool("repeat")
-            val rands = if (options!!.containsKey("rand")) (options!!.getValue("rand") as ArrayList<String>) else null
-            if (rands != null) {
+            if (options!!.containsKey("rand")) {
+                val rands = (options!!.getValue("rand") as ArrayList<String>)
                 rand = arrayOfNulls(rands.size)
                 for (i in 0 until rands.size) rand!![i] = rands[i]
             }
@@ -82,7 +83,7 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
         try {
             return if (options!!.containsKey(s)) (options!!.getValue(s) as String).toInt() else 0
         } catch (_: Exception) {
-            return (options!!.getValue(s) as String)[0].code
+            return if (options!!.containsKey(s)) (options!!.getValue(s) as String)[0].code else 0
         }
     }
 
@@ -124,6 +125,7 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
     fun getExtPos(x: Int, y: Int): Int {
         if (abs(pressX - x) < c.offset && abs(pressY - y) < c.offset) return 0
         val angle = Math.toDegrees(atan2((pressY - y).toDouble(), (pressX - x).toDouble()))
+        Log.d("ext", angle.toString())
         return angPos[ceil(((if (angle < 0) 360.0 else 0.0) + angle + 22.5) / 45.0).toInt() - 1]
     }
 
@@ -182,32 +184,27 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
     }
 
     fun repeating(curX: Int, curY: Int) {
-
-        if (!cursorMoved && (curX - c.horizontalTick > pressX || curX + c.horizontalTick < pressX || curY - c.verticalTick > pressY || curY + c.verticalTick < pressY)) {
-            cursorMoved = true
-        }
+        if(!getBool("repeat")) return
         while (true) {
-            if (curX - c.horizontalTick > relX) relX =
-                swipeAction(relX, c.horizontalTick, "right", true)
-            else if (curX + c.horizontalTick < relX) relX =
-                swipeAction(relX, c.horizontalTick, "left", false)
+            if (curX - c.horTick > relX) relX = swipeAction(relX, c.horTick, "right", true)
+            else if (curX + c.horTick < relX) relX = swipeAction(relX, c.horTick, "left", false)
             else break
         }
         while (true) {
-            if (curY - c.verticalTick > relY) relY =
-                swipeAction(relY, c.verticalTick, "bottom", true)
-            else if (curY + c.verticalTick < relY) relY =
-                swipeAction(relY, c.verticalTick, "top", false)
+            if (curY - c.verTick > relY) relY = swipeAction(relY, c.verTick, "bottom", true)
+            else if (curY + c.verTick < relY) relY = swipeAction(relY, c.verTick, "top", false)
             else break
         }
     }
 
     fun procExtChars(curX: Int, curY: Int) {
+        Log.d("extChars", extCharsRaw)
         if (extCharsRaw.isNotEmpty()) {
             relX = curX
             relY = curY
             val tmpPos = charPos
             charPos = getExtPos(curX, curY)
+            Log.d("extCharspos", charPos.toString())
             if (charPos != 0 && tmpPos != charPos) c.vibrate(this, "vibext")
         }
     }
@@ -218,17 +215,15 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
             if (c.ctrlPressed()) {
                 val tx = c.currentInputConnection.getSelectedText(0).toString()
                 if (c.shiftPressed()) {
-                    for (i in 0 until tx.length) c.onText("\\u" + tx[i].code.toString(16).uppercase().padStart(4, '0'))
+                    char2utfEscape(tx)
                 } else {
-                    if (tx.indexOf("u") >= 0) {
-                        val arr = tx.split("\\u")
-                        for (i in 1 until arr.size) c.onText(arr[i].toInt(16).toChar().toString())
-                    } else if (tx.indexOf(" ") >= 0) {
-                        val arr = tx.split(" ")
-                        for (i in 1 until arr.size) c.onText(arr[i].toInt().toChar().toString())
-                    } else {
-                        c.onText(tx.toInt().toChar().toString())
-                    }
+                    Log.d("clip", tx)
+                    if (tx.indexOf("u") >= 0) utf2char(tx)
+                    else if (tx.indexOf("b") >= 0) bin2char(tx)
+                    else if (tx.indexOf("x") >= 0) hex2char(tx)
+                    else if (tx.indexOf("0") == 0) oct2char(" " + tx) // " 0555 0456", " 0123"
+                    else if (tx.indexOf(" ") >= 0) dec2char(tx)
+                    else dec2char(tx)
                 }
                 return true
             }
@@ -239,7 +234,9 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
                 if (extChars[charPos - 1] == null) return true
                 c.onText(extChars[charPos - 1].toString())
             }
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            Log.d("clip", e.stackTraceToString())
+        }
         return true
     }
 
@@ -249,12 +246,11 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
         if ((c.mod and getInt("modmeta")) > 0) {
             c.mod = c.mod and getInt("modmeta").inv()
             c.keyShiftable(KeyEvent.ACTION_UP, getInt("modkey"))
-            c.keybView!!.repMod()
         } else {
             c.mod = c.mod or getInt("modmeta")
             c.keyShiftable(KeyEvent.ACTION_DOWN, getInt("modkey"))
-            c.keybView!!.repMod()
         }
+        c.keybView!!.repMod()
         return true
     }
 
@@ -269,6 +265,95 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
             }
             if (res != "") c.onText(res)
         } catch (_: Exception) {}
+        return true
+    }
+
+    fun press(curX: Int, curY: Int) {
+        if (c.getVal(c.sett, "debug", "") == "1") {
+            val p = Paint().also { it.color = 0x0fff0000}
+            c.keybLayout!!.canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
+        }
+
+        if (modifierAction()) return
+        c.handler.postDelayed(runnable, c.longPressTime)
+        longPressed = false
+        c.vibrate(this, "vibpress")
+        pressX = curX
+        pressY = curY
+        relX = -1
+        relY = -1
+        cursorMoved = false
+        charPos = 0
+        if (repeat || extCharsRaw.isNotEmpty()) {
+            relX = curX
+            relY = curY
+        }
+    }
+
+    fun drag(curX: Int, curY: Int) {
+        if (!cursorMoved && (abs(curX - pressX) < c.horTick || abs(curY - pressY) < c.verTick)) {
+            c.handler.removeCallbacks(runnable)
+            cursorMoved = true
+        }
+        if (getBool("mod")) return
+        if (getBool("clipboard")) {
+            charPos = getExtPos(curX, curY)
+            return
+        }
+        if (relX < 0) return // Not have alternative behavior
+        repeating(curX, curY)
+        procExtChars(curX, curY)
+    }
+
+    fun release(curX: Int, curY: Int, pid: Int) {
+        if(longPressed) return
+        if (charPos == 0) c.vibrate(this, "vibrelease")
+        if (getBool("mod")) {
+            if (c.lastpid != pid) modifierAction()
+            return
+        }
+        if (prExtChars() || curY == 0 || cursorMoved) return
+        if (recordAction(curX, curY) || clipboardAction() || shiftAction()) return
+
+        if (getBool("app")) c.startActivity(c.packageManager.getLaunchIntentForPackage(getStr("app")))
+
+        if (getBool("sudo")) suExec(getStr("sudo"))
+
+        if (rand != null && rand!!.isNotEmpty()) {
+            return c.onText(rand!![Random().nextInt(rand!!.size)]!!)
+        }
+        if (langSwitch()) return
+        if (textInput()) return
+        if (repeat && !cursorMoved) return c.onKey(codes!![0])
+        if (relX < 0 || charPos == 0) return c.onKey(codes?.get(0) ?: 0)
+    }
+
+    private fun textInput(): Boolean {
+        if (text != null && text!!.length > 0) {
+            if (text!!.length == 1) c.onText(c.getShifted(text!![0].code, c.shiftPressed()).toChar().toString())
+            else c.onText(text!!)
+            if (getInt("pos") < 0) for (i in 1..-getInt("pos")) c.onKey(-21)
+            else if (getInt("pos") >= 0) for (i in 1..text!!.length - getInt("pos")) c.onKey(-21)
+            return true
+        }
+        return false
+    }
+
+    private fun langSwitch(): Boolean {
+        if (getStr("lang").isNotEmpty() && charPos == 0) {
+            c.currentLayout = getStr("lang")
+            c.reload()
+            return true
+        }
+        return false
+    }
+
+    private fun prExtChars(): Boolean {
+        if (extCharsRaw.length < 1 || charPos < 1) return false
+        val textIndex = extChars[charPos - 1]
+        if (textIndex.isNullOrEmpty() || textIndex == " ") return true
+        if (textIndex.length > 1) c.onText(textIndex)
+        else c.onKey(c.getFromString(textIndex.toString())[0])
         return true
     }
 }

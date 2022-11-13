@@ -15,8 +15,8 @@ open class KeybConf : InputMethodService() {
     var volumeDownPress = false
     var primaryFont = 0f
     var secondaryFont = 0f
-    var horizontalTick = 0
-    var verticalTick = 0
+    var horTick = 0
+    var verTick = 0
     var offset = 0 // extChars
     var longPressTime = 0L
     var vibtime: Long = 0
@@ -35,6 +35,7 @@ open class KeybConf : InputMethodService() {
         val r = j.getValue(s) as String
         return if (r.length > 0) r else d
     }
+
     fun loadVars() {
         try {
             sett = JsonParse.map(loadFile("vkeyb/settings"))
@@ -44,11 +45,12 @@ open class KeybConf : InputMethodService() {
         }
         primaryFont = getVal(sett, "sizePrimary", "2").toFloat()
         secondaryFont = getVal(sett, "sizeSecondary", "4.5").toFloat()
-        horizontalTick = getVal(sett, "horizontalSense", "30").toInt()
-        verticalTick = getVal(sett, "verticalSense", "50").toInt()
+        horTick = getVal(sett, "horizontalSense", "30").toInt()
+        verTick = getVal(sett, "verticalSense", "50").toInt()
         offset = getVal(sett, "extendedSense", "70").toInt()
         longPressTime = getVal(sett, "longPressMs", "300").toLong()
     }
+
     fun prStack(e: Throwable) {
         val sw = StringWriter()
         e.printStackTrace(PrintWriter(sw))
@@ -75,15 +77,14 @@ open class KeybConf : InputMethodService() {
         vibtime = System.currentTimeMillis()
         if (i < 10) return
         val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager =
-                getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-            vibratorManager.defaultVibrator
+            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
         } else {
             @Suppress("DEPRECATION")
             getSystemService(VIBRATOR_SERVICE) as Vibrator
         }
+
         @Suppress("DEPRECATION")
-        if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(i, VibrationEffect.DEFAULT_AMPLITUDE))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) vibrator.vibrate(VibrationEffect.createOneShot(i, VibrationEffect.DEFAULT_AMPLITUDE))
         else vibrator.vibrate(i)
     }
 
