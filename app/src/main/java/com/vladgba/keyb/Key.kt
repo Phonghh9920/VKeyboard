@@ -319,7 +319,7 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
     }
 
     fun drag(curX: Int, curY: Int) {
-        if (!cursorMoved && (abs(curX - pressX) < c.horTick || abs(curY - pressY) < c.verTick)) {
+        if (!cursorMoved && (abs(curX - pressX) > c.horTick || abs(curY - pressY) > c.verTick)) {
             c.handler.removeCallbacks(runnable)
             cursorMoved = true
         }
