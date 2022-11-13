@@ -68,10 +68,7 @@ class KeybController : KeybLayout() {
         try {
             if ((sett.getValue("redefineHardwareActions") as String) == "1") {
                 keybView!!.invalidate()
-                if (keybView!!.isShown) {
-                    inputKey(keyCode.toString(), KeyEvent.ACTION_DOWN, true)
-                    return true
-                }
+                if (keybView!!.isShown && inputKey(keyCode.toString(), KeyEvent.ACTION_DOWN, true)) return true
             }
         } catch (e: Exception) { prStack(e) }
         return super.onKeyDown(keyCode, event)
@@ -84,6 +81,7 @@ class KeybController : KeybLayout() {
                 keybView!!.invalidate()
                 if (keybView!!.isShown && inputKey(keyCode.toString(), KeyEvent.ACTION_UP, false)) {
                     if (currentLayout != defLayout) reload()
+                    return true
                 }
             }
         } catch (e: Exception) { prStack(e) }
