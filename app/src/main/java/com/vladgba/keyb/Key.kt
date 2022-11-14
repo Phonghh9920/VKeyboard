@@ -146,6 +146,7 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
 
     fun getExtPos(x: Int, y: Int): Int {
         if (abs(pressX - x) < c.offset && abs(pressY - y) < c.offset) return 0
+        if (charPos == 0) c.handler.removeCallbacks(runnable)
         val angle = Math.toDegrees(atan2((pressY - y).toDouble(), (pressX - x).toDouble()))
         Log.d("ext", angle.toString())
         return angPos[ceil(((if (angle < 0) 360.0 else 0.0) + angle + 22.5) / 45.0).toInt() - 1]
@@ -199,6 +200,10 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
     }
 
     fun swipeAction(r: Int, t: Int, s: String, add: Boolean): Int {
+        if (!cursorMoved) {
+            cursorMoved = true
+            c.handler.removeCallbacks(runnable)
+        }
         c.onKey(if (getInt(s) == 0) codes!![0] else getInt(s))
         c.vibrate(this, "vibtick")
         return if (add) r + t else r - t
@@ -319,10 +324,6 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
     }
 
     fun drag(curX: Int, curY: Int) {
-        if (!cursorMoved && (abs(curX - pressX) > c.horTick || abs(curY - pressY) > c.verTick)) {
-            c.handler.removeCallbacks(runnable)
-            cursorMoved = true
-        }
         if (getBool("mod")) return
         if (getBool("clipboard")) {
             charPos = getExtPos(curX, curY)
