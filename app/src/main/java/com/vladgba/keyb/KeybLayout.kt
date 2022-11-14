@@ -31,7 +31,7 @@ abstract class KeybLayout() : KeybConf() {
     }
 
     fun layoutFileChanged(s: String): Boolean {
-        return getLastModified(s) == 0L || loaded[s]!!.lastdate == 0L || (getLastModified(s) > loaded[s]!!.lastdate)
+        return getLastModified(s) == 0L || loaded[s]!!.lastdate == 0L || (getLastModified(s) != loaded[s]!!.lastdate)
     }
 
     fun setKeyb() {
