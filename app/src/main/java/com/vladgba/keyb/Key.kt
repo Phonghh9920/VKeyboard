@@ -366,6 +366,9 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
         if (text != null && text!!.length > 0) {
             if (text!!.length == 1) c.onText(c.getShifted(text!![0].code, c.shiftPressed()).toChar().toString())
             else c.onText(text!!)
+
+            if (getStr("pos") == "") return true
+
             if (getInt("pos") < 0) for (i in 1..-getInt("pos")) c.onKey(-21)
             else if (getInt("pos") >= 0) for (i in 1..text!!.length - getInt("pos")) c.onKey(-21)
             return true
