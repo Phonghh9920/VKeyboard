@@ -1,9 +1,8 @@
 package com.vladgba.keyb
 
-import android.util.Log
 import java.io.DataOutputStream
 
-open class KeyAction(val ctx: KeybController) {
+open class KeyAction(val ctx: KeybCtl) {
     fun utf2char(tx: String) {
         split_for(tx, "\\u") { it.toInt(16).toChar().toString() }
     }

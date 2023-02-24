@@ -2,15 +2,15 @@ package com.vladgba.keyb
 
 import android.graphics.Paint
 import android.media.MediaPlayer
-import android.os.SystemClock
 import android.util.Log
-import android.view.KeyEvent
 import android.widget.Toast
 import kotlin.collections.ArrayList
 import java.util.*
 import kotlin.math.*
+import android.os.*
+import android.view.*
 
-class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<String, Any>, pos: Int): KeyAction(c){
+class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<String, Any>, pos: Int): KeyAction(c){
     private val angPos = intArrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)
     var extCharsRaw = ""
     var codes: IntArray? = null
@@ -36,7 +36,8 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
     var cursorMoved = false
     var charPos = 0
     var longPressed = false
-    val runnable = Runnable { longPress(c) }
+	var hardPressed = false
+    val runnable = Runnable { longPress() }
 
     init {
         this.x = x
@@ -137,11 +138,19 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
         extChars = nExtChars
     }
 
-    fun longPress(c: KeybController) {
+    fun longPress() {
         if (getInt("hold") == 0) return
         longPressed = true
         if (getStr("hold").length > 1) c.onText(getStr("hold"))
         else c.onKey(getInt("hold"))
+    }
+	
+	fun hardPress(me: MotionEvent, pid: Int) {
+        if (getInt("hard") == 0 || (c.sett.getValue("hardPress") as String?) == null) return
+		if ((me.getPressure(pid)*1000).toInt() < (c.sett.getValue("hardPress") as String).toInt()) return
+        hardPressed = true
+        if (getStr("hard").length > 1) c.onText(getStr("hard"))
+        else c.onKey(getInt("hard"))
     }
 
     fun getExtPos(x: Int, y: Int): Int {
@@ -168,7 +177,7 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
             keyState = state
         }
 
-        fun replay(keybCtl: KeybController) {
+        fun replay(keybCtl: KeybCtl) {
             if (keyIndex == 0) {
                 SystemClock.sleep(50) // wait until sendkeyevent is processed
                 keybCtl.onText(keyText)
@@ -277,7 +286,7 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
             c.mod = c.mod or getInt("modmeta")
             c.keyShiftable(KeyEvent.ACTION_DOWN, getInt("modkey"))
         }
-        c.keybView!!.repMod()
+        c.manager.picture!!.repMod()
         return true
     }
 
@@ -298,7 +307,7 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
     fun press(curX: Int, curY: Int) {
         if (c.getVal(c.sett, "debug", "") == "1") {
             val p = Paint().also { it.color = 0x0fff0000}
-            c.keybLayout!!.canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
+            c.manager.keybLayout?.canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
         }
 
         if (mpr.isPlaying) {
@@ -310,6 +319,7 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
         if (modifierAction()) return
         c.handler.postDelayed(runnable, c.longPressTime)
         longPressed = false
+	    hardPressed = false
         c.vibrate(this, "vibpress")
         pressX = curX
         pressY = curY
@@ -323,14 +333,17 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
         }
     }
 
-    fun drag(curX: Int, curY: Int) {
+    fun drag(curX: Int, curY: Int, me: MotionEvent, pid: Int) {
         if (getBool("mod")) return
         if (getBool("clipboard")) {
             charPos = getExtPos(curX, curY)
             return
         }
+		
+        if (longPressed || hardPressed) return // Not have alternative behavior
+		hardPress(me, pid)
         if (relX < 0) return // Not have alternative behavior
-        repeating(curX, curY)
+		repeating(curX, curY)
         procExtChars(curX, curY)
     }
 
@@ -340,7 +353,7 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
             mr.prepare()
         }
         mr.start()
-        if(longPressed) return
+        if(longPressed || hardPressed) return
         if (charPos == 0) c.vibrate(this, "vibrelease")
         if (getBool("mod")) {
             if (c.lastpid != pid) modifierAction()
@@ -378,8 +391,8 @@ class Key(var c: KeybController, parent: KeybModel.Row?, x: Int, y: Int, jdata: 
 
     private fun langSwitch(): Boolean {
         if (getStr("lang").isNotEmpty() && charPos == 0) {
-            c.currentLayout = getStr("lang")
-            c.reload()
+            c.manager.currentLayout = getStr("lang")
+            c.manager.reloadLayout()
             return true
         }
         return false

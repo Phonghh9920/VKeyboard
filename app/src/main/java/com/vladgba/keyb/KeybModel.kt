@@ -6,7 +6,7 @@ import android.graphics.*
 import android.os.Environment
 import android.util.Log
 
-class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJsonData: Boolean) {
+class KeybModel(context: KeybCtl, jsondat: String, portrait: Boolean, isJsonData: Boolean) {
     val c = context
     val rows = ArrayList<Row>()
     val keys: ArrayList<Key>
@@ -20,6 +20,7 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
     var bitmap: Bitmap? = null
     var canv: Canvas? = null
     var lastdate: Long = 0
+    var predict: Map<String, Any>? = null
 
     init {
         Log.d("json", jsondat)
@@ -39,6 +40,8 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
                 val pos = if (i == 0) 0 else if (i == json.size - 1) 6 else 3
                 loadRow(json[i] as ArrayList<Any>, pos)
             }
+            
+            predict = if (glob.containsKey("dict")) glob.getValue("dict") as Map<String, Any>? else emptyMap()
             height = loady
             loaded = true
             context.erro = ""
@@ -50,7 +53,7 @@ class KeybModel(context: KeybController, jsondat: String, portrait: Boolean, isJ
         }
     }
     
-    constructor(context: KeybController, jsonName: String, portrait: Boolean): this(context, jsonName, portrait, false)
+    constructor(context: KeybCtl, jsonName: String, portrait: Boolean): this(context, jsonName, portrait, false)
 
     fun loadKeybLayout(name: String): String {
         val sdcard = Environment.getExternalStorageDirectory()
