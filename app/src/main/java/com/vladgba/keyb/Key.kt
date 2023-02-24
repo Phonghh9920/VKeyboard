@@ -60,28 +60,9 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
             if (!extChars[0].isNullOrEmpty()) padExtChars(pos)
 
             repeat = getBool("repeat")
-            if (options!!.have("rand")) {
-                val rands = options!!["rand"]
-                rand = arrayOfNulls(rands.len())
-                for (i in 0 until rands.len()) rand!![i] = rands[i].str()
-            }
-
-            if (getBool("sound-p")) {
-                try {
-                    mpr.setDataSource(getStr("sound-p"))
-                    mpr.prepare()
-                } catch (e: Exception) {
-                    Toast.makeText(ctx, "Sound file " + getStr("sound-p") + "not loaded", Toast.LENGTH_LONG).show()
-                }
-            }
-            if (getBool("sound-r")) {
-                try {
-                    mr.setDataSource(getStr("sound-r"))
-                    mr.prepare()
-                } catch (e: Exception) {
-                    Toast.makeText(ctx, "Sound file " + getStr("sound-r") + " not loaded", Toast.LENGTH_LONG).show()
-                }
-            }
+            randomTexts()
+            setSound(mpr, "sound-p")
+            setSound(mr, "sound-r")
 
             this.height = parent.keySize
         } catch (e: Exception) {
@@ -89,11 +70,29 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
         }
     }
 
+    private fun randomTexts() {
+        if (!options!!.have("rand")) return
+        val rands = options!!["rand"]
+        rand = arrayOfNulls(rands.count())
+        for (i in 0 until rands.count()) rand!![i] = rands[i].str()
+    }
+
+    private fun setSound(mpl: MediaPlayer, s: String) {
+        if (getBool(s)) {
+            try {
+                mpl.setDataSource(getStr(s))
+                mpl.prepare()
+            } catch (e: Exception) {
+                Toast.makeText(ctx, "Sound file " + getStr(s) + " not loaded", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private fun parseExt(str: String) {
         extCharsRaw = str
         var hi = -1
         for (i in str.indices) {
-            if (str[i].code < 56320) hi++
+            if (str[i].code < 56320) hi++ // Crutch for UTF multibyte symbols
             extChars[hi] = "" + (extChars[hi] ?: "") + str[i].toString()
         }
     }
@@ -129,9 +128,7 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
             intArrayOf(1, 2, 4)
         )
         val curv = modes[pos - 1]
-        for (i in 0 until curv.size) {
-            Log.d("pos = ", i.toString())
-            Log.d("pos2 = ", curv[i].toString())
+        for (i in curv.indices) {
             if (i >= extChars.size) break
             nExtChars[curv[i]-1] = extChars[i]
         }
@@ -139,14 +136,14 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
     }
 
     fun longPress() {
-        if (getInt("hold") == 0) return
+        if (getStr("hold").isEmpty()) return
         longPressed = true
         if (getStr("hold").length > 1) c.onText(getStr("hold"))
         else c.onKey(getInt("hold"))
     }
 	
 	fun hardPress(me: MotionEvent, pid: Int) {
-        if (getInt("hard") == 0 || c.sett["hardPress"].str().length == 0) return
+        if (getInt("hard") == 0 || c.sett["hardPress"].str().isEmpty()) return
 		if ((me.getPressure(pid)*1000).toInt() < c.sett["hardPress"].num()) return
         hardPressed = true
         if (getStr("hard").length > 1) c.onText(getStr("hard"))
@@ -162,9 +159,9 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
     }
 
     class Record(s: String) {
-        var keyIndex: Int = 0
-        var keyMod: Int = 0
-        var keyState: Int = 0
+        private var keyIndex: Int = 0
+        private var keyMod: Int = 0
+        private var keyState: Int = 0
         var keyText: String = ""
 
         init {

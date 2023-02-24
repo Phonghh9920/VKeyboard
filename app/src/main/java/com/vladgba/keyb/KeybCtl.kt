@@ -37,6 +37,10 @@ class KeybCtl : InputMethodService() {
 
     override fun onCreateInputView(): View {
 
+    private var keyboardReceiver: KeybReceiver? = null
+
+    override fun onCreate() {
+        super.onCreate()
         picture = KeybView(this)
         //loadDict()
         initDefLayout()
@@ -47,6 +51,13 @@ class KeybCtl : InputMethodService() {
         setOrientation()
         loadVars()
         mod = 0
+        keyboardReceiver = KeybReceiver()
+        val filter = IntentFilter(Intent.ACTION_INPUT_METHOD_CHANGED)
+        registerReceiver(keyboardReceiver, filter)
+    }
+
+    override fun onCreateInputView(): View {
+
         return picture!!
     }
 
@@ -71,10 +82,6 @@ class KeybCtl : InputMethodService() {
 
     fun showMethodPicker() {
         (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
     }
 
     override fun onConfigurationChanged(cfg: Configuration) {
@@ -206,8 +213,8 @@ class KeybCtl : InputMethodService() {
     }
 
     fun onTouchEvent(me: MotionEvent): Boolean {
-        val action = me.getActionMasked()
-        val pointerIndex: Int = me.getActionIndex()
+        val action = me.actionMasked
+        val pointerIndex: Int = me.actionIndex
         val pid: Int = me.getPointerId(pointerIndex)
         val x = me.getX(pointerIndex).toInt()
         val y = me.getY(pointerIndex).toInt()
@@ -239,13 +246,13 @@ class KeybCtl : InputMethodService() {
     }
 
     fun getLastModified(path: String): Long {
-        return File(Environment.getExternalStorageDirectory(), "vkeyb/" + path + ".json").lastModified()
+        return File(Environment.getExternalStorageDirectory(), "vkeyb/$path.json").lastModified()
     }
 
     fun getVal(j: JsonParse.JsonNode, s: String, d: String): String {
         if (!j.have(s)) return d
         val r = j[s].str()
-        return if (r.length > 0) r else d
+        return r.ifEmpty { d }
     }
 
     fun loadVars() {
@@ -266,7 +273,8 @@ class KeybCtl : InputMethodService() {
     fun prStack(e: Throwable) {
         val sw = StringWriter()
         e.printStackTrace(PrintWriter(sw))
-        Toast.makeText(this, sw.toString(), Toast.LENGTH_LONG).show()
+        Log.e("Caught error", sw.toString())
+        Toast.makeText(this, sw.toString().subSequence(0, 150), Toast.LENGTH_LONG).show()
     }
 
     fun loadFile(name: String): String {
@@ -393,5 +401,12 @@ class KeybCtl : InputMethodService() {
         loadVars()
         picture?.reload()
         showMethodPicker()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (keyboardReceiver != null) {
+            unregisterReceiver(keyboardReceiver)
+        }
     }
 }
