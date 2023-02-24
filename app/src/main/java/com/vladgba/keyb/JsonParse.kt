@@ -6,7 +6,6 @@ object JsonParse {
     fun map(jsonString: String): JsonNode {
         val d = parse(jsonString)
         return JsonNode(if (d is Map<*, *>) d else HashMap<String, Any>())
-
     }
 
     fun parse(jsonString: String): Any? {
@@ -50,7 +49,7 @@ object JsonParse {
                 Type.NUMBER -> {
                     val extracted = extractNumber(jsonString, i)
                     i = extracted.sourceEnd
-                    value = extracted.num
+                    value = extracted.num.toString()
 
                     if (currentContainer is Map<*, *>) {
                         (currentContainer as MutableMap<String?, Any?>)[propertyName] = value
@@ -97,6 +96,8 @@ object JsonParse {
                             stateStack.push(State(propertyName, currentContainer, Type.OBJECT))
                             throw Exception("was followed by too many colons")
                         }
+                    } else if (isNumber(current)) {
+                        currentType = Type.NUMBER
                     } else if (current == '"') {
                         currentType = Type.STRING
                     } else if (current == '{') {
@@ -229,40 +230,38 @@ object JsonParse {
     }
 
     private fun extractNumber(jsonString: String, fldStart: Int): ExtractedNumber {
-        var fieldStart = fldStart
+        var i = fldStart
         val builder = StringBuilder()
-        while (true) {
-            val i = indexOfSpecial(jsonString, fieldStart)
-            var c = jsonString[i]
-            if (c == '"') {
-                builder.append(jsonString.substring(fieldStart + 1, i))
-                val estr = ExtractedNumber()
-                estr.sourceEnd = i
-                estr.num = builder.toString().toInt()
-                return estr
-            } else if (c == '\\') {
-                builder.append(jsonString.substring(fieldStart + 1, i))
-                c = jsonString[i + 1]
-                when (c) {
-                    '"' -> builder.append('\"')
-                    '\\' -> builder.append('\\')
-                    '/' -> builder.append('/')
-                    'b' -> builder.append('\b')
-                    'f' -> builder.append('\u000c')
-                    'n' -> builder.append('\n')
-                    'r' -> builder.append('\r')
-                    't' -> builder.append('\t')
-                    'u' -> {
-                        builder.append(Character.toChars(jsonString.substring(i + 2, i + 6).toInt(16)))
-                        fieldStart = i + 5 // Jump over escape sequence and code point
-                        continue
-                    }
-                }
-                fieldStart = i + 1 // Jump over escape sequence
-            } else {
-                throw IndexOutOfBoundsException()
+        var withDecimal = false
+        var withE = false
+        val end = jsonString.length - 1
+        do {
+            val current = jsonString[i]
+            if (!withDecimal && current == '.') {
+                withDecimal = true
+            } else if (!withE && (current == 'e' || current == 'E')) {
+                withE = true
+            } else if (!isNumber(current) && current != '+') {
+                break
             }
+        } while (i++ < end)
+        val valueString = jsonString.substring(fldStart, i)
+        val value = try {
+            if (withDecimal || withE) {
+                java.lang.Double.valueOf(valueString)
+            } else {
+                java.lang.Long.valueOf(valueString)
+            }
+        } catch (e: NumberFormatException) {
+            throw Exception(
+                "\"" + valueString +
+                        "\" expected to be a number, but wasn't"
+            )
         }
+            return ExtractedNumber().apply {
+                sourceEnd = i
+                num = value
+            }
     }
 
     private fun indexOfSpecial(str: String, strt: Int): Int {
@@ -286,7 +285,7 @@ object JsonParse {
 
     private class ExtractedNumber {
         var sourceEnd = 0
-        var num: Int = 0
+        var num: Number = 0
     }
     private class ExtractedString {
         var sourceEnd = 0
@@ -315,7 +314,7 @@ object JsonParse {
         }
 
         operator fun get(i: Int): JsonNode {
-            return JsonNode(if (isArray()) (data as ArrayList<*>)[i] else (data as Map<*, *>)[i.toString()])
+            return JsonNode(if (isArray()) (data as ArrayList<*>)[i] else if (isAssoc()) (data as Map<*, *>)[i.toString()] else data)
         }
 
         operator fun get(i: String): JsonNode {
@@ -323,19 +322,31 @@ object JsonParse {
         }
 
         fun str(): String {
-            return if (data is String) data
-            else if (data is Int) data.toString()
-            else ""
+            return when (data) {
+                is String -> data
+                is Int -> data.toString()
+                else -> ""
+            }
         }
 
         fun num(): Int {
-            return if (data is String) data.toInt()
-            else if (data is Int) data
-            else 0
+             return when (data) {
+                is String -> data.toInt()
+                is Int -> data
+                else -> 0
+             }
         }
 
-        fun len(): Int {
-            return if (isArray()) (data as ArrayList<*>).size else (data as Map<*, *>).size
+        fun bool(): Boolean {
+            return when (data) {
+                is String -> data == "1"
+                is Int -> data == 1
+                else -> false
+            }
+        }
+
+        fun count(): Int {
+            return if (isArray()) (data as ArrayList<*>).size else if (isAssoc()) (data as Map<*, *>).size else 0
         }
     }
 }
