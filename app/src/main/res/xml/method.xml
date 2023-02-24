@@ -2,7 +2,6 @@
 <input-method xmlns:android="http://schemas.android.com/apk/res/android">
     <subtype
         android:label="VKeyboard"
-        android:imeSubtypeLocale="en_US"
         android:imeSubtypeMode="keyboard"
         />
 </input-method>
