@@ -20,7 +20,7 @@ class KeybModel(context: KeybCtl, jsondat: String, portrait: Boolean, isJsonData
     var bitmap: Bitmap? = null
     var canv: Canvas? = null
     var lastdate: Long = 0
-    var predict: Map<String, Any>? = null
+    var predict: JsonParse.JsonNode? = null
 
     init {
         Log.d("json", jsondat)
@@ -32,16 +32,16 @@ class KeybModel(context: KeybCtl, jsondat: String, portrait: Boolean, isJsonData
 
         try {
             val glob = JsonParse.map(if (isJsonData) jsondat else loadKeybLayout(jsondat))
-            val size = (glob.getValue("keyCount") as String).toFloat()
+            val size = (glob["keyCount"].str()).toFloat()
             keySize = (if (portrait) min(dm.widthPixels, dm.heightPixels) / size else ceil((max(dm.widthPixels, dm.heightPixels) / size).toDouble())).toInt()
 
-            val json = glob.getValue("keyb") as ArrayList<Any>
-            for (i in 0 until json.size) {
-                val pos = if (i == 0) 0 else if (i == json.size - 1) 6 else 3
-                loadRow(json[i] as ArrayList<Any>, pos)
+            val json = glob["keyb"]
+            for (i in 0 until json.len()) {
+                val pos = if (i == 0) 0 else if (i == json.len() - 1) 6 else 3
+                loadRow(json[i], pos)
             }
             
-            predict = if (glob.containsKey("dict")) glob.getValue("dict") as Map<String, Any>? else emptyMap()
+            predict = if (glob.have("dict")) glob["dict"] else null
             height = loady
             loaded = true
             context.erro = ""
@@ -95,7 +95,7 @@ class KeybModel(context: KeybCtl, jsondat: String, portrait: Boolean, isJsonData
         return null
     }
 
-    private fun loadKey(jdata: Map<String, Any>, pos: Int) {
+    private fun loadKey(jdata: JsonParse.JsonNode, pos: Int) {
         val loadkey = Key(c, loadcurrentRow, loadx, loady, jdata, pos)
         keys.add(loadkey)
         loadcurrentRow!!.keys.add(loadkey)
@@ -103,12 +103,12 @@ class KeybModel(context: KeybCtl, jsondat: String, portrait: Boolean, isJsonData
         if (loadx > minWidth) minWidth = loadx
     }
 
-    private fun loadRow(row: ArrayList<Any>, pos: Int) {
+    private fun loadRow(row: JsonParse.JsonNode, pos: Int) {
         loadx = 0
         loadcurrentRow = Row(this)
         rows.add(loadcurrentRow!!)
-        for (i in 0 until row.size) {
-            loadKey(row[i] as Map<String, Any>, pos + if (i == 0) 1 else if (i == row.size - 1) 3 else 2)
+        for (i in 0 until row.len()) {
+            loadKey(row[i], pos + if (i == 0) 1 else if (i == row.len() - 1) 3 else 2)
         }
         loady += loadcurrentRow!!.keySize
     }

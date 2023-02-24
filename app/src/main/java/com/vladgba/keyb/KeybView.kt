@@ -36,12 +36,12 @@ class KeybView : View, View.OnClickListener {
     override fun onClick(v: View) {}
 
     public override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        if (keybCtl!!.manager == null) return setMeasuredDimension(0, 0)
-        var width = keybCtl!!.manager.keybLayout?.minWidth ?: 0
+        if (keybCtl!! == null) return setMeasuredDimension(0, 0)
+        var width = keybCtl!!.keybLayout?.minWidth ?: 0
         if (MeasureSpec.getSize(widthMeasureSpec) < width + 10) {
             width = MeasureSpec.getSize(widthMeasureSpec)
         }
-        setMeasuredDimension(width, keybCtl!!.manager.keybLayout?.height ?: 0)
+        setMeasuredDimension(width, keybCtl!!.keybLayout?.height ?: 0)
     }
 
     public override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -72,10 +72,10 @@ class KeybView : View, View.OnClickListener {
         buffer = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
         keybPaint(w, h, buffer!!, false)
         keybPaint(w, h, bufferSh!!, true)
-        if (keybCtl!!.manager.keybLayout?.bitmap != null) return
-        keybCtl!!.manager.keybLayout?.bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        keybCtl!!.manager.keybLayout?.bitmap?.eraseColor(Color.TRANSPARENT)
-        keybCtl!!.manager.keybLayout?.canv = Canvas(keybCtl!!.manager.keybLayout?.bitmap!!)
+        if (keybCtl!!.keybLayout?.bitmap != null) return
+        keybCtl!!.keybLayout?.bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        keybCtl!!.keybLayout?.bitmap?.eraseColor(Color.TRANSPARENT)
+        keybCtl!!.keybLayout?.canv = Canvas(keybCtl!!.keybLayout?.bitmap!!)
         invalidate()
     }
 
@@ -87,7 +87,7 @@ class KeybView : View, View.OnClickListener {
             val r = RectF(0f, 0f, w.toFloat(), h.toFloat())
             canvas.drawRect(r, paint)
         }
-        val keys = keybCtl!!.manager.keybLayout!!.keys
+        val keys = keybCtl!!.keybLayout!!.keys
         for (key in keys) {
             if (repMods && !key.getBool("mod")) continue
 
@@ -157,12 +157,12 @@ class KeybView : View, View.OnClickListener {
     }
 
     private fun getColor(n: String): Int {
-        if (keybCtl!!.sett.isEmpty()) return randColor()
-        val clrSw = keybCtl!!.sett.containsKey("colorSwitch") && keybCtl!!.sett.getValue("colorSwitch") == "1"
+        if (keybCtl!!.sett.len() == 0) return randColor()
+        val clrSw = keybCtl!!.sett.have("colorSwitch") && keybCtl!!.sett["colorSwitch"].str() == "1"
         val curTheme = if (keybCtl!!.night && clrSw) "colorNight" else "colorDay"
-        if (!keybCtl!!.sett.containsKey(curTheme)) return randColor()
-        val theme = keybCtl!!.sett.getValue(curTheme) as Map<String, Any>
-        return if (theme.containsKey(n)) (theme.getValue(n) as String).toLong(16).toInt() else randColor()
+        if (!keybCtl!!.sett.have(curTheme)) return randColor()
+        val theme = keybCtl!!.sett[curTheme]
+        return if (theme.have(n)) (theme[n].str()).toLong(16).toInt() else randColor()
     }
 
     public override fun onDraw(canvas: Canvas) {
@@ -171,8 +171,8 @@ class KeybView : View, View.OnClickListener {
 
             canvas.drawBitmap((if (keybCtl!!.shiftPressed()) bufferSh else buffer)!!, 0f, 0f, null)
             if (keybCtl!!.getVal(keybCtl!!.sett, "debug", "") == "1") {
-                if (keybCtl!!.manager.keybLayout!!.bitmap != null) canvas.drawBitmap(
-                    keybCtl!!.manager.keybLayout!!.bitmap!!,
+                if (keybCtl!!.keybLayout!!.bitmap != null) canvas.drawBitmap(
+                    keybCtl!!.keybLayout!!.bitmap!!,
                     0f,
                     0f,
                     null

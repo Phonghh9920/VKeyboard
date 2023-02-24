@@ -1,10 +1,12 @@
 package com.vladgba.keyb
-
 import java.util.*
+import kotlin.collections.ArrayList
 
 object JsonParse {
-    fun map(jsonString: String): Map<String, Any> {
-        return parse(jsonString) as Map<String, Any>
+    fun map(jsonString: String): JsonNode {
+        val d = parse(jsonString)
+        return JsonNode(if (d is Map<*, *>) d else HashMap<String, Any>())
+
     }
 
     fun parse(jsonString: String): Any? {
@@ -45,6 +47,20 @@ object JsonParse {
                     expectingColon = true
                     i++
                 }
+                Type.NUMBER -> {
+                    val extracted = extractNumber(jsonString, i)
+                    i = extracted.sourceEnd
+                    value = extracted.num
+
+                    if (currentContainer is Map<*, *>) {
+                        (currentContainer as MutableMap<String?, Any?>)[propertyName] = value
+                        currentType = Type.OBJECT
+                    } else {
+                        (currentContainer as MutableList<Any?>).add(value)
+                        currentType = Type.ARRAY
+                    }
+                    i++
+                }
                 Type.STRING -> {
                     try {
                         val extracted = extractString(jsonString, i)
@@ -53,7 +69,7 @@ object JsonParse {
                     } catch (e: StringIndexOutOfBoundsException) {
                         throw Exception("String did not have ending quote")
                     }
-                    
+
                     if (currentContainer is Map<*, *>) {
                         (currentContainer as MutableMap<String?, Any?>)[propertyName] = value
                         currentType = Type.OBJECT
@@ -94,9 +110,7 @@ object JsonParse {
                         currentContainer = ArrayList<Any>()
                         i++
                     } else {
-                        throw Exception(
-                            "unexpected character \"" + current + "\" instead of object value"
-                        )
+                        throw Exception("unexpected character \"" + current + "\" instead of object value")
                     }
                 }
                 Type.OBJECT -> {
@@ -132,7 +146,9 @@ object JsonParse {
                 }
                 Type.ARRAY -> {
                     while (isWhitespace(current) && i++ < end) current = jsonString[i]
-                    when (current) {
+                    if (isNumber(current)) currentType = Type.NUMBER
+
+                    else when (current) {
                         ',' -> i++
                         '"' -> currentType = Type.STRING
                         '{' -> {
@@ -212,6 +228,43 @@ object JsonParse {
         }
     }
 
+    private fun extractNumber(jsonString: String, fldStart: Int): ExtractedNumber {
+        var fieldStart = fldStart
+        val builder = StringBuilder()
+        while (true) {
+            val i = indexOfSpecial(jsonString, fieldStart)
+            var c = jsonString[i]
+            if (c == '"') {
+                builder.append(jsonString.substring(fieldStart + 1, i))
+                val estr = ExtractedNumber()
+                estr.sourceEnd = i
+                estr.num = builder.toString().toInt()
+                return estr
+            } else if (c == '\\') {
+                builder.append(jsonString.substring(fieldStart + 1, i))
+                c = jsonString[i + 1]
+                when (c) {
+                    '"' -> builder.append('\"')
+                    '\\' -> builder.append('\\')
+                    '/' -> builder.append('/')
+                    'b' -> builder.append('\b')
+                    'f' -> builder.append('\u000c')
+                    'n' -> builder.append('\n')
+                    'r' -> builder.append('\r')
+                    't' -> builder.append('\t')
+                    'u' -> {
+                        builder.append(Character.toChars(jsonString.substring(i + 2, i + 6).toInt(16)))
+                        fieldStart = i + 5 // Jump over escape sequence and code point
+                        continue
+                    }
+                }
+                fieldStart = i + 1 // Jump over escape sequence
+            } else {
+                throw IndexOutOfBoundsException()
+            }
+        }
+    }
+
     private fun indexOfSpecial(str: String, strt: Int): Int {
         var start = strt
         while (++start < str.length && str[start] != '"' && str[start] != '\\');
@@ -221,14 +274,68 @@ object JsonParse {
     fun isWhitespace(c: Char): Boolean {
         return arrayOf(' ', '\n', '\r', '\t').contains(c)
     }
+
+    fun isNumber(c: Char): Boolean {
+        return c >= '0' && c <= '9' || c == '-'
+    }
     
     internal class State(val propertyName: String?, val container: Any?, val type: Type)
     enum class Type {
-        ARRAY, OBJECT, HEURISTIC, NAME, STRING
+        ARRAY, OBJECT, HEURISTIC, NAME, NUMBER, STRING
     }
 
+    private class ExtractedNumber {
+        var sourceEnd = 0
+        var num: Int = 0
+    }
     private class ExtractedString {
         var sourceEnd = 0
         var str: String? = null
+    }
+
+    data class JsonNode(val data: Any?) {
+        fun keys(): Set<String>? {
+            return if (isAssoc()) ((data as Map<*, *>).keys as Set<String>) else null
+        }
+
+        fun isArray(): Boolean {
+            return data is ArrayList<*>
+        }
+
+        fun isAssoc(): Boolean {
+            return data is Map<*, *>
+        }
+
+        fun have(k: String): Boolean {
+            return if (data is Map<*, *>) data.containsKey(k) else if (data is ArrayList<*>) data.contains(k.toInt()) else false
+        }
+
+        fun have(k: Int): Boolean {
+            return if (data is Map<*, *>) data.containsKey(k.toString()) else if (data is ArrayList<*>) data.contains(k) else false
+        }
+
+        operator fun get(i: Int): JsonNode {
+            return JsonNode(if (isArray()) (data as ArrayList<*>)[i] else (data as Map<*, *>)[i.toString()])
+        }
+
+        operator fun get(i: String): JsonNode {
+            return JsonNode(if (isArray()) (data as ArrayList<*>)[i.toInt()] else (data as Map<*, *>)[i])
+        }
+
+        fun str(): String {
+            return if (data is String) data
+            else if (data is Int) data.toString()
+            else ""
+        }
+
+        fun num(): Int {
+            return if (data is String) data.toInt()
+            else if (data is Int) data
+            else 0
+        }
+
+        fun len(): Int {
+            return if (isArray()) (data as ArrayList<*>).size else (data as Map<*, *>).size
+        }
     }
 }

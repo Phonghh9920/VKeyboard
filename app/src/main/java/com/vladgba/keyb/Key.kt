@@ -10,7 +10,7 @@ import kotlin.math.*
 import android.os.*
 import android.view.*
 
-class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<String, Any>, pos: Int): KeyAction(c){
+class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonParse.JsonNode, pos: Int): KeyAction(c){
     private val angPos = intArrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)
     var extCharsRaw = ""
     var codes: IntArray? = null
@@ -23,7 +23,7 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<Str
     var text: CharSequence? = null
     var extChars = arrayOfNulls<CharSequence>(8)
     var rand: Array<String?>? = null
-    private var options: Map<String, Any>? = null
+    private var options: JsonParse.JsonNode? = null
     var record: ArrayList<Record> = ArrayList()
     var recording: Boolean = false
     val mpr = MediaPlayer()
@@ -60,10 +60,10 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<Str
             if (!extChars[0].isNullOrEmpty()) padExtChars(pos)
 
             repeat = getBool("repeat")
-            if (options!!.containsKey("rand")) {
-                val rands = (options!!.getValue("rand") as ArrayList<String>)
-                rand = arrayOfNulls(rands.size)
-                for (i in 0 until rands.size) rand!![i] = rands[i]
+            if (options!!.have("rand")) {
+                val rands = options!!["rand"]
+                rand = arrayOfNulls(rands.len())
+                for (i in 0 until rands.len()) rand!![i] = rands[i].str()
             }
 
             if (getBool("sound-p")) {
@@ -99,19 +99,19 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<Str
     }
 
     fun getStr(s: String): String {
-        return if (options!!.containsKey(s)) (options!!.getValue(s) as String) else ""
+        return if (options!!.have(s)) options!![s].str() else ""
     }
 
     fun getInt(s: String): Int {
         try {
-            return if (options!!.containsKey(s)) (options!!.getValue(s) as String).toInt() else 0
+            return if (options!!.have(s)) options!![s].num() else 0
         } catch (_: Exception) {
-            return if (options!!.containsKey(s)) (options!!.getValue(s) as String)[0].code else 0
+            return if (options!!.have(s)) options!![s].str()[0].code else 0
         }
     }
 
     fun getBool(s: String): Boolean {
-        return options!!.containsKey(s) && !arrayOf(0, null, "", " ").contains(options!!.getValue(s) as String)
+        return options!!.have(s) && !arrayOf(0, null, "", " ").contains(options!![s].str())
     }
 
     private fun padExtChars(pos: Int) {
@@ -146,8 +146,8 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<Str
     }
 	
 	fun hardPress(me: MotionEvent, pid: Int) {
-        if (getInt("hard") == 0 || (c.sett.getValue("hardPress") as String?) == null) return
-		if ((me.getPressure(pid)*1000).toInt() < (c.sett.getValue("hardPress") as String).toInt()) return
+        if (getInt("hard") == 0 || c.sett["hardPress"].str().length == 0) return
+		if ((me.getPressure(pid)*1000).toInt() < c.sett["hardPress"].num()) return
         hardPressed = true
         if (getStr("hard").length > 1) c.onText(getStr("hard"))
         else c.onKey(getInt("hard"))
@@ -286,7 +286,7 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<Str
             c.mod = c.mod or getInt("modmeta")
             c.keyShiftable(KeyEvent.ACTION_DOWN, getInt("modkey"))
         }
-        c.manager.picture!!.repMod()
+        c.picture?.repMod()
         return true
     }
 
@@ -307,7 +307,7 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<Str
     fun press(curX: Int, curY: Int) {
         if (c.getVal(c.sett, "debug", "") == "1") {
             val p = Paint().also { it.color = 0x0fff0000}
-            c.manager.keybLayout?.canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
+            c.keybLayout?.canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
         }
 
         if (mpr.isPlaying) {
@@ -391,8 +391,8 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: Map<Str
 
     private fun langSwitch(): Boolean {
         if (getStr("lang").isNotEmpty() && charPos == 0) {
-            c.manager.currentLayout = getStr("lang")
-            c.manager.reloadLayout()
+            c.currentLayout = getStr("lang")
+            c.reloadLayout()
             return true
         }
         return false
