@@ -4,8 +4,7 @@ plugins {
 }
 
 android {
-    compileSdk 32
-    compileSdkVersion 32
+    compileSdk 33
 
     signingConfigs {
         release {
@@ -19,14 +18,13 @@ android {
     defaultConfig {
         applicationId "com.vladgba.keyb"
         minSdk 22
-        targetSdk 32
+        targetSdk 33
         versionCode 14
         versionName "1.4"
 
-        targetSdkVersion 32
+        targetSdkVersion 33
         minSdkVersion 22
         signingConfig signingConfigs.release
-        //applicationIdSuffix '.production'
     }
 
     buildTypes {
@@ -39,9 +37,7 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-    kotlinOptions {
-        jvmTarget = '1.8'
-    }
+    namespace 'com.vladgba.keyb'
 }
 
 dependencies {

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.vladgba.keyb">
+>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -12,7 +12,7 @@
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
             android:theme="@android:style/Theme">
-        <activity android:name="Vkeyboard" android:label="@string/app_name" android:exported="true">
+        <activity android:name="Vkeyboard" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -20,7 +20,7 @@
         </activity>
         <service
                 android:windowSoftInputMode="stateAlwaysVisible"
-                android:name=".KeybController"
+                android:name=".KeybCtl"
                 android:label="@string/app_name"
                 android:permission="android.permission.BIND_INPUT_METHOD"
                 android:configChanges="orientation|keyboardHidden"
@@ -30,5 +30,14 @@
                 <action android:name="android.view.InputMethod"/>
             </intent-filter>
         </service>
+        <receiver
+                android:name=".KeybReceiver"
+                android:label="VKeyboard Receiver"
+                android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.INPUT_METHOD_CHANGED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
