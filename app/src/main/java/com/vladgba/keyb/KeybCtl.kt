@@ -2,25 +2,33 @@ package com.vladgba.keyb
 
 import android.app.UiModeManager
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
 import android.os.*
 import android.util.*
 import android.view.*
+import android.view.KeyEvent.KEYCODE_0
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import java.io.*
 
+private const val LEFT_SHIFT = 193
+private const val LEFT_CTRL = 28672
+private val LATIN_KEYS = 97..122
+
 class KeybCtl : InputMethodService() {
-    var dm: DisplayMetrics? = null
+
+    private val LATIN_OFFSET = 68
+    companion object {
+        @JvmStatic
+        var enabled = false
+    }
+
     var isPortrait = true
     var night = false
-
-    val points = arrayOfNulls<Key>(10)
-    val handler = Handler(Looper.getMainLooper())
-
-    var mod: Int = 0
-
+    var modifierState: Int = 0
     var primaryFont = 0f
     var secondaryFont = 0f
     var horTick = 0
@@ -28,21 +36,29 @@ class KeybCtl : InputMethodService() {
     var offset = 0 // extChars
     var longPressTime = 0L
     var vibtime: Long = 0
-    var sett: JsonParse.JsonNode = JsonParse.JsonNode(1)
 
-    var lastpid = 0
+    val defLayout = "latin"
+    var currentLayout = "latin"
+    var defLayoutJson = ""
+    var keybLayout: KeybModel? = null
 
+    var dm: DisplayMetrics? = null
+    var settings: JsonParse.JsonNode = JsonParse.JsonNode(0)
+    val points = arrayOfNulls<Key>(10)
+    val handler = Handler(Looper.getMainLooper())
+    var lastPointerId = 0
     var recKey: Key? = null
-    var erro = ""
-
-    override fun onCreateInputView(): View {
-
+    var errorInfo = ""
+    var picture: KeybView? = null
+    var defLayo: KeybModel? = null
+    var predict: JsonParse.JsonNode? = null
+    val loaded: MutableMap<String, KeybModel> = mutableMapOf()
     private var keyboardReceiver: KeybReceiver? = null
 
     override fun onCreate() {
         super.onCreate()
         picture = KeybView(this)
-        //loadDict()
+        loadDict()
         initDefLayout()
         refreshLayout()
         reloadLayout()
@@ -50,14 +66,14 @@ class KeybCtl : InputMethodService() {
         updateNightState(this.resources.configuration)
         setOrientation()
         loadVars()
-        mod = 0
+        modifierState = 0
         keyboardReceiver = KeybReceiver()
         val filter = IntentFilter(Intent.ACTION_INPUT_METHOD_CHANGED)
         registerReceiver(keyboardReceiver, filter)
     }
 
     override fun onCreateInputView(): View {
-
+        if (picture?.parent != null) (picture!!.parent as ViewGroup).removeAllViews()
         return picture!!
     }
 
@@ -100,7 +116,7 @@ class KeybCtl : InputMethodService() {
         picture?.invalidate()
         if (keyCode < 0) return true
         try {
-            if (sett["redefineHardwareActions"].str() == "1") {
+            if (settings["redefineHardwareActions"].str() == "1") {
                 picture?.invalidate()
                 if (picture?.isShown == true && inputKey(keyCode.toString(), KeyEvent.ACTION_DOWN, true)) return true
             }
@@ -112,7 +128,7 @@ class KeybCtl : InputMethodService() {
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         try {
-            if (sett["redefineHardwareActions"].str() == "1") {
+            if (settings["redefineHardwareActions"].str() == "1") {
                 if (picture?.isShown == true && inputKey(keyCode.toString(), KeyEvent.ACTION_UP, false)) {
                     picture?.invalidate()
                     if (currentLayout != defLayout) reloadLayout()
@@ -125,17 +141,17 @@ class KeybCtl : InputMethodService() {
         return super.onKeyUp(keyCode, event)
     }
 
-    fun inputKey(key: String, pr: Int, st: Boolean): Boolean {
-        if (!sett.have(key)) return false
-        val vkey = sett[key]
-        val newmod = vkey["mod"].num()
-        mod = if (st) (mod or newmod) else mod and newmod.inv()
-        keyShiftable(pr, vkey["key"].num())
+    fun inputKey(key: String, action: Int, pressModifier: Boolean): Boolean {
+        if (!settings.has(key)) return false
+        val keyData = settings[key]
+        val newModifierState = keyData["mod"].num()
+        modifierState = if (pressModifier) (modifierState or newModifierState) else modifierState and newModifierState.inv()
+        keyShiftable(action, keyData["key"].num())
         picture?.repMod()
 
-        if (currentLayout == defLayout || !st || !vkey.have("switchKeyb")) return true
+        if (currentLayout == defLayout || !pressModifier || !keyData.has("switchKeyb")) return true
 
-        if (vkey["switchKeyb"].str() == "1") {
+        if (keyData["switchKeyb"].str() == "1") {
             keybLayout = loaded[defLayout + (if (isPortrait) "-portrait" else "-landscape")]
             picture?.reload()
             loadVars()
@@ -144,7 +160,7 @@ class KeybCtl : InputMethodService() {
         return true
     }
 
-    fun keyShiftable(keyAct: Int, key: Int, custMod: Int = mod) {
+    fun keyShiftable(keyAct: Int, key: Int, custMod: Int = modifierState) {
         val ic = currentInputConnection
         if (recKey != null && recKey!!.recording) recKey!!.record.add(Key.Record(key, custMod, keyAct))
         val time = System.currentTimeMillis()
@@ -158,43 +174,48 @@ class KeybCtl : InputMethodService() {
 
     fun onKey(i: Int) {
         Log.d("key", i.toString())
-        if (i != 0) {
-            if (i in 97..122) clickShiftable(i - 68) // find a-z for combination support
+        if (i == 0) clickShiftable(KEYCODE_0)
+        else {
+            if (i in LATIN_KEYS) {
+                clickShiftable(i - LATIN_OFFSET)
+            } // find a-z for combination support
             else if (i < 0) clickShiftable(-i) // keycode
             else onText(getShifted(i, shiftPressed()).toChar().toString())
         }
     }
 
     private fun predict() {
-        /*
         try {
             val datam = currentInputConnection.getTextBeforeCursor(32, 0).toString()
 
-            for (i in predict!!.keys()!!) { // "teyo" "yo"
+            for (i in predict!!.keys()!!) {
                 if (datam.length < i.length) continue
 
                 if (datam.subSequence(datam.length - i.length, datam.length) == i) {
                     currentInputConnection.deleteSurroundingText(i.length, 0)
-                    currentInputConnection.commitText(predict!![i].toString(), 1)
+                    currentInputConnection.commitText(predict!![i].str(), 1)
                 }
             }
 
             if (predict == null) return
             val last = datam.split(" ").last()
             Log.d("Dict", last)
-            Log.d("Dict", (predict!!.get(last) ?: "").toString())
-            val repl = predict!![last] as CharSequence? ?: return
+            Log.d("Dict", (predict!![last]).str())
+            val repl = predict!![last].str()
+            if (repl.isEmpty()) return
 
+            currentInputConnection.beginBatchEdit()
             currentInputConnection.deleteSurroundingText(last.length, 0)
             currentInputConnection.commitText(repl, 1)
+            currentInputConnection.endBatchEdit()
         } catch (_: Exception) {
-        }*/
+        }
     }
 
     fun onText(chars: CharSequence) {
         if (recKey != null && recKey!!.recording) {
             if (recKey!!.record.size > 0) {
-                val rc = recKey!!.record.get(recKey!!.record.size - 1)
+                val rc = recKey!!.record[recKey!!.record.size - 1]
                 if (rc.keyText != "") rc.keyText = rc.keyText + chars.toString()
                 else recKey!!.record.add(Key.Record(chars.toString()))
             } else {
@@ -202,7 +223,6 @@ class KeybCtl : InputMethodService() {
             }
         }
         currentInputConnection.beginBatchEdit()
-
         currentInputConnection.commitText(chars.toString(), 1)
         currentInputConnection.endBatchEdit()
     }
@@ -224,7 +244,7 @@ class KeybCtl : InputMethodService() {
         try {
             when (action) {
                 MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                    lastpid = pid
+                    lastPointerId = pid
                     points[pid] = currentKey
                     currentKey!!.press(x, y)
                 }
@@ -235,7 +255,7 @@ class KeybCtl : InputMethodService() {
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
                     points[pid] = null
-                    handler.removeCallbacks(currentKey!!.runnable)
+                    handler.removeCallbacks(currentKey!!.longPressRunnable)
                     currentKey.release(x, y, pid)
                 }
             }
@@ -249,25 +269,25 @@ class KeybCtl : InputMethodService() {
         return File(Environment.getExternalStorageDirectory(), "vkeyb/$path.json").lastModified()
     }
 
-    fun getVal(j: JsonParse.JsonNode, s: String, d: String): String {
-        if (!j.have(s)) return d
-        val r = j[s].str()
+    fun getVal(s: String, d: String): String {
+        if (!settings.has(s)) return d
+        val r = settings[s].str()
         return r.ifEmpty { d }
     }
 
     fun loadVars() {
         try {
-            sett = JsonParse.map(loadFile("vkeyb/settings"))
+            settings = JsonParse.map(loadFile("vkeyb/settings"))
         } catch (e: Exception) {
             prStack(e)
-            sett = JsonParse.map(resources.openRawResource(R.raw.settings).bufferedReader().use { it.readText() })
+            settings = JsonParse.map(resources.openRawResource(R.raw.settings).bufferedReader().use { it.readText() })
         }
-        primaryFont = getVal(sett, "sizePrimary", "2").toFloat()
-        secondaryFont = getVal(sett, "sizeSecondary", "4.5").toFloat()
-        horTick = getVal(sett, "horizontalSense", "30").toInt()
-        verTick = getVal(sett, "verticalSense", "50").toInt()
-        offset = getVal(sett, "extendedSense", "70").toInt()
-        longPressTime = getVal(sett, "longPressMs", "300").toLong()
+        primaryFont = getVal("sizePrimary", "2").toFloat()
+        secondaryFont = getVal("sizeSecondary", "4.5").toFloat()
+        horTick = getVal("horizontalSense", "30").toInt()
+        verTick = getVal("verticalSense", "50").toInt()
+        offset = getVal("extendedSense", "70").toInt()
+        longPressTime = getVal("longPressMs", "300").toLong()
     }
 
     fun prStack(e: Throwable) {
@@ -304,13 +324,10 @@ class KeybCtl : InputMethodService() {
         }
 
         @Suppress("DEPRECATION")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) vibrator.vibrate(
-            VibrationEffect.createOneShot(
-                i,
-                VibrationEffect.DEFAULT_AMPLITUDE
-            )
-        )
-        else vibrator.vibrate(i)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            vibrator.vibrate(VibrationEffect.createOneShot(i, VibrationEffect.DEFAULT_AMPLITUDE))
+        else
+            vibrator.vibrate(i)
     }
 
     fun getFromString(str: CharSequence): IntArray {
@@ -321,26 +338,15 @@ class KeybCtl : InputMethodService() {
     }
 
     fun ctrlPressed(): Boolean {
-        return mod and 28672 != 0
+        return modifierState and LEFT_CTRL != 0
     }
 
     fun shiftPressed(): Boolean {
-        return mod and 193 != 0
+        return modifierState and LEFT_SHIFT != 0
     }
 
     fun getShifted(code: Int, sh: Boolean): Int {
         return if (Character.isLetter(code) && sh) code.toChar().uppercaseChar().code else code
-    }
-
-
-    var picture: KeybView? = null
-    var defLayo: KeybModel? = null
-    var predict: JsonParse.JsonNode? = null
-
-    val loaded: MutableMap<String, KeybModel> = mutableMapOf()
-
-    init {
-
     }
 
     private fun refreshLayout() {
@@ -363,12 +369,6 @@ class KeybCtl : InputMethodService() {
         defLayoutJson = resources.openRawResource(R.raw.latin).bufferedReader().use { it.readText() }
         defLayo = KeybModel(this, defLayoutJson, true, true)
     }
-
-
-    val defLayout = "latin"
-    var currentLayout = "latin"
-    var defLayoutJson = ""
-    var keybLayout: KeybModel? = null
 
     fun reloadLayout() {
         pickLayout(currentLayout, isPortrait)

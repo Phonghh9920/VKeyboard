@@ -36,22 +36,15 @@ class KeybModel(val c: KeybCtl, jsondat: String, portrait: Boolean, isJsonData: 
 
             loadAllRows(glob["keyb"])
             
-            predict = if (glob.have("dict")) glob["dict"] else null
+            predict = if (glob.has("dict")) glob["dict"] else null
             height = loady
             loaded = true
-            c.erro = ""
+            c.errorInfo = ""
         } catch (e: Exception) {
             loaded = false
-            if (!isJsonData) c.erro = e.message!!
+            if (!isJsonData) c.errorInfo = e.message!!
             Log.e("PSR", e.message!!)
             c.prStack(e)
-        }
-    }
-
-    private fun loadAllRows(json: JsonParse.JsonNode) {
-        for (i in 0 until json.count()) {
-            val pos = if (i == 0) 0 else if (i == json.count() - 1) 6 else 3
-            loadRow(json[i], pos)
         }
     }
 
@@ -80,19 +73,19 @@ class KeybModel(val c: KeybCtl, jsondat: String, portrait: Boolean, isJsonData: 
     }
 
     fun getKey(x: Int, y: Int): Key? {
-        var mr = 0
-        for (i in rows.indices) {
-            val row = rows[i]
-            if (row.keySize + mr >= y) {
-                var mk = 0
-                for (j in row.keys.indices) {
-                    val k = row.keys[j]
-                    if (k.width + mk >= x) return k
-                    mk += k.width
+        var rowIndex = 0
+        var keyIndex = 0
+        for (row in rows) {
+            if (y <= rowIndex + row.keySize) {
+                var keyOffset = 0
+                for (key in row.keys) {
+                    if (x <= keyOffset + key.width) return key
+                    keyOffset += key.width
+                    keyIndex++
                 }
                 break
             }
-            mr += row.keySize
+            rowIndex += row.keySize
         }
         return null
     }
@@ -105,23 +98,48 @@ class KeybModel(val c: KeybCtl, jsondat: String, portrait: Boolean, isJsonData: 
         if (loadx > minWidth) minWidth = loadx
     }
 
+    private fun loadAllRows(json: JsonParse.JsonNode) {
+        for (i in 0 until json.count()) loadRow(json[i], posOnLine(json, i, 0, 3, 6))
+    }
+
     private fun loadRow(row: JsonParse.JsonNode, pos: Int) {
         loadx = 0
-        loadcurrentRow = Row(this)
+        loadcurrentRow = Row(this, row)
         rows.add(loadcurrentRow!!)
-        for (i in 0 until row.count()) {
-            loadKey(row[i], pos + if (i == 0) 1 else if (i == row.count() - 1) 3 else 2)
-        }
+        for (i in 0 until row.count()) loadKey(row[i], pos + posOnLine(row, i, 1, 2, 3))
         loady += loadcurrentRow!!.keySize
     }
 
-    class Row(parent: KeybModel) {
-        var keySize: Int
+    private fun posOnLine(json: JsonParse.JsonNode, i: Int, f: Int, m: Int, l: Int) = if (i == 0) f else if (i == json.count() - 1) l else m
+
+
+    class Row(val parent: KeybModel, val options: JsonParse.JsonNode) {
+        var keySize: Int = 0
         var keys = ArrayList<Key>()
 
-        init {
-            keySize = parent.keySize
+        fun has(s: String): Boolean {
+            return /*options.has(s) ||*/ parent.have(s)
         }
+
+        operator fun get(s: String): String {
+            return /*if (options.has(s)) options[s].str()
+            else*/ if (parent.have(s)) parent[s]
+            else ""
+        }
+
+        init {
+            //keySize = if (options.has("height")) options["height"].num() else parent.keySize
+            keySize = parent.c.getVal("height", parent.keySize.toString()).toInt()
+        }
+
+    }
+
+    operator fun get(s: String): String {
+        return c.settings[s].str()
+    }
+
+    fun have(s: String): Boolean {
+        return c.settings.has(s)
     }
 
 }

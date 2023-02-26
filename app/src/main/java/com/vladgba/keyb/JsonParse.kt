@@ -231,7 +231,6 @@ object JsonParse {
 
     private fun extractNumber(jsonString: String, fldStart: Int): ExtractedNumber {
         var i = fldStart
-        val builder = StringBuilder()
         var withDecimal = false
         var withE = false
         val end = jsonString.length - 1
@@ -253,15 +252,12 @@ object JsonParse {
                 java.lang.Long.valueOf(valueString)
             }
         } catch (e: NumberFormatException) {
-            throw Exception(
-                "\"" + valueString +
-                        "\" expected to be a number, but wasn't"
-            )
+            throw Exception("\"" + valueString + "\" expected to be a number, but wasn't")
         }
-            return ExtractedNumber().apply {
-                sourceEnd = i
-                num = value
-            }
+        return ExtractedNumber().apply {
+            sourceEnd = i
+            num = value
+        }
     }
 
     private fun indexOfSpecial(str: String, strt: Int): Int {
@@ -305,11 +301,11 @@ object JsonParse {
             return data is Map<*, *>
         }
 
-        fun have(k: String): Boolean {
+        fun has(k: String): Boolean {
             return if (data is Map<*, *>) data.containsKey(k) else if (data is ArrayList<*>) data.contains(k.toInt()) else false
         }
 
-        fun have(k: Int): Boolean {
+        fun has(k: Int): Boolean {
             return if (data is Map<*, *>) data.containsKey(k.toString()) else if (data is ArrayList<*>) data.contains(k) else false
         }
 
@@ -331,7 +327,7 @@ object JsonParse {
 
         fun num(): Int {
              return when (data) {
-                is String -> data.toInt()
+                is String -> if (data.length > 0) data.toInt() else 0
                 is Int -> data
                 else -> 0
              }

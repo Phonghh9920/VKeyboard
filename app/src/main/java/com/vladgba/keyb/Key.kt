@@ -10,13 +10,24 @@ import kotlin.math.*
 import android.os.*
 import android.view.*
 
-class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonParse.JsonNode, pos: Int): KeyAction(c){
+private const val MULTIBYTE_UTF = 56320
+
+class Key(private var c: KeybCtl, private val parent: KeybModel.Row?, val x: Int, val y: Int, jsonData: JsonParse.JsonNode, pos: Int): KeyAction(c){
     private val angPos = intArrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)
+    private val allocPositions = arrayOf(
+        intArrayOf(5, 7, 8),
+        intArrayOf(4, 5, 6, 7, 8),
+        intArrayOf(4, 6, 7),
+        intArrayOf(2, 3, 5, 7, 8),
+        intArrayOf(1, 2, 3, 4, 5, 6, 7, 8),
+        intArrayOf(1, 2, 4, 6, 7),
+        intArrayOf(2, 3, 5),
+        intArrayOf(1, 2, 3, 4, 5),
+        intArrayOf(1, 2, 4)
+    )
     var extCharsRaw = ""
     var codes: IntArray? = null
     var label: CharSequence? = null
-    var x = 0
-    var y = 0
     var width: Int = 0
     var height: Int = 64
     var repeat = false
@@ -26,8 +37,8 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
     private var options: JsonParse.JsonNode? = null
     var record: ArrayList<Record> = ArrayList()
     var recording: Boolean = false
-    val mpr = MediaPlayer()
-    val mr = MediaPlayer()
+    private val mediaPressed = MediaPlayer()
+    private val mediaReleased = MediaPlayer()
 
     var pressX = 0
     var pressY = 0
@@ -36,17 +47,15 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
     var cursorMoved = false
     var charPos = 0
     var longPressed = false
-	var hardPressed = false
-    val runnable = Runnable { longPress() }
+    var hardPressed = false
+    val longPressRunnable = Runnable { longPress() }
 
     init {
-        this.x = x
-        this.y = y
         try {
-            options = jdata
+            options = jsonData
             label = getStr("key")
             codes = intArrayOf(getInt("code"))
-            if (codes!![0] == 0 && label!!.length > 0 && getStr("text").length < 1) {
+            if (codes!![0] == 0 && label!!.isNotEmpty() && getStr("text").isEmpty()) {
                 if (label!!.length > 1) text = label
                 else codes!![0] = label!![0].code
             } else {
@@ -61,8 +70,8 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
 
             repeat = getBool("repeat")
             randomTexts()
-            setSound(mpr, "sound-p")
-            setSound(mr, "sound-r")
+            setSound(mediaPressed, "sound-p")
+            setSound(mediaReleased, "sound-r")
 
             this.height = parent.keySize
         } catch (e: Exception) {
@@ -71,7 +80,7 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
     }
 
     private fun randomTexts() {
-        if (!options!!.have("rand")) return
+        if (!options!!.has("rand")) return
         val rands = options!!["rand"]
         rand = arrayOfNulls(rands.count())
         for (i in 0 until rands.count()) rand!![i] = rands[i].str()
@@ -90,47 +99,32 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
 
     private fun parseExt(str: String) {
         extCharsRaw = str
-        var hi = -1
+        var symbolIndex = -1
         for (i in str.indices) {
-            if (str[i].code < 56320) hi++ // Crutch for UTF multibyte symbols
-            extChars[hi] = "" + (extChars[hi] ?: "") + str[i].toString()
+            if (str[i].code < MULTIBYTE_UTF) symbolIndex++
+            extChars[symbolIndex] = "" + (extChars[symbolIndex] ?: "") + str[i].toString()
         }
     }
 
     fun getStr(s: String): String {
-        return if (options!!.have(s)) options!![s].str() else ""
+        return if (options!!.has(s)) options!![s].str() else ""
     }
 
-    fun getInt(s: String): Int {
-        try {
-            return if (options!!.have(s)) options!![s].num() else 0
-        } catch (_: Exception) {
-            return if (options!!.have(s)) options!![s].str()[0].code else 0
-        }
+    fun getInt(s: String): Int = try {
+        if (options!!.has(s)) options!![s].num() else 0
+    } catch (_: Exception) {
+        if (options!!.has(s)) options!![s].str()[0].code else 0
     }
 
-    fun getBool(s: String): Boolean {
-        return options!!.have(s) && !arrayOf(0, null, "", " ").contains(options!![s].str())
-    }
+    fun getBool(s: String): Boolean = options!!.has(s) && !arrayOf(0, null, "", " ").contains(options!![s].str())
 
     private fun padExtChars(pos: Int) {
         Log.d("pos", pos.toString())
         val nExtChars = arrayOfNulls<CharSequence>(8)
-        val modes = arrayOf(
-            intArrayOf(5, 7, 8),
-            intArrayOf(4, 5, 6, 7, 8),
-            intArrayOf(4, 6, 7),
-            intArrayOf(2, 3, 5, 7, 8),
-            intArrayOf(1, 2, 3, 4, 5, 6, 7, 8),
-            intArrayOf(1, 2, 4, 6, 7),
-            intArrayOf(2, 3, 5),
-            intArrayOf(1, 2, 3, 4, 5),
-            intArrayOf(1, 2, 4)
-        )
-        val curv = modes[pos - 1]
-        for (i in curv.indices) {
+        val currAlloc = allocPositions[pos - 1]
+        for (i in currAlloc.indices) {
             if (i >= extChars.size) break
-            nExtChars[curv[i]-1] = extChars[i]
+            nExtChars[currAlloc[i]-1] = extChars[i]
         }
         extChars = nExtChars
     }
@@ -141,10 +135,10 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
         if (getStr("hold").length > 1) c.onText(getStr("hold"))
         else c.onKey(getInt("hold"))
     }
-	
-	fun hardPress(me: MotionEvent, pid: Int) {
-        if (getInt("hard") == 0 || c.sett["hardPress"].str().isEmpty()) return
-		if ((me.getPressure(pid)*1000).toInt() < c.sett["hardPress"].num()) return
+    
+    fun hardPress(me: MotionEvent, pid: Int) {
+        if (getInt("hard") == 0 || c.settings["hardPress"].str().isEmpty()) return
+        if ((me.getPressure(pid)*1000).toInt() < c.settings["hardPress"].num()) return
         hardPressed = true
         if (getStr("hard").length > 1) c.onText(getStr("hard"))
         else c.onKey(getInt("hard"))
@@ -152,7 +146,7 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
 
     fun getExtPos(x: Int, y: Int): Int {
         if (abs(pressX - x) < c.offset && abs(pressY - y) < c.offset) return 0
-        if (charPos == 0) c.handler.removeCallbacks(runnable)
+        if (charPos == 0) c.handler.removeCallbacks(longPressRunnable)
         val angle = Math.toDegrees(atan2((pressY - y).toDouble(), (pressX - x).toDouble()))
         Log.d("ext", angle.toString())
         return angPos[ceil(((if (angle < 0) 360.0 else 0.0) + angle + 22.5) / 45.0).toInt() - 1]
@@ -186,34 +180,31 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
 
     fun recordAction(curX: Int, curY: Int): Boolean {
         if (!getBool("record")) return false
-        if (arrayOf(1, 3, 6, 8).contains(getExtPos(curX, curY))) {
-            if (c.recKey != null) c.recKey!!.record.clear()
-        } else if (arrayOf(2, 4, 5, 7).contains(getExtPos(curX, curY))) {
-            if (arrayOf(4, 5).contains(getExtPos(curX, curY))) {
-                c.recKey = this
-                c.recKey!!.recording = true
-            } else {
-                if (c.recKey == null) return true
-                c.recKey!!.recording = false
-            }
-        } else {
-            if (c.recKey == null || c.recKey!!.record.size == 0) return true
-            for (i in 0 until c.recKey!!.record.size) {
-                c.recKey!!.record.get(i).replay(c)
+        val extPos = getExtPos(curX, curY)
+        when (extPos) {
+            in arrayOf(1, 3, 6, 8) -> c.recKey?.record?.clear()
+            in arrayOf(4, 5) -> c.recKey = this.apply { recording = true }
+            in arrayOf(2, 7) -> (c.recKey ?: return true).recording = false
+            else -> {
+                if (c.recKey == null || c.recKey!!.record.size == 0) return true
+                for (i in 0 until c.recKey!!.record.size) c.recKey?.record?.get(i)?.replay(c)
             }
         }
         return true
     }
 
     fun swipeAction(r: Int, t: Int, s: String, add: Boolean): Int {
-        if (!cursorMoved) {
-            cursorMoved = true
-            c.handler.removeCallbacks(runnable)
-        }
+        preventLongPressOnMoved()
         c.onKey(if (getInt(s) == 0) codes!![0] else getInt(s))
         c.vibrate(this, "vibtick")
         return if (add) r + t else r - t
 
+    }
+
+    private fun preventLongPressOnMoved() {
+        if (cursorMoved) return
+        cursorMoved = true
+        c.handler.removeCallbacks(longPressRunnable)
     }
 
     fun repeating(curX: Int, curY: Int) {
@@ -276,11 +267,11 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
     fun modifierAction(): Boolean {
         if (!getBool("mod")) return false
 
-        if ((c.mod and getInt("modmeta")) > 0) {
-            c.mod = c.mod and getInt("modmeta").inv()
+        if ((c.modifierState and getInt("modmeta")) > 0) {
+            c.modifierState = c.modifierState and getInt("modmeta").inv()
             c.keyShiftable(KeyEvent.ACTION_UP, getInt("modkey"))
         } else {
-            c.mod = c.mod or getInt("modmeta")
+            c.modifierState = c.modifierState or getInt("modmeta")
             c.keyShiftable(KeyEvent.ACTION_DOWN, getInt("modkey"))
         }
         c.picture?.repMod()
@@ -302,21 +293,21 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
     }
 
     fun press(curX: Int, curY: Int) {
-        if (c.getVal(c.sett, "debug", "") == "1") {
+        if (c.getVal("debug", "") == "1") {
             val p = Paint().also { it.color = 0x0fff0000}
             c.keybLayout?.canv?.drawCircle(curX.toFloat(), curY.toFloat(), 10f, p)
         }
 
-        if (mpr.isPlaying) {
-            mpr.stop()
-            mpr.prepare()
+        if (mediaPressed.isPlaying) {
+            mediaPressed.stop()
+            mediaPressed.prepare()
         }
-        mpr.start()
+        mediaPressed.start()
 
         if (modifierAction()) return
-        c.handler.postDelayed(runnable, c.longPressTime)
+        c.handler.postDelayed(longPressRunnable, c.longPressTime)
         longPressed = false
-	    hardPressed = false
+        hardPressed = false
         c.vibrate(this, "vibpress")
         pressX = curX
         pressY = curY
@@ -336,24 +327,24 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
             charPos = getExtPos(curX, curY)
             return
         }
-		
+        
         if (longPressed || hardPressed) return // Not have alternative behavior
-		hardPress(me, pid)
+        hardPress(me, pid)
         if (relX < 0) return // Not have alternative behavior
-		repeating(curX, curY)
+        repeating(curX, curY)
         procExtChars(curX, curY)
     }
 
     fun release(curX: Int, curY: Int, pid: Int) {
-        if (mr.isPlaying) {
-            mr.stop()
-            mr.prepare()
+        if (mediaReleased.isPlaying) {
+            mediaReleased.stop()
+            mediaReleased.prepare()
         }
-        mr.start()
-        if(longPressed || hardPressed) return
+        mediaReleased.start()
+        if (longPressed || hardPressed) return
         if (charPos == 0) c.vibrate(this, "vibrelease")
         if (getBool("mod")) {
-            if (c.lastpid != pid) modifierAction()
+            if (c.lastPointerId != pid) modifierAction()
             return
         }
         if (prExtChars() || curY == 0 || cursorMoved) return
@@ -373,27 +364,19 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
     }
 
     private fun textInput(): Boolean {
-        if (text != null && text!!.length > 0) {
-            if (text!!.length == 1) c.onText(c.getShifted(text!![0].code, c.shiftPressed()).toChar().toString())
-            else c.onText(text!!)
-
-            if (getStr("pos") == "") return true
-
-            if (getInt("pos") < 0) for (i in 1..-getInt("pos")) c.onKey(-21)
-            else if (getInt("pos") >= 0) for (i in 1..text!!.length - getInt("pos")) c.onKey(-21)
-            return true
-        }
-        return false
+        if (text.isNullOrEmpty()) return false
+        c.onText(if (text!!.length == 1) c.getShifted(text!![0].code, c.shiftPressed()).toChar().toString() else text!!)
+        if (getStr("pos") == "") return true
+        val pos = getInt("pos")
+        for (i in 1..(-pos + if (pos < 0) 0 else text!!.length)) c.onKey(-21)
+        return true
     }
 
-    private fun langSwitch(): Boolean {
-        if (getStr("lang").isNotEmpty() && charPos == 0) {
-            c.currentLayout = getStr("lang")
-            c.reloadLayout()
-            return true
-        }
-        return false
-    }
+
+    private fun langSwitch(): Boolean = if (getStr("lang").isNotEmpty() && charPos == 0) {
+        c.apply { currentLayout = getStr("lang"); reloadLayout() }
+        true
+    } else false
 
     private fun prExtChars(): Boolean {
         if (extCharsRaw.length < 1 || charPos < 1) return false
@@ -403,4 +386,10 @@ class Key(var c: KeybCtl, parent: KeybModel.Row?, x: Int, y: Int, jdata: JsonPar
         else c.onKey(c.getFromString(textIndex.toString())[0])
         return true
     }
+
+    operator fun get(s: String): String = if (options?.has(s) == true) options!![s].str()
+        else if (parent?.has(s) == true) parent[s]
+        else ""
+
+    fun has(s: String): Boolean = options?.has(s) == true || parent?.has(s) == true
 }
