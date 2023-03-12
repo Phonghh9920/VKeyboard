@@ -52,10 +52,10 @@ object JsonParse {
                     value = extracted.num.toString()
 
                     if (currentContainer is Map<*, *>) {
-                        (currentContainer as MutableMap<String?, Any?>)[propertyName] = value
+                        (currentContainer as MutableMap<String, Any>)[propertyName!!] = value
                         currentType = Type.OBJECT
-                    } else {
-                        (currentContainer as MutableList<Any?>).add(value)
+                    } else if (currentContainer is List<*>) {
+                        (currentContainer as MutableList<Any>).add(value)
                         currentType = Type.ARRAY
                     }
                     i++
@@ -70,10 +70,10 @@ object JsonParse {
                     }
 
                     if (currentContainer is Map<*, *>) {
-                        (currentContainer as MutableMap<String?, Any?>)[propertyName] = value
+                        (currentContainer as MutableMap<String, Any>)[propertyName!!] = value!!
                         currentType = Type.OBJECT
                     } else {
-                        (currentContainer as MutableList<Any?>).add(value)
+                        (currentContainer as MutableList<Any>).add(value!!)
                         currentType = Type.ARRAY
                     }
                     i++
@@ -128,9 +128,9 @@ object JsonParse {
                                 val parentName = upper.propertyName
                                 currentType = upper.type
                                 if (upperContainer is Map<*, *>) {
-                                    (upperContainer as MutableMap<String?, Any?>)[parentName] = currentContainer
+                                    (upperContainer as MutableMap<String, Any>)[parentName!!] = currentContainer!!
                                 } else {
-                                    (upperContainer as MutableList<Any?>?)!!.add(currentContainer)
+                                    (upperContainer as MutableList<Any>).add(currentContainer!!)
                                 }
                                 currentContainer = upperContainer
                                 i++
@@ -171,9 +171,9 @@ object JsonParse {
                                 val parentName = upper.propertyName
                                 currentType = upper.type
                                 if (upperContainer is Map<*, *>) {
-                                    (upperContainer as MutableMap<String?, Any?>)[parentName] = currentContainer
+                                    (upperContainer as MutableMap<String, Any>)[parentName!!] = currentContainer!!
                                 } else {
-                                    (upperContainer as MutableList<Any?>?)!!.add(currentContainer)
+                                    (upperContainer as MutableList<Any>).add(currentContainer!!)
                                 }
                                 currentContainer = upperContainer
                                 i++
@@ -327,7 +327,11 @@ object JsonParse {
 
         fun num(): Int {
              return when (data) {
-                is String -> if (data.length > 0) data.toInt() else 0
+                is String -> try {
+                    if (data.length > 0) data.toInt() else 0
+                } catch (_: Exception) {
+                    0
+                }
                 is Int -> data
                 else -> 0
              }
@@ -335,7 +339,7 @@ object JsonParse {
 
         fun bool(): Boolean {
             return when (data) {
-                is String -> data == "1"
+                is String -> data.trim() == "1"
                 is Int -> data == 1
                 else -> false
             }
