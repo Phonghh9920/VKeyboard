@@ -8,12 +8,23 @@ import java.util.*
 import kotlin.collections.*
 import kotlin.math.*
 
+private const val COLOR_NIGHT = "colorNight"
+
+private const val COLOR_TEXT_PRIMARY = "primaryText"
+
+private const val SET_COLOR_SWITCH = "colorSwitch"
+
 @SuppressLint("ViewConstructor")
 class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
     private var buffer: Bitmap? = null
     private var bufferSh: Bitmap? = null
     private var paint = Paint()
     private var repMods = false
+
+    fun clearBuffers() {
+        buffer = null
+        bufferSh = null
+    }
 
     fun reload() {
         buffer = null
@@ -43,29 +54,22 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
     fun repMod() {
         if (buffer == null || bufferSh == null) return
         repMods = true
-        keybPaint(buffer!!.width, buffer!!.height, buffer!!, false)
-        keybPaint(bufferSh!!.width, bufferSh!!.height, bufferSh!!, true)
+        keybPaint(buffer!!.width, buffer!!.height, Canvas(buffer!!), false)
+        keybPaint(bufferSh!!.width, bufferSh!!.height, Canvas(bufferSh!!), true)
         repMods = false
         invalidate()
     }
 
 
-    private fun repaintKeyb() {
+    fun repaintKeyb() {
         bufferSh = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
         buffer = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
-        keybPaint(width, height, buffer!!, false)
-        keybPaint(width, height, bufferSh!!, true)
-
-        c.keybLayout.also {
-            if (it == null) return
-            it.bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.TRANSPARENT) }
-            it.canv = Canvas(c.keybLayout?.bitmap!!)
-        }
+        keybPaint(width, height, Canvas(buffer!!), false)
+        keybPaint(width, height, Canvas(bufferSh!!), true)
         invalidate()
     }
 
-    private fun keybPaint(w: Int, h: Int, b: Bitmap, sh: Boolean) {
-        val canvas = Canvas(b)
+    private fun keybPaint(w: Int, h: Int, canvas: Canvas, sh: Boolean) {
         val paint = Paint()
         if (!repMods) {
             paint.color = getColor("keyboardBackground")
@@ -74,9 +78,9 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
         }
         val keys = c.keybLayout!!.keys
         for (key in keys) {
-            if (repMods && !key.getBool("mod")) continue
+            if (repMods && !key.options.bool("mod")) continue
 
-            if(key.getBool("mod")) {
+            if(key.options.bool("mod")) {
                 paint.color = getColor("keyboardBackground")
                 val r = RectF(key.x.toFloat(), key.y.toFloat(), key.x.toFloat() + key.width.toFloat(), key.y.toFloat() + key.height.toFloat())
                 canvas.drawRect(r, paint)
@@ -101,10 +105,10 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
             val shadow = if (key.has("shadow")) key["shadow"].toFloat() else key.height / 36f
 
             val margin = max(padding + shadow, radius)
-            val lpad = if (key.getStr("stylepos").contains("l")) -margin else 0f
-            val rpad = if (key.getStr("stylepos").contains("r")) margin else 0f
-            val tpad = if (key.getStr("stylepos").contains("t")) -margin else 0f
-            val bpad = if (key.getStr("stylepos").contains("b")) margin else 0f
+            val lpad = if (key.options.str("stylepos").contains("l")) -margin else 0f
+            val rpad = if (key.options.str("stylepos").contains("r")) margin else 0f
+            val tpad = if (key.options.str("stylepos").contains("t")) -margin else 0f
+            val bpad = if (key.options.str("stylepos").contains("b")) margin else 0f
 
             var recty = RectF(
                 (key.x + lpad + padding - shadow / 3),
@@ -113,8 +117,8 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
                 (key.y + bpad + key.height - padding + shadow)
             )
             canvas.drawRoundRect(recty, radius, radius, paint)
-            paint.color = if (key.getStr("bg").isEmpty()) getColor("keyBackground") else Color.parseColor("#" + key.getStr("bg"))
-            if (key.getBool("mod") && (key.getInt("modmeta") and c.modifierState) > 0) paint.color = getColor("modBackground")
+            paint.color = if (key.options.str("bg").isEmpty()) getColor("keyBackground") else Color.parseColor("#" + key.options.str("bg"))
+            if (key.options.bool("mod") && (key.options.num("modmeta") and c.modifierState) > 0) paint.color = getColor("modBackground")
             recty = RectF(
                 (key.x + lpad + padding),
                 (key.y + tpad + padding),
@@ -122,12 +126,12 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
                 (key.y + bpad + key.height - padding)
             )
             canvas.drawRoundRect(recty, radius, radius, paint)
-            paint.textSize = key.height / c.secondaryFont
-            paint.color = getColor("primaryText")
+            paint.textSize = key.height / Settings.secondaryFont
+            paint.color = getColor(COLOR_TEXT_PRIMARY)
             viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, false)
 
-            paint.color = getColor("primaryText")
-            paint.textSize = key.height / c.primaryFont
+            paint.color = getColor(COLOR_TEXT_PRIMARY)
+            paint.textSize = key.height / Settings.primaryFont
 
             drawLabel(key, sh, canvas, paint)
             canvas.restore()
@@ -146,12 +150,11 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
     }
 
     private fun getColor(styleName: String): Int {
-        c.settings.also {
-            if (it.count() == 0) return randColor()
-            val curTheme = if (c.night && it.has("colorSwitch") && it["colorSwitch"].bool()) "colorNight" else "colorDay"
+        Settings.also {
+            val curTheme = if (c.night && it.has(SET_COLOR_SWITCH) && it.str(SET_COLOR_SWITCH) == "1") COLOR_NIGHT else "colorDay"
             if (!it.has(curTheme)) return randColor()
             val theme = it[curTheme]
-            return if (theme.has(styleName)) theme[styleName].str().toLong(16).toInt() else randColor()
+            return if (theme.has(styleName)) theme.str(styleName).toLong(16).toInt() else randColor()
         }
     }
 
@@ -161,7 +164,6 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
 
             canvas.drawBitmap((if (c.shiftPressed()) bufferSh else buffer)!!, 0f, 0f, null)
             drawModifierCode(canvas)
-            canvas.drawText(c.errorInfo, 40f, 20f, paint)
             if (c.recKey != null) canvas.drawText(c.recKey!!.record.size.toString(), 20f, 20f, paint)
             if (c.points[c.lastPointerId] == null) return
             drawKey(canvas, c.points[c.lastPointerId]!!)
@@ -171,8 +173,7 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
     }
 
     private fun drawModifierCode(canvas: Canvas) {
-        if (c.getVal("debug", "") != "1") return
-        if (c.keybLayout!!.bitmap != null) canvas.drawBitmap(c.keybLayout!!.bitmap!!, 0f, 0f, null)
+        if (Settings.getVal("debug", "") != "1") return
         paint.color = (if (c.night) 0xffffffff else 0xff000000).toInt()
         paint.textSize = 20f
         canvas.drawText(c.modifierState.toString(2), 10f, 95f, paint)
@@ -181,11 +182,11 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
     fun drawKey(canvas: Canvas, curkey: Key) {
         canvas.save()
 
-        if (curkey.extCharsRaw.isEmpty() && !curkey.getBool("clipboard")) return
+        if (curkey.extCharsRaw.isEmpty() && !curkey.options.bool("clipboard")) return
         val paint = Paint()
         paint.isAntiAlias = true
         paint.textAlign = Paint.Align.CENTER
-        paint.textSize = curkey.height / c.primaryFont
+        paint.textSize = curkey.height / Settings.primaryFont
         
         val rectShadow = RectF(0f, 0f, width.toFloat(), height.toFloat())
         paint.color = getColor("shadowColor")
@@ -202,7 +203,7 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
         val y3 = curkey.height * 1.5f
 
 
-        if (!curkey.getBool("clipboard") || curkey.charPos < 1 || curkey.extChars[curkey.charPos - 1] == null) {
+        if (!curkey.options.bool("clipboard") || curkey.charPos < 1 || curkey.extChars[curkey.charPos - 1] == null) {
             val rect = Rect(
                 curkey.x - curkey.width,
                 curkey.y - curkey.height,
@@ -211,8 +212,9 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
             )
             canvas.clipRect(rect)
         }
-        val padding = c.getVal("padding", (c.keybLayout?.height!! / 16f).toString()).toFloat() * 2
-        val radius = c.getVal("radius", (c.keybLayout?.height!! / 16f).toString()).toFloat() * 2
+        val padding = if (curkey.has("padding")) curkey["padding"].toFloat() else curkey.height / 16f
+        //val padding = c.getVal("padding", (c.keybLayout?.height!! / 16f).toString()).toFloat() * 2
+        val radius = Settings.getVal("radius", (c.keybLayout?.height!! / 16f).toString()).toFloat() * 2
         paint.color = getColor("keyBorder")
         var recty = RectF(
             curkey.x + x1 * 2,
@@ -229,10 +231,10 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
             curkey.y - y1 + y3 - padding
         )
         canvas.drawRoundRect(recty, radius, radius, paint)
-        paint.color = getColor("primaryText")
+        paint.color = getColor(COLOR_TEXT_PRIMARY)
         val sh = c.shiftPressed()
-        if (curkey.getBool("clipboard") && curkey.charPos > 0 && curkey.extChars[curkey.charPos - 1] != null) {
-            paint.textSize = curkey.height / c.secondaryFont
+        if (curkey.options.bool("clipboard") && curkey.charPos > 0 && curkey.extChars[curkey.charPos - 1] != null) {
+            paint.textSize = curkey.height / Settings.secondaryFont
             canvas.drawText(
                 curkey.extChars[curkey.charPos - 1].toString(),
                 width / 2f,
@@ -252,8 +254,7 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
         for (i in 0..7) {
             p.color = getColor("previewSelected")
             if (h) {
-                if (curkey.charPos == i + 1) cv.drawCircle((curkey.x + xi[i]),
-                    (curkey.y + yi[i]), min(curkey.width, curkey.height) * 0.6f, p)
+                if (curkey.charPos == i + 1) drawCircle(cv, curkey, xi[i], yi[i], p)
                 p.color = getColor("previewText")
             } else {
                 p.color = getColor("secondaryText")
@@ -263,20 +264,14 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
         if (!h) return
         if (curkey.charPos == 0) {
             p.color = getColor("previewSelected")
-            cv.drawCircle(
-                curkey.x + x2,
-                curkey.y + y2,
-                min(curkey.width, curkey.height) * 0.4f,
-                p
-            )
+            drawCircle(cv, curkey, x2, y2, p)
         }
         p.color = getColor("previewText")
-        cv.drawText(
-            shiftedLabel(sh, curkey),
-            (curkey.x + x2),
-            curkey.y + y2 + (p.textSize - p.descent()) / 2,
-            p
-        )
+        cv.drawText(shiftedLabel(sh, curkey), (curkey.x + x2), curkey.y + y2 + (p.textSize - p.descent()) / 2, p)
+    }
+
+    private fun drawCircle(cv: Canvas, curkey: Key, xi: Float, yi: Float, p: Paint) {
+        cv.drawCircle((curkey.x + xi), (curkey.y + yi), min(curkey.width, curkey.height) * 0.6f, p)
     }
 
     private fun shiftedLabel(sh: Boolean, curkey: Key) =

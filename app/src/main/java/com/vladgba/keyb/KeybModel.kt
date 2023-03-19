@@ -2,7 +2,6 @@ package com.vladgba.keyb
 
 import java.io.*
 import kotlin.math.*
-import android.graphics.*
 import android.os.Environment
 import android.util.Log
 
@@ -10,19 +9,14 @@ class KeybModel(val c: KeybCtl, jsondat: String, portrait: Boolean, isJsonData: 
     val rows = ArrayList<Row>()
     val keys: ArrayList<Key>
     var keySize = 0
-    var minWidth = 0
+    var minWidth = c.dm.widthPixels
     var height = 0
     private var loadx = 0
     private var loady = 0
-    private var loadcurrentRow: Row? = null
     var loaded = false
-    var bitmap: Bitmap? = null
-    var canv: Canvas? = null
     var lastdate: Long = 0
-    var predict: JsonParse.JsonNode? = null
 
     init {
-        Log.d("json", jsondat)
         loadx = 0
         loady = 0
         keys = ArrayList()
@@ -30,20 +24,17 @@ class KeybModel(val c: KeybCtl, jsondat: String, portrait: Boolean, isJsonData: 
         val dm = c.resources.displayMetrics
 
         try {
-            val glob = JsonParse.map(if (isJsonData) jsondat else loadKeybLayout(jsondat))
-            val size = (glob["keyCount"].str()).toFloat()
-            keySize = (if (portrait) min(dm.widthPixels, dm.heightPixels) / size else ceil(max(dm.widthPixels, dm.heightPixels) / size)).toInt()
+            val glob = LayoutParse(if (isJsonData) jsondat else loadKeybLayout(jsondat), c).parse()
+            //val size = (glob.str("keyCount")).toFloat()
+            //keySize = (if (portrait) min(dm.widthPixels, dm.heightPixels) / size else ceil(max(dm.widthPixels, dm.heightPixels) / size)).toInt()
+            keySize =  (if (portrait) min(dm.widthPixels, dm.heightPixels) / 10f else ceil(max(dm.widthPixels, dm.heightPixels) / 10f)).toInt()
 
             loadAllRows(glob["keyb"])
-            
-            predict = if (glob.has("dict")) glob["dict"] else null
+
             height = loady
             loaded = true
-            c.errorInfo = ""
         } catch (e: Exception) {
             loaded = false
-            if (!isJsonData) c.errorInfo = e.message!!
-            Log.e("PSR", e.message!!)
             c.prStack(e)
         }
     }
@@ -52,7 +43,7 @@ class KeybModel(val c: KeybCtl, jsondat: String, portrait: Boolean, isJsonData: 
 
     fun loadKeybLayout(name: String): String {
         val sdcard = Environment.getExternalStorageDirectory()
-        val file = File(sdcard, "$name.json")
+        val file = File(sdcard, "vkeyb/$name.json")
         lastdate = file.lastModified()
         val text = StringBuilder()
         try {
@@ -66,8 +57,7 @@ class KeybModel(val c: KeybCtl, jsondat: String, portrait: Boolean, isJsonData: 
             Log.d("Keyb", "Done")
             return text.toString()
         } catch (e: Exception) {
-            Log.d("Keyb", "Error")
-            Log.d("Keyb", e.message!!)
+            c.prStack(e)
         }
         return ""
     }
@@ -76,7 +66,7 @@ class KeybModel(val c: KeybCtl, jsondat: String, portrait: Boolean, isJsonData: 
         var rowIndex = 0
         var keyIndex = 0
         for (row in rows) {
-            if (y <= rowIndex + row.keySize) {
+            if (y <= rowIndex + row.height) {
                 var keyOffset = 0
                 for (key in row.keys) {
                     if (x <= keyOffset + key.width) return key
@@ -85,61 +75,75 @@ class KeybModel(val c: KeybCtl, jsondat: String, portrait: Boolean, isJsonData: 
                 }
                 break
             }
-            rowIndex += row.keySize
+            rowIndex += row.height
         }
         return null
     }
 
-    private fun loadKey(jdata: JsonParse.JsonNode, pos: Int) {
-        val loadkey = Key(c, loadcurrentRow, loadx, loady, jdata, pos)
+    private fun loadKey(jdata: LayoutParse.DataNode, cr: Row, pos: Int) {
+        val loadkey = Key(c, cr, loadx, loady, jdata, pos)
         keys.add(loadkey)
-        loadcurrentRow!!.keys.add(loadkey)
+        cr.keys.add(loadkey)
         loadx += loadkey.width
         if (loadx > minWidth) minWidth = loadx
     }
 
-    private fun loadAllRows(json: JsonParse.JsonNode) {
-        for (i in 0 until json.count()) loadRow(json[i], posOnLine(json, i, 0, 3, 6))
+    private fun loadAllRows(json: LayoutParse.DataNode) {
+        for (i in 0 until json.count()) {
+            loadRow(json[i], posOnLine(json, i, 0, 3, 6))
+        }
     }
 
-    private fun loadRow(row: JsonParse.JsonNode, pos: Int) {
+    private fun loadRow(row: LayoutParse.DataNode, pos: Int) {
         loadx = 0
-        loadcurrentRow = Row(this, row)
-        rows.add(loadcurrentRow!!)
-        for (i in 0 until row.count()) loadKey(row[i], pos + posOnLine(row, i, 1, 2, 3))
-        loady += loadcurrentRow!!.keySize
+        val loadcurrentRow = Row(this, row)
+        rows.add(loadcurrentRow)
+        for (i in 0 until row.count()) loadKey(row[i], loadcurrentRow, pos + posOnLine(row, i, 1, 2, 3))
+        loady += loadcurrentRow.height
+        loadcurrentRow.calcWidth()
+
     }
 
-    private fun posOnLine(json: JsonParse.JsonNode, i: Int, f: Int, m: Int, l: Int) = if (i == 0) f else if (i == json.count() - 1) l else m
+    private fun posOnLine(json: LayoutParse.DataNode, i: Int, f: Int, m: Int, l: Int) = if (i == 0) f else if (i == json.count() - 1) l else m
 
 
-    class Row(val parent: KeybModel, val options: JsonParse.JsonNode) {
-        var keySize: Int = 0
+    class Row(val parent: KeybModel, val options: LayoutParse.DataNode) {
+        var height: Int = 0
         var keys = ArrayList<Key>()
 
-        fun has(s: String): Boolean {
-            return /*options.has(s) ||*/ parent.have(s)
+        fun calcWidth() {
+            var fullwidth = 0f
+            for (key in keys) {
+                fullwidth += key[KEY_WIDTH].ifEmpty { "1" }.toFloat()
+            }
+            var x = 0
+            for (key in keys) {
+                key.x = x
+                key.width = (parent.c.dm.widthPixels * key[KEY_WIDTH].ifEmpty { "1" }.toFloat() / fullwidth).roundToInt()
+                x += key.width
+            }
         }
 
+        fun has(s: String) = options.has(s) || parent.has(s)
+
         operator fun get(s: String): String {
-            return /*if (options.has(s)) options[s].str()
-            else*/ if (parent.have(s)) parent[s]
+            return if (options.has(s)) options.str(s)
+            else if (parent.has(s)) parent[s]
             else ""
         }
 
         init {
-            //keySize = if (options.has("height")) options["height"].num() else parent.keySize
-            keySize = parent.c.getVal("height", parent.keySize.toString()).toInt()
+            val hy = try {
+                if (options.has("height")) options.str("height").toFloat() else 1f
+            }  catch (_: Exception) {
+                1f
+            }
+            height = (hy * parent.keySize).toInt()
+            //keySize = Settings.getVal("height", parent.keySize.toString()).toInt()
         }
-
     }
 
-    operator fun get(s: String): String {
-        return c.settings[s].str()
-    }
+    operator fun get(s: String) = Settings.str(s)
 
-    fun have(s: String): Boolean {
-        return c.settings.has(s)
-    }
-
+    fun has(s: String) = Settings.has(s)
 }

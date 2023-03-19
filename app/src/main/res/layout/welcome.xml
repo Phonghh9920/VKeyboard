@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical" xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Welcome message -->
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Welcome to VKeyboard!"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_gravity="center"
+            android:padding="16dp" />
+    <!-- Keyboard preview -->
+    <ImageView
+            android:layout_width="match_parent"
+            android:padding="24dp"
+            android:layout_height="wrap_content"
+            android:scaleType="centerCrop"
+            android:adjustViewBounds="true"/>
+    <!--android:src="@drawable/xmp"-->
+
+    <!-- Description -->
+    <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Customize your keyboard with VKeyboard! Choose from a variety of themes and layouts to create a keyboard that's uniquely you."
+            android:textSize="16sp"
+            android:padding="16dp" />
+    <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Enable in settings"
+            android:textSize="16sp"
+            android:layout_gravity="center"/>
+    <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Choose from list"
+            android:textSize="16sp"
+            android:layout_gravity="center"/>
+    <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Customize Settings"
+            android:textSize="16sp"
+            android:layout_gravity="center"/>
+
+</LinearLayout>

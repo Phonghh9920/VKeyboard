@@ -19,8 +19,8 @@ android {
         applicationId "com.vladgba.keyb"
         minSdk 22
         targetSdk 33
-        versionCode 14
-        versionName "1.4"
+        versionCode 19
+        versionName "1.5.220319"
 
         targetSdkVersion 33
         minSdkVersion 22
@@ -30,6 +30,7 @@ android {
     buildTypes {
         release {
             minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
