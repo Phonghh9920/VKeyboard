@@ -1,4 +1,5 @@
 package com.vladgba.keyb
+
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -148,7 +149,6 @@ object JsonParse {
                 Type.ARRAY -> {
                     while (isWhitespace(current) && i++ < end) current = jsonString[i]
                     if (isNumber(current)) currentType = Type.NUMBER
-
                     else when (current) {
                         ',' -> i++
                         '"' -> currentType = Type.STRING
@@ -273,7 +273,7 @@ object JsonParse {
     fun isNumber(c: Char): Boolean {
         return c >= '0' && c <= '9' || c == '-'
     }
-    
+
     internal class State(val propertyName: String?, val container: Any?, val type: Type)
     enum class Type {
         ARRAY, OBJECT, HEURISTIC, NAME, NUMBER, STRING
@@ -283,70 +283,51 @@ object JsonParse {
         var sourceEnd = 0
         var num: Number = 0
     }
+
     private class ExtractedString {
         var sourceEnd = 0
         var str: String? = null
     }
 
     data class JsonNode(val data: Any?) {
-        fun keys(): Set<String>? {
-            return if (isAssoc()) ((data as Map<*, *>).keys as Set<String>) else null
+        fun keys() = if (isAssoc()) ((data as Map<*, *>).keys as Set<String>) else null
+
+        fun isArray() = data is ArrayList<*>
+
+        fun isAssoc() = data is Map<*, *>
+
+        fun has(k: String) =
+            if (data is Map<*, *>) data.containsKey(k) else if (data is ArrayList<*>) data.contains(k.toInt()) else false
+
+        operator fun get(i: Int) =
+            JsonNode(if (isArray()) (data as ArrayList<*>)[i] else if (isAssoc()) (data as Map<*, *>)[i.toString()] else data)
+
+        operator fun get(i: String) =
+            JsonNode(if (isArray()) (data as ArrayList<*>)[i.toInt()] else (data as Map<*, *>)[i])
+
+        fun str() = when (data) {
+            is String -> data
+            is Int -> data.toString()
+            else -> ""
         }
 
-        fun isArray(): Boolean {
-            return data is ArrayList<*>
-        }
-
-        fun isAssoc(): Boolean {
-            return data is Map<*, *>
-        }
-
-        fun has(k: String): Boolean {
-            return if (data is Map<*, *>) data.containsKey(k) else if (data is ArrayList<*>) data.contains(k.toInt()) else false
-        }
-
-        fun has(k: Int): Boolean {
-            return if (data is Map<*, *>) data.containsKey(k.toString()) else if (data is ArrayList<*>) data.contains(k) else false
-        }
-
-        operator fun get(i: Int): JsonNode {
-            return JsonNode(if (isArray()) (data as ArrayList<*>)[i] else if (isAssoc()) (data as Map<*, *>)[i.toString()] else data)
-        }
-
-        operator fun get(i: String): JsonNode {
-            return JsonNode(if (isArray()) (data as ArrayList<*>)[i.toInt()] else (data as Map<*, *>)[i])
-        }
-
-        fun str(): String {
-            return when (data) {
-                is String -> data
-                is Int -> data.toString()
-                else -> ""
+        fun num() = when (data) {
+            is String -> try {
+                if (data.length > 0) data.toInt() else 0
+            } catch (_: Exception) {
+                0
             }
+
+            is Int -> data
+            else -> 0
         }
 
-        fun num(): Int {
-             return when (data) {
-                is String -> try {
-                    if (data.length > 0) data.toInt() else 0
-                } catch (_: Exception) {
-                    0
-                }
-                is Int -> data
-                else -> 0
-             }
+        fun bool() = when (data) {
+            is String -> data.trim() == "1"
+            is Int -> data == 1
+            else -> false
         }
 
-        fun bool(): Boolean {
-            return when (data) {
-                is String -> data.trim() == "1"
-                is Int -> data == 1
-                else -> false
-            }
-        }
-
-        fun count(): Int {
-            return if (isArray()) (data as ArrayList<*>).size else if (isAssoc()) (data as Map<*, *>).size else 0
-        }
+        fun count() = if (isArray()) (data as ArrayList<*>).size else if (isAssoc()) (data as Map<*, *>).size else 0
     }
 }
