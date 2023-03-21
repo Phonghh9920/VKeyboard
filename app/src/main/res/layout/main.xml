@@ -46,7 +46,7 @@
             android:layout_width="fill_parent"
             android:gravity="center"
             android:layout_height="146dp"
-            android:importantForAutofill="no" android:inputType="text"/>
+            android:importantForAutofill="no" android:inputType="textMultiLine"/>
     <TextView
             android:layout_height="wrap_content"
             android:id="@+id/main_description"
