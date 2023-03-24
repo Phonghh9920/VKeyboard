@@ -9,34 +9,31 @@ import android.os.*
 import android.view.*
 
 const val MULTIBYTE_UTF = 56320
-const val VIBRATE_TICK = "vibtick"
-const val CURSOR_OFFSET_POS = "pos"
 const val KEY_KEY = "key"
-const val KEY_WIDTH = "size"
-const val KEY_REPEATABLE = "repeat"
+const val KEY_CODE = "code"
 const val KEY_TEXT = "text"
+const val KEY_WIDTH = "size"
+const val KEY_LANG_SWITCH = "lang"
+const val KEY_REPEATABLE = "repeat"
 const val KEY_ADDIT_CHARS = "ext"
+const val KEY_SHIFT = "shift"
+const val KEY_MOD = "mod"
+const val KEY_MOD_CODE = "modkey"
+const val KEY_MOD_META = "modmeta"
+const val CURSOR_OFFSET_POS = "pos"
 const val KEY_SOUND_PRESS = "sound-p"
 const val KEY_SOUND_RELEASE = "sound-r"
-const val KEY_CODE = "code"
-const val KEY_RANDOM = "rand"
+const val VIBRATE_TICK = "vibtick"
+const val KEY_VIBRATE_ON_PRESS = "vibpress"
+const val KEY_VIBRATE_ON_RELEASE = "vibrelease"
+const val KEY_VIBRATE_ON_EXT = "vibext"
 const val KEY_HOLD = "hold"
 const val KEY_HARD_PRESS = "hard"
 const val KEY_APP = "app"
-const val KEY_RECORD = "record"
-const val KEY_SHIFT = "shift"
-const val KEY_VIBRATE_ON_PRESS = "vibpress"
-const val KEY_VIBRATE_ON_RELEASE = "vibrelease"
-const val KEY_LANG_SWITCH = "lang"
 const val KEY_SU_ACTION = "sudo"
-const val KEY_MOD = "mod"
 const val KEY_CLIPBOARD = "clipboard"
-
-const val KEY_MOD_CODE = "modkey"
-
-const val KEY_MOD_META = "modmeta"
-
-const val KEY_VIBRATE_ON_EXT = "vibext"
+const val KEY_RECORD = "record"
+const val KEY_RANDOM = "rand"
 
 class Key(
     private var c: KeybCtl,
