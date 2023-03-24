@@ -57,12 +57,10 @@ class Vkeyboard : Activity() {
             val mid = android.provider.Settings.Secure.getString(
                 contentResolver,
                 android.provider.Settings.Secure.DEFAULT_INPUT_METHOD
-            );
-            val imeClass = KeybCtl::class.java
-            val packageName = imeClass.`package`?.name
-            val className = imeClass.simpleName
+            )
+
             inputMethod.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                if (mid.equals("$packageName/.$className")) check_mark else null,
+                if (mid.contains(this.packageName)) check_mark else null,
                 null,
                 null,
                 null
