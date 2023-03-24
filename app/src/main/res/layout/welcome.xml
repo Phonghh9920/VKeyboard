@@ -3,49 +3,46 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical" xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <!-- Welcome message -->
     <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Welcome to VKeyboard!"
+            android:text="@string/welcome_to_keyb"
             android:textSize="24sp"
             android:textStyle="bold"
             android:layout_gravity="center"
             android:padding="16dp" />
-    <!-- Keyboard preview -->
-    <ImageView
-            android:layout_width="match_parent"
-            android:padding="24dp"
-            android:layout_height="wrap_content"
-            android:scaleType="centerCrop"
-            android:adjustViewBounds="true"/>
-    <!--android:src="@drawable/xmp"-->
-
-    <!-- Description -->
     <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Customize your keyboard with VKeyboard! Choose from a variety of themes and layouts to create a keyboard that's uniquely you."
+            android:text="@string/welcome_cta"
             android:textSize="16sp"
             android:padding="16dp" />
     <Button
+            android:id="@+id/main_manage_onscreen_keyboards"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Enable in settings"
+            android:text="@string/enable_in_settings"
             android:textSize="16sp"
             android:layout_gravity="center"/>
     <Button
+            android:id="@+id/main_choose_input_method_btn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Choose from list"
+            android:text="@string/choose_from_ime_list"
+            android:drawablePadding="5dp"
             android:textSize="16sp"
             android:layout_gravity="center"/>
     <Button
+            android:id="@+id/main_settings_btn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Customize Settings"
+            android:text="@string/keyb_customize"
             android:textSize="16sp"
             android:layout_gravity="center"/>
-
+    <EditText
+            android:text="@string/you_can_test"
+            android:layout_width="fill_parent"
+            android:gravity="center"
+            android:layout_height="146dp"
+            android:inputType="textMultiLine"/>
 </LinearLayout>

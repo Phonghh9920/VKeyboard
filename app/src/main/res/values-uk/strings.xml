@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="manage_on_screen_keyboards">Керування екранними клавіатурами</string>
+    <string name="choose_input_method">Вибрати метод введення</string>
+    <string name="settings">Налаштування</string>
+    <string name="you_can_test">Перевірити клавіатуру можна тут</string>
+    <string name="welcome_to_keyb">Вітаємо у VKeyboard!</string>
+    <string name="welcome_cta">Налаштуйте свою клавіатуру за допомогою VKeyboard! Вибирайте з безлічі тем і розкладок, щоб створити унікальну клавіатуру.</string>
+    <string name="enable_in_settings">Ввімкнути у налаштуваннях</string>
+    <string name="choose_from_ime_list">Вибрати зі списку ІМЕ</string>
+    <string name="keyb_customize">Налаштувати клавіатуру</string>
+</resources>
