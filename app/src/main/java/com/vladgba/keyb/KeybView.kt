@@ -78,9 +78,9 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
         }
         val keys = c.keybLayout!!.keys
         for (key in keys) {
-            if (repMods && !key.options.bool("mod")) continue
+            if (repMods && !key.options.has("mod")) continue
 
-            if(key.options.bool("mod")) {
+            if(key.options.has(KEY_MOD)) {
                 paint.color = getColor("keyboardBackground")
                 val r = RectF(key.x.toFloat(), key.y.toFloat(), key.x.toFloat() + key.width.toFloat(), key.y.toFloat() + key.height.toFloat())
                 canvas.drawRect(r, paint)
@@ -118,7 +118,7 @@ class KeybView(private val c: KeybCtl) :  View(c), View.OnClickListener {
             )
             canvas.drawRoundRect(recty, radius, radius, paint)
             paint.color = if (key.options.str("bg").isEmpty()) getColor("keyBackground") else Color.parseColor("#" + key.options.str("bg"))
-            if (key.options.bool("mod") && (key.options.num("modmeta") and c.modifierState) > 0) paint.color = getColor("modBackground")
+            if (key.options.has(KEY_MOD) && (key.options.num(KEY_MOD_META) and c.modifierState) > 0) paint.color = getColor("modBackground")
             recty = RectF(
                 (key.x + lpad + padding),
                 (key.y + tpad + padding),

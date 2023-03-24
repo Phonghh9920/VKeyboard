@@ -2,7 +2,6 @@ package com.vladgba.keyb
 
 import android.media.MediaPlayer
 import android.widget.Toast
-import kotlin.collections.ArrayList
 import java.util.*
 import kotlin.math.*
 import android.os.*
@@ -181,7 +180,7 @@ class Key(
         if (abs(pressX - x) < Settings.offset && abs(pressY - y) < Settings.offset) return 0
         if (charPos == 0) c.handler.removeCallbacks(longPressRunnable)
         val angle = Math.toDegrees(atan2((pressY - y).toDouble(), (pressX - x).toDouble()))
-        return intArrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)[ceil(((if (angle < 0) 360.0 else 0.0) + angle + 22.5) / 45.0).toInt() - 1]
+        return arrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)[ceil(((if (angle < 0) 360.0 else 0.0) + angle + 22.5) / 45.0).toInt() - 1]
     }
 
 
@@ -290,7 +289,7 @@ class Key(
     }
 
     fun modifierAction(): Boolean {
-        if (!options.bool(KEY_MOD)) return false
+        if (!options.has(KEY_MOD) or !options.has(KEY_MOD_META)) return false
 
         if ((c.modifierState and options.num(KEY_MOD_META)) > 0) {
             c.modifierState = c.modifierState and options.num(KEY_MOD_META).inv()
@@ -304,7 +303,7 @@ class Key(
     }
 
     fun shiftAction(): Boolean {
-        if (!c.shiftPressed() || !options.bool(KEY_SHIFT)) return false
+        if (!c.shiftPressed() || options.str(KEY_SHIFT).isBlank()) return false
         try {
             val tx = c.currentInputConnection.getSelectedText(0).toString()
             c.log(tx)
@@ -320,9 +319,7 @@ class Key(
     }
 
     fun press(curX: Int, curY: Int) {
-
         mediaPressed.play()
-
         if (modifierAction()) return
         c.handler.postDelayed(longPressRunnable, Settings.longPressTime)
         longPressed = false
