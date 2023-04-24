@@ -32,14 +32,5 @@
                 <action android:name="android.view.InputMethod"/>
             </intent-filter>
         </service>
-        <receiver
-                android:name=".KeybReceiver"
-                android:label="VKeyboard Receiver"
-                android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.INPUT_METHOD_CHANGED" />
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
     </application>
 </manifest>
