@@ -15,18 +15,7 @@ import java.io.*
 import kotlin.math.min
 
 
-private const val LEFT_SHIFT = 193
-private const val LEFT_CTRL = 28672
-private const val LATIN_OFFSET = 68
-private val LATIN_KEYS = 97..122
-
-class KeybCtl : InputMethodService() {
-
-    companion object {
-        @JvmStatic
-        var enabled = false
-    }
-
+class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
     var isPortrait = true
     var night = false
     var modifierState: Int = 0
