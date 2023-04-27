@@ -2,140 +2,240 @@ package com.vladgba.keyb
 
 import android.content.ComponentCallbacks2
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
 import android.os.*
-import android.util.*
-import android.view.*
+import android.text.InputType
+import android.util.Log
+import android.view.KeyCharacterMap
+import android.view.KeyEvent
+import android.view.KeyEvent.*
+import android.view.MotionEvent
+import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
-import java.io.*
+import java.io.PrintWriter
+import java.io.StringWriter
 import kotlin.math.min
 
 
 class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
     var isPortrait = true
-    var night = false
-    var modifierState: Int = 0
-    var vibtime: Long = 0
+    var isNight = false
+    var metaState: Int = 0
+    var hardMetaState: Int = 0
+    var vibrationMs: Long = 0
 
-    val defLayout = "latin"
-    var currentLayout = "latin"
-    var defLayoutJson = ""
-    var keybLayout: KeybModel? = null
+    var dLayout: KeybLayout? = null
 
-    lateinit var dm: DisplayMetrics
-    val points = arrayOfNulls<Key>(10)
+    var currentLayout = LAYOUT_DEFAULT
+    var lastTextLayout = currentLayout
+    val loaded: MutableMap<String, KeybLayout> = mutableMapOf()
+    var keybLayout: KeybLayout? = null
+    var view: KeybView
+    var layouts = layoutList()
+
+    val pointers = mutableMapOf<Int, Key>()
     val handler = Handler(Looper.getMainLooper())
     var lastPointerId = 0
     var recKey: Key? = null
-    var picture: KeybView? = null
-    var defLayo: KeybModel? = null
-    val loaded: MutableMap<String, KeybModel> = mutableMapOf()
-    private var keyboardReceiver: KeybReceiver? = null
 
-    override fun onCreate() {
-        super.onCreate()
+    internal var keybType = KeybType.NORMAL
 
-        updateNightState(this.resources.configuration)
+    var editInterface: KeybEditInterface? = null
+
+    init {
+        updateNightState()
         setOrientation()
-        picture = KeybView(this)
+        loadVars()
+        InjectedEvent.DEV = Settings.str(INPUT_DEVICE)
+        setKeybTheme()
+        view = KeybView(this)
         initDefLayout()
         refreshLayout()
         reloadLayout()
-        loadVars()
-        modifierState = 0
-        keyboardReceiver = KeybReceiver()
-        val filter = IntentFilter(Intent.ACTION_INPUT_METHOD_CHANGED)
-        registerReceiver(keyboardReceiver, filter)
+        metaState = 0
+        if (wrapper == null) editInterface = KeybEditInterface(this)
     }
 
-    override fun onCreateInputView(): View {
-        if (picture?.parent != null) (picture!!.parent as ViewGroup).removeAllViews()
-        return picture!!
-    }
+    fun getInputView() = view.apply { if (parent != null) (parent as ViewGroup).removeAllViews() }
 
     private fun setOrientation() {
-        dm = this.resources.displayMetrics
-        val orientation = this.resources.configuration.orientation
+        val orientation = ctx.resources.configuration.orientation
         isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
     }
 
-    private fun updateNightState(cfg: Configuration) {
-        val tmpNight = night
-        when (cfg.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
-            Configuration.UI_MODE_NIGHT_YES -> night = true
-            Configuration.UI_MODE_NIGHT_NO, Configuration.UI_MODE_NIGHT_UNDEFINED -> night = false
-        }
-        if (tmpNight != night) picture?.repaintKeyb()
+    private fun updateNightState(cfg: Configuration = ctx.resources.configuration) {
+        isNight = (cfg.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        Log.d("night", isNight.toString())
     }
 
     fun showMethodPicker() {
-        (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
+        (ctx.getSystemService(InputMethodService.INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
     }
 
-    override fun onConfigurationChanged(cfg: Configuration) {
-        super.onConfigurationChanged(cfg)
-        if (cfg.orientation == Configuration.ORIENTATION_LANDSCAPE && isPortrait) updateOrientation(false)
-        else if (cfg.orientation == Configuration.ORIENTATION_PORTRAIT && !isPortrait) updateOrientation(true)
-        updateNightState(cfg)
+    fun onConfigurationChanged(cfg: Configuration) {
+        if (changeOrientation(cfg)) reloadLayout()
+
+        if (Settings.bool(THEME_SWITCH)) {
+            val prevNightState = isNight
+            updateNightState(cfg)
+            setKeybTheme()
+            if (prevNightState != isNight) view.repaintKeyb()
+        }
     }
 
-    private fun updateOrientation(b: Boolean) {
-        isPortrait = b
-        reloadLayout()
+    private fun setKeybTheme() {
+        val theme = Settings[Settings.str(if (isNight) COLOR_NIGHT else COLOR_DAY)]
+        Settings.params.also {
+            for ((i, color) in theme.params.entries) it[i] = color
+        }
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        picture?.invalidate()
+    /**
+     * Checks if the orientation has changed and updates the value of 'isPortrait' accordingly.
+     *
+     * @param cfg Configuration object after orientation change
+     * @return true if the orientation has changed, false otherwise
+     */
+    private fun changeOrientation(cfg: Configuration): Boolean {
+        (cfg.orientation == Configuration.ORIENTATION_PORTRAIT).also {
+            return if (it != isPortrait) {
+                isPortrait = it
+                true
+            } else false
+        }
+    }
+
+    fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (wrapper == null) return true
         if (keyCode < 0) return true
         try {
-            picture?.invalidate()
-            if (picture?.isShown == true && inputKey(keyCode.toString(), KeyEvent.ACTION_DOWN, true)) return true
-        } catch (e: Exception) {
-            prStack(e)
-        }
-        return super.onKeyDown(keyCode, event)
-    }
-
-    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        try {
-            if (picture?.isShown == true && inputKey(keyCode.toString(), KeyEvent.ACTION_UP, false)) {
-                picture?.invalidate()
-                if (currentLayout != defLayout) reloadLayout()
+            if (Settings.bool(SETTING_DEBUG)) {
+                log("Down:$keyCode;${event.device.name}/${event.deviceId};S${event.scanCode};M${event.metaState};'${event.unicodeChar}'")
+            }
+            if (inputKey(keyCode.toString(), ACTION_DOWN, true)) {
+                view.invalidate()
                 return true
+            } else {
+
+                // TODO: refactor to function
+                when (keyCode) {
+                    in KEYCODE_F1..KEYCODE_F12 -> {
+                        // TODO: F1 - F12
+                    }
+
+                    KEYCODE_CTRL_LEFT, KEYCODE_CTRL_RIGHT,
+                    KEYCODE_META_LEFT, KEYCODE_META_RIGHT,
+                    KEYCODE_SHIFT_LEFT, KEYCODE_SHIFT_RIGHT,
+                    KEYCODE_ALT_LEFT, KEYCODE_ALT_RIGHT -> {
+                        hardMetaState = event.metaState
+                        metaState = (metaState or hardMetaState)
+                        keyShifted(event.action, keyCode, metaState)
+                        view.repMod()
+                    }
+
+                }
+                view.invalidate()
             }
         } catch (e: Exception) {
             prStack(e)
         }
-        return super.onKeyUp(keyCode, event)
+        return false
     }
 
-    fun inputKey(key: String, action: Int, pressModifier: Boolean): Boolean {
-        if (Settings.str("redefineHardwareActions") != "1" || !Settings.has(key)) return false
-        val keyData = Settings[key]
-        val newModifierState = keyData.num("mod")
-        modifierState =
-            if (pressModifier) (modifierState or newModifierState) else modifierState and newModifierState.inv()
-        keyShiftable(action, keyData.num("key"))
-        picture?.repMod()
+    fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (wrapper == null) return true
+        try {
 
-        if (currentLayout == defLayout || !pressModifier || !keyData.has("switchKeyb")) return true
+            if (Settings.bool(SETTING_DEBUG)) {
+                log("Up:$keyCode;${event.device.name}/${event.deviceId};S${event.scanCode};M${event.metaState};'${event.unicodeChar}'")
+            }
+            if (inputKey(keyCode.toString(), ACTION_UP, false)) {
+                if (currentLayout != LAYOUT_DEFAULT) reloadLayout()
+                view.invalidate()
+                return true
+            } else {
 
-        if (keyData.str("switchKeyb") == "1") {
-            keybLayout = loaded[defLayout + (if (isPortrait) "-portrait" else "-landscape")]
-            picture?.reload()
-            loadVars()
-            setKeyb()
+                // TODO: refactor to function
+                when (keyCode) {
+                    in KEYCODE_F1..KEYCODE_F12 -> {
+                        // TODO: F1 - F12
+                    }
+
+                    KEYCODE_CAPS_LOCK,
+                    KEYCODE_NUM, KEYCODE_SCROLL_LOCK,
+                    KEYCODE_CTRL_LEFT, KEYCODE_CTRL_RIGHT,
+                    KEYCODE_META_LEFT, KEYCODE_META_RIGHT,
+                    KEYCODE_SHIFT_LEFT, KEYCODE_SHIFT_RIGHT,
+                    KEYCODE_ALT_LEFT, KEYCODE_ALT_RIGHT -> {
+                        metaState = (metaState and hardMetaState.inv())
+                        hardMetaState = event.metaState
+                        metaState = (metaState or hardMetaState)
+                        keyShifted(event.action, keyCode, metaState)
+                        view.repMod()
+                    }
+
+                }
+                view.invalidate()
+            }
+        } catch (e: Exception) {
+            prStack(e)
         }
+        return false
+    }
+
+    fun inputKey(key: String, action: Int, pressing: Boolean): Boolean {
+        if (keybLayout == null || !keybLayout!!.bool(SETTING_REDEFINE_HW_ACTION) || !keybLayout!!.has(key)) return false
+        val keyData = keybLayout!![key]
+
+        if (!keyData.bool(KEY_DO_IF_HIDDEN) && !view.isShown) return false
+
+        if (injectedEvent(keyData, pressing)) return true
+
+        if (keyData.has(KEY_TEXT) && pressing) {
+            val txt = keyData.str(KEY_TEXT)
+            if (txt.isNotEmpty()) {
+                setText(txt)
+                return true
+            }
+        }
+
+        val newModifierState = keyData.num(KEY_MOD)
+        metaState = if (pressing) (metaState or newModifierState) else metaState and newModifierState.inv()
+        keyShifted(action, keyData.num(KEY_KEY))
+        view.repMod()
+
+        if (currentLayout == LAYOUT_DEFAULT || !pressing || !keyData.has(KEY_SWITCH_LAYOUT)) return true
+
+        currentLayout = if (keyData.bool(KEY_SWITCH_LAYOUT)) LAYOUT_DEFAULT else keyData.str(KEY_SWITCH_LAYOUT)
+
+        keybLayout = loaded[currentLayout]
+        view.reload()
+        loadVars()
+        setKeyb()
         return true
     }
 
-    fun keyShiftable(keyAct: Int, key: Int, custMod: Int = modifierState) {
-        val ic = currentInputConnection
-        if (recKey != null && recKey!!.recording) recKey!!.record.add(Key.Record(key, custMod, keyAct))
+    private fun injectedEvent(kd: Flexaml.FxmlNode, pressing: Boolean): Boolean {
+        if (!kd.has("inject")) return false
+        if (kd.str(KEY_ACTION_SU).isNotBlank()) KeyAction(this).suExec(kd.str(KEY_ACTION_SU))
+
+        if (kd.bool("inject")) {
+            if (pressing) {
+                InjectedEvent.press(kd.num("x"), kd.num("y"), 1024, 1, 4)
+                if (kd.has("mx") || kd.has("my")) InjectedEvent.move(kd.num("mx", -1), kd.num("my", -1), 4)
+                Thread.sleep(20L)
+                InjectedEvent.release(0, 4)
+            }
+        }
+
+        return true
+    }
+
+    fun keyShifted(keyAct: Int, key: Int, meta: Int = metaState) {
+        val ic = wrapper?.currentInputConnection ?: return
+        if (recKey?.recording == true) recKey!!.record.add(Key.Record(key, meta, keyAct))
         val time = System.currentTimeMillis()
         ic.sendKeyEvent(
             KeyEvent(
@@ -144,35 +244,43 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
                 keyAct,
                 key,
                 0,
-                custMod,
+                meta,
                 KeyCharacterMap.VIRTUAL_KEYBOARD,
                 0,
-                KeyEvent.FLAG_SOFT_KEYBOARD or KeyEvent.FLAG_KEEP_TOUCH_MODE
+                FLAG_SOFT_KEYBOARD or FLAG_KEEP_TOUCH_MODE
             )
         )
     }
 
-    fun clickShiftable(key: Int) {
-        keyShiftable(KeyEvent.ACTION_DOWN, key)
-        keyShiftable(KeyEvent.ACTION_UP, key)
+    /**
+     * Performs a "shifted" click for the specified key by sending both an ACTION_DOWN and an ACTION_UP event,
+     * taking into account the key's current meta state or the specified meta state if provided.
+     *
+     * @param key the key to be clicked
+     * @param meta the meta state to be used for the click (defaults to current meta state if not provided)
+     */
+    fun clickShifted(key: Int, meta: Int = metaState) {
+        keyShifted(ACTION_DOWN, key, meta)
+        keyShifted(ACTION_UP, key, meta)
     }
 
     fun onKey(i: Int) {
-        if (i in LATIN_KEYS) clickShiftable(i - LATIN_OFFSET)// find a-z for combination support
-        else if (i < 0) clickShiftable(-i) // keycode
+        if (Settings.bool(SETTING_DEBUG)) log("key: $i")
+        if (wrapper == null || i == 0) return
+        if (i in LATIN_KEYS) clickShifted(i - LATIN_OFFSET)
+        else if (i < 0) clickShifted(-i) // keycode
         else onText(getShifted(i, shiftPressed()).toChar().toString())
     }
 
-    fun setText(text: String, del: Int = 0) {
-        currentInputConnection.apply {
-            beginBatchEdit()
-            if (del > 0) deleteSurroundingText(del, 0)
-            commitText(text, 1)
-            endBatchEdit()
-        }
+    fun setText(text: String, del: Int = 0) = wrapper?.currentInputConnection?.apply {
+        beginBatchEdit()
+        if (del > 0) deleteSurroundingText(del, 0)
+        commitText(text, 1)
+        endBatchEdit()
     }
 
     fun onText(chars: CharSequence) {
+        if (wrapper == null) return
         if (recKey != null && recKey!!.recording) {
             if (recKey!!.record.size > 0) {
                 val rc = recKey!!.record[recKey!!.record.size - 1]
@@ -185,103 +293,82 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         setText(chars.toString())
     }
 
-    override fun onUpdateSelection(oss: Int, ose: Int, nss: Int, nse: Int, cs: Int, ce: Int) {
-        super.onUpdateSelection(oss, ose, nss, nse, cs, ce)
-    }
-
-    fun onTouchEvent(me: MotionEvent): Boolean {
+    fun onTouchEvent(me: MotionEvent) {
         val action = me.actionMasked
         val pointerIndex: Int = me.actionIndex
         val pid: Int = me.getPointerId(pointerIndex)
         val x = me.getX(pointerIndex).toInt()
         val y = me.getY(pointerIndex).toInt()
 
-        val currentKey = if (points[pid] == null) keybLayout?.getKey(x, y) ?: return true else points[pid]
+        //val currentKey = pointers[pid] ?: keybLayout?.getKey(x, y) ?: return
 
         try {
             when (action) {
                 MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                    lastPointerId = pid
-                    points[pid] = currentKey
-                    currentKey!!.press(x, y)
+                    pointers[pid] = keybLayout?.getKey(x, y) ?: return
+                    if (wrapper == null) {
+                        editInterface?.onPress(pointers[pid]!!, x, y)
+                    } else {
+                        lastPointerId = pid
+                        pointers[pid] = pointers[pid]!!.apply { press(x, y) }
+                    }
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    currentKey!!.drag(x, y, me, pid)
+                    if (wrapper != null) {
+                        for (i in 0 until me.pointerCount) {
+                            val id = me.getPointerId(i)
+                            pointers[id]?.drag(me.getX(i).toInt(), me.getY(i).toInt(), me, id)
+                        }
+                    }
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
-                    points[pid] = null
-                    handler.removeCallbacks(currentKey!!.longPressRunnable)
-                    currentKey.release(x, y, pid)
+                    if (wrapper == null) {
+                        editInterface?.onRelease(x, y)
+                    } else {
+                        if (pointers[pid] == null) return
+                        handler.removeCallbacks(pointers[pid]!!.longPressRunnable)
+                        pointers[pid]!!.release(x, y, pid)
+                        pointers.remove(pid)
+                    }
                 }
             }
         } catch (e: Exception) {
             prStack(e)
         }
-        return true
-    }
-
-    fun getLastModified(path: String): Long {
-        return File(Environment.getExternalStorageDirectory(), "vkeyb/$path.json").lastModified()
     }
 
 
     fun loadVars() {
-        if (getLastModified("settings") == Settings.lastModified) return
-        Settings.lastModified = getLastModified("settings")
-        try {
-            Settings += LayoutParse(loadFile("settings"), this).parse()
-        } catch (e: Exception) {
-            prStack(e)
-            Settings += LayoutParse(resources.openRawResource(R.raw.settings).bufferedReader().use { it.readText() }, this).parse()
-        }
-        Settings.setDefaults()
+        val setFile = PFile(ctx, SETTINGS_FILENAME)
+        if (setFile.lastModified() == Settings.lastModified) return
+        Settings.lastModified = setFile.lastModified()
+        Settings.append(Flexaml(setFile.read()).parse())
     }
 
     fun prStack(e: Throwable) {
-        val sw = StringWriter()
-        e.printStackTrace(PrintWriter(sw))
-        log(sw.toString())
-    }
-    fun log(sw: String) {
-        Log.e("Log", sw)
-        Toast.makeText(this, sw.subSequence(0, min(150, sw.length)), Toast.LENGTH_LONG).show()
+        log(StringWriter().also { e.printStackTrace(PrintWriter(it)) }.toString())
     }
 
-    fun loadFile(name: String): String {
-        val sdcard = Environment.getExternalStorageDirectory()
-        val text = StringBuilder()
-        val br = BufferedReader(FileReader(File(sdcard, "vkeyb/$name.json")))
-        var line: String?
-        while (br.readLine().also { line = it } != null) {
-            text.append(line)
-            text.append('\n')
-        }
-        br.close()
-        Log.d("Keyb", "Done")
-        return text.toString()
+    fun log(sw: String) {
+        Log.e("Log", sw)
+        Toast.makeText(ctx, sw.subSequence(0, min(150, sw.length)), Toast.LENGTH_LONG).show()
     }
 
     fun vibrate(curkey: Key, s: String) {
-        val i = if (curkey.options.num(s) > 0) curkey.options.num(s).toLong() else 0L
-        if (vibtime + i > System.currentTimeMillis()) return
-        vibtime = System.currentTimeMillis()
+        val i = if (curkey.num(s) > 0) curkey.num(s).toLong() else 0L
+        if (vibrationMs + i > System.currentTimeMillis()) return
+        vibrationMs = System.currentTimeMillis()
         if (i < 10) return
         val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+            (ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
         } else {
-            @Suppress("DEPRECATION")
-            getSystemService(VIBRATOR_SERVICE) as Vibrator
+            ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
 
-        @Suppress("DEPRECATION")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) vibrator.vibrate(
-            VibrationEffect.createOneShot(
-                i,
-                VibrationEffect.DEFAULT_AMPLITUDE
-            )
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            vibrator.vibrate(VibrationEffect.createOneShot(i, VibrationEffect.DEFAULT_AMPLITUDE))
         else vibrator.vibrate(i)
     }
 
@@ -292,79 +379,166 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         return out
     }
 
-    fun ctrlPressed() = modifierState and LEFT_CTRL != 0
+    fun ctrlPressed() = metaState and META_CTRL_MASK != 0
 
-    fun shiftPressed() = modifierState and LEFT_SHIFT != 0
+    fun shiftPressed() = metaState and META_SHIFT_MASK != 0
 
-    fun getShifted(code: Int, sh: Boolean): Int {
-        return if (Character.isLetter(code) && sh) code.toChar().uppercaseChar().code else code
-    }
+    fun getShifted(code: Int, sh: Boolean) =
+        if (Character.isLetter(code) && sh) code.toChar().uppercaseChar().code else code
 
     private fun refreshLayout() {
-        val layNm = defLayout + if (isPortrait) "-portrait" else "-landscape"
-        //val layNm = defLayout + "-portrait"
-        Log.d("layNM", layNm)
+        val layNm = LAYOUT_DEFAULT
         if (!loaded.containsKey(layNm) || layoutFileChanged(layNm)) {
-            loaded[layNm] = KeybModel(this, layNm, isPortrait)
+            loaded[layNm] = loadLayout(layNm)
         }
+    }
+
+    fun loadLayout(name: String): KeybLayout {
+        val file = PFile(ctx, name)
+        val layout = KeybLayout(this, Flexaml(file.read()).parse())
+        layout.lastdate = file.lastModified()
+        return layout
     }
 
     private fun initDefLayout() {
-        defLayoutJson = resources.openRawResource(R.raw.latin).bufferedReader().use { it.readText() }
-        defLayo = KeybModel(this, defLayoutJson, true, true)
+        dLayout = KeybLayout(
+            this,
+            Flexaml(ctx.assets.open("$LAYOUT_DEFAULT.$LAYOUT_EXT").bufferedReader().use { it.readText() }).parse()
+        )
     }
 
     fun reloadLayout() {
-        pickLayout(currentLayout, isPortrait)
-        if (!keybLayout!!.loaded && !isPortrait) pickLayout(currentLayout, true)
-
         loadVars()
-        picture?.reload()
+        pickLayout(currentLayout)
+        if (!keybLayout!!.loaded) {
+            // TODO: handle not loaded layout
+        }
+        view.reload()
         setKeyb()
     }
 
-    fun pickLayout(layNm: String?, pt: Boolean) {
-        val lay = layNm + if (pt) "-portrait" else "-landscape"
-
-        if (loaded.containsKey(lay) && !layoutFileChanged(lay)) {
-            keybLayout = loaded.getValue(lay)
+    fun pickLayout(layNm: String) {
+        if (loaded.containsKey(layNm) && !layoutFileChanged(layNm)) {
+            keybLayout = loaded.getValue(layNm)
+            keybLayout!!.parent = Settings
         } else {
-            keybLayout = KeybModel(this, lay, pt)
-            keybLayout!!.lastdate = getLastModified(lay)
-            if (keybLayout!!.loaded) loaded[lay] = keybLayout!!
+            keybLayout = loadLayout(layNm)
+            keybLayout!!.parent = Settings
+            if (keybLayout!!.loaded) loaded[layNm] = keybLayout!!
         }
     }
 
-    fun layoutFileChanged(s: String): Boolean {
-        return getLastModified(s) == 0L || loaded[s]!!.lastdate == 0L || (getLastModified(s) != loaded[s]!!.lastdate)
-    }
+    fun layoutFileChanged(s: String) =
+        loaded[s]?.lastdate == 0L || PFile(ctx, s).lastModified().let { it == 0L || it != loaded[s]!!.lastdate }
 
     fun setKeyb() {
         if (keybLayout?.loaded == true) return
-        keybLayout = defLayo
+        keybLayout = dLayout
         loadVars()
-        picture?.reload()
-        showMethodPicker()
+        view.reload()
+        //showMethodPicker() // TODO: show error instead this
     }
 
-    override fun onLowMemory() {
-        super.onLowMemory()
-        //loaded.clear()
-        picture?.clearBuffers()
+    fun onLowMemory() {
+        //loaded.clear() // TODO: clear = app crash
+        view.clearBuffers()
     }
 
-    override fun onTrimMemory(level: Int) {
-        super.onTrimMemory(level)
+    fun onTrimMemory(level: Int) {
         if (level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL || level == ComponentCallbacks2.TRIM_MEMORY_COMPLETE) {
-            //loaded.clear() // TODO: clear = app crash
-            picture?.clearBuffers()
+            onLowMemory()
         } else if (level == ComponentCallbacks2.TRIM_MEMORY_MODERATE || level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
-            picture?.clearBuffers()
+            view.clearBuffers()
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        if (keyboardReceiver != null) unregisterReceiver(keyboardReceiver)
+    fun setKeybType(inputType: Int) {
+        val inputTypeClass = inputType and InputType.TYPE_MASK_CLASS
+        val inputTypeVariation = inputType and InputType.TYPE_MASK_VARIATION
+
+        keybType = when (inputTypeClass) {
+            InputType.TYPE_CLASS_NUMBER -> KeybType.NUMBER
+            InputType.TYPE_CLASS_PHONE -> KeybType.PHONE
+            InputType.TYPE_CLASS_TEXT -> when (inputTypeVariation) {
+                InputType.TYPE_TEXT_VARIATION_URI -> KeybType.URI
+                InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> KeybType.EMAIL
+                InputType.TYPE_TEXT_VARIATION_POSTAL_ADDRESS -> KeybType.NORMAL
+                InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+                InputType.TYPE_TEXT_VARIATION_EMAIL_SUBJECT -> KeybType.EMAIL
+
+                else -> KeybType.NORMAL
+            }
+
+            InputType.TYPE_CLASS_DATETIME -> when (inputTypeVariation) {
+                InputType.TYPE_DATETIME_VARIATION_NORMAL -> KeybType.DATETIME
+                InputType.TYPE_DATETIME_VARIATION_DATE -> KeybType.DATE
+                InputType.TYPE_DATETIME_VARIATION_TIME -> KeybType.TIME
+                else -> KeybType.DATETIME
+            }
+
+            else -> KeybType.NORMAL
+        }
+    }
+
+    fun layoutList(): List<String> {
+        val files = mutableListOf<String>()
+        val fileList = ctx.filesDir.listFiles()
+        for (file in fileList!!) {
+            var name = file.name
+            val ext = name.lastIndexOf(".$LAYOUT_EXT")
+            if (ext < 0) continue
+            name = name.substring(0, ext)
+            if (listOf(SETTINGS_FILENAME, NUM_FILENAME, EMOJI_FILENAME).contains(name)) continue
+            files.add(name)
+        }
+        return files
+    }
+
+    fun prevLayout() {
+        val currPos = layouts.indexOf(lastTextLayout)
+        if (currPos < 0 || layouts.size < 2) return
+        var pos = currPos - 1
+
+        while (true) {
+            if (pos < 0) pos += layouts.size - 1
+            if (pos == currPos) return
+            currentLayout = layouts[pos]
+
+            if (currentLayout.indexOf("$") == 0) pos++
+            else break
+        }
+        lastTextLayout = currentLayout
+        reloadLayout()
+    }
+
+    fun nextLayout() {
+        val currPos = layouts.indexOf(lastTextLayout)
+        if (currPos < 0 || layouts.size < 2) return
+        var pos = currPos + 1
+        while (true) {
+            if (pos >= layouts.size) pos -= layouts.size
+            if (pos == currPos) return
+            currentLayout = layouts[pos]
+
+            if (currentLayout.indexOf("$") == 0) pos++
+            else break
+        }
+        lastTextLayout = currentLayout
+        reloadLayout()
+    }
+
+    fun numLayout() {
+        currentLayout = NUM_FILENAME
+        reloadLayout()
+    }
+
+    fun textLayout() {
+        currentLayout = lastTextLayout
+        reloadLayout()
+    }
+
+    fun emojiLayout() {
+        currentLayout = EMOJI_FILENAME
+        reloadLayout()
     }
 }
