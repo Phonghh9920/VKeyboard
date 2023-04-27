@@ -1,67 +1,28 @@
 package com.vladgba.keyb
 
 import android.media.MediaPlayer
+import android.os.SystemClock
+import android.view.KeyEvent
+import android.view.MotionEvent
 import android.widget.Toast
+import com.vladgba.keyb.Flexaml.FxmlNode
+import com.vladgba.keyb.KeybLayout.Row
 import java.util.*
-import kotlin.math.*
-import android.os.*
-import android.view.*
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.ceil
 
-const val MULTIBYTE_UTF = 56320
-const val KEY_KEY = "key"
-const val KEY_CODE = "code"
-const val KEY_TEXT = "text"
-const val KEY_WIDTH = "size"
-const val KEY_LANG_SWITCH = "lang"
-const val KEY_REPEATABLE = "repeat"
-const val KEY_ADDIT_CHARS = "ext"
-const val KEY_SHIFT = "shift"
-const val KEY_MOD = "mod"
-const val KEY_MOD_CODE = "modkey"
-const val KEY_MOD_META = "modmeta"
-const val CURSOR_OFFSET_POS = "pos"
-const val KEY_SOUND_PRESS = "sound-p"
-const val KEY_SOUND_RELEASE = "sound-r"
-const val VIBRATE_TICK = "vibtick"
-const val KEY_VIBRATE_ON_PRESS = "vibpress"
-const val KEY_VIBRATE_ON_RELEASE = "vibrelease"
-const val KEY_VIBRATE_ON_EXT = "vibext"
-const val KEY_HOLD = "hold"
-const val KEY_HARD_PRESS = "hard"
-const val KEY_APP = "app"
-const val KEY_SU_ACTION = "sudo"
-const val KEY_CLIPBOARD = "clipboard"
-const val KEY_RECORD = "record"
-const val KEY_RANDOM = "rand"
+class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: FxmlNode) : FxmlNode(opts, row) {
 
-class Key(
-    private var c: KeybCtl,
-    private val parent: KeybModel.Row,
-    var x: Int,
-    val y: Int,
-    val options: LayoutParse.DataNode,
-    pos: Int
-) : KeyAction(c) {
-    private val allocPositions = arrayOf(
-        byteArrayOf(5, 7, 8),
-        byteArrayOf(4, 5, 6, 7, 8),
-        byteArrayOf(4, 6, 7),
-        byteArrayOf(2, 3, 5, 7, 8),
-        byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8),
-        byteArrayOf(1, 2, 4, 6, 7),
-        byteArrayOf(2, 3, 5),
-        byteArrayOf(1, 2, 3, 4, 5),
-        byteArrayOf(1, 2, 4)
-    )
-    var extCharsRaw = ""
-    var codes = 0
-    var label: CharSequence? = null
-    var width: Int = 64
-    var height: Int = 64
-    var repeat = false
-    var text: CharSequence? = null
-    var extChars = arrayOfNulls<CharSequence>(8)
-    var rand: Array<String?>? = null
+    enum class InputMode {
+        LABEL, CODE, TEXT
+    }
+
+    var inputMode = InputMode.LABEL
+
+    var width: Int = 0
+    var height: Int = 0
+
     var record: ArrayList<Record> = ArrayList()
     var recording: Boolean = false
     private val mediaPressed = Media()
@@ -73,26 +34,26 @@ class Key(
     var relY = -1
     var cursorMoved = false
     var charPos = 0
+    var pressed = false
     var longPressed = false
     var hardPressed = false
     val longPressRunnable = Runnable { longPress() }
+    val action = KeyAction(c)
 
     class Media {
-        enum class State {
-            NOT_LOADED, READY, PLAYING
-        }
+        enum class State { NOT_LOADED, READY, PLAYING }
 
         var state = State.NOT_LOADED
         val media = MediaPlayer()
         fun setSound(c: KeybCtl, k: Key, s: String) {
             try {
-                if (k.options.str(s).isBlank()) return
-                media.setDataSource(k.options.str(s))
+                if (k.str(s).isBlank()) return
+                media.setDataSource(k.str(s))
                 media.prepare()
                 state = State.READY
             } catch (e: Exception) {
                 state = State.NOT_LOADED
-                Toast.makeText(c, "Sound file " + k.options.str(s) + " not loaded", Toast.LENGTH_LONG).show()
+                Toast.makeText(c.ctx, "Sound file " + k.str(s) + " not loaded", Toast.LENGTH_LONG).show()
             }
         }
 
@@ -103,29 +64,16 @@ class Key(
                 media.prepare()
             } else {
                 state = State.PLAYING
-                media.start()
             }
+            media.start()
         }
     }
 
     init {
         try {
-            label = options.str(KEY_KEY)
-            codes = options.num(KEY_CODE).toInt()
-            if (codes == 0 && label!!.isNotEmpty() && options.str(KEY_TEXT).isEmpty()) {
-                if (label!!.length > 1) text = label
-                else codes = label!![0].code
-            } else {
-                text = options.str(KEY_TEXT)
-            }
-            //width = (parent.height * if (options.str(KEY_WIDTH).isBlank()) 1f else options.str(KEY_WIDTH).toFloat()).toInt()
-            height = parent.height
-
-            parseExt(options.str(KEY_ADDIT_CHARS))
-            if (!extChars[0].isNullOrEmpty()) padExtChars(pos)
-
-            repeat = options.bool(KEY_REPEATABLE)
-            randomTexts()
+            if (num(KEY_CODE) != 0) inputMode = InputMode.CODE
+            if (str(KEY_TEXT).isNotEmpty()) inputMode = InputMode.TEXT
+            height = row.height
             mediaPressed.setSound(c, this, KEY_SOUND_PRESS)
             mediaReleased.setSound(c, this, KEY_SOUND_RELEASE)
 
@@ -134,53 +82,31 @@ class Key(
         }
     }
 
-    private fun randomTexts() {
-        if (!options.has(KEY_RANDOM) || options.str(KEY_RANDOM).isBlank()) return
-        val rands = options[KEY_RANDOM]
-        rand = arrayOfNulls(rands.childs.size)
-        for (i in 0 until rands.childs.size) {
-            rand!![i] = rands.str(i)
-            c.log(rands.str(i))
-        }
-    }
-
-    private fun parseExt(str: String) {
-        extCharsRaw = str
-        var symbolIndex = -1
-        for (i in str.indices) {
-            if (str[i].code < MULTIBYTE_UTF) symbolIndex++
-            extChars[symbolIndex] = "" + (extChars[symbolIndex] ?: "") + str[i].toString()
-        }
-    }
-
-    private fun padExtChars(pos: Int) {
-        val nExtChars = arrayOfNulls<CharSequence>(8)
-        val currAlloc = allocPositions[pos - 1]
-        for (i in currAlloc.indices) {
-            if (i >= extChars.size) break
-            nExtChars[currAlloc[i] - 1] = extChars[i]
-        }
-        extChars = nExtChars
-    }
-
     fun longPress() {
-        if (options.str(KEY_HOLD).isBlank()) return
+        if (str(KEY_HOLD).isBlank()) return
         longPressed = true
-        c.onText(options.str(KEY_HOLD))
+        c.onText(str(KEY_HOLD))
     }
 
     fun hardPress(me: MotionEvent, pid: Int) {
-        if (options.str(KEY_HARD_PRESS).isBlank() || Settings.str("hardPress").isBlank()) return
-        if ((try { me.getPressure(pid) } catch (_: IllegalArgumentException) { 0f } * 1000).toInt() < Settings.num("hardPress")) return
-        hardPressed = true
-        c.onText(options.str(KEY_HARD_PRESS))
+        if (str(KEY_HARD_PRESS).isBlank() || str(SENSE_HARD_PRESS).isBlank()) return
+        try {
+            if ((me.getPressure(pid) * 1000).toInt() > num(SENSE_HARD_PRESS)) {
+                hardPressed = true
+                c.onText(str(KEY_HARD_PRESS))
+            }
+        } catch (_: Exception) {
+        }
     }
 
     fun getExtPos(x: Int, y: Int): Int {
-        if (abs(pressX - x) < Settings.offset && abs(pressY - y) < Settings.offset) return 0
+        val ofs = num(SENSE_ADDITIONAL_CHARS)
+        if (abs(pressX - x) < ofs && abs(pressY - y) < ofs) return 0
         if (charPos == 0) c.handler.removeCallbacks(longPressRunnable)
         val angle = Math.toDegrees(atan2((pressY - y).toDouble(), (pressX - x).toDouble()))
-        return arrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)[ceil(((if (angle < 0) 360.0 else 0.0) + angle + 22.5) / 45.0).toInt() - 1]
+        return arrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)[
+            ceil(((if (angle < 0) 360.0 else 0.0) + angle + 22.5) / 45.0).toInt() - 1
+        ]
     }
 
 
@@ -197,7 +123,7 @@ class Key(
 
         fun replay(keybCtl: KeybCtl) {
             if (keyText.isNullOrEmpty()) {
-                keybCtl.keyShiftable(keyState, keyIndex, keyMod)
+                keybCtl.keyShifted(keyState, keyIndex, keyMod)
             } else {
                 SystemClock.sleep(50) // wait until sendkeyevent is processed
                 keybCtl.onText(keyText!!)
@@ -206,26 +132,24 @@ class Key(
     }
 
     fun recordAction(curX: Int, curY: Int): Boolean {
-        if (options.str(KEY_RECORD).isBlank()) return false
-        val extPos = getExtPos(curX, curY)
-        when (extPos) {
+        if (str(KEY_RECORD).isBlank()) return false
+        when (getExtPos(curX, curY)) {
             in arrayOf(1, 3, 6, 8) -> record.clear()
             in arrayOf(4, 5) -> c.recKey = this.apply { recording = true }
             in arrayOf(2, 7) -> (c.recKey ?: return true).recording = false
             else -> {
                 if (record.size == 0) return true
-                for (i in 0 until record.size) record.get(i).replay(c)
+                for (i in 0 until record.size) record[i].replay(c)
             }
         }
         return true
     }
 
-    fun swipeAction(r: Int, t: Int, s: String, add: Boolean): Int {
+    private fun swipeAction(r: Int, t: Int, s: String, add: Boolean): Int {
         preventLongPressOnMoved()
-        c.onKey(if (options.num(s) == 0) codes else options.num(s))
-        c.vibrate(this, VIBRATE_TICK)
+        c.onKey(if (has(s)) num(s) else code())
+        c.vibrate(this, KEY_VIBRATE_TICK)
         return if (add) r + t else r - t
-
     }
 
     private fun preventLongPressOnMoved() {
@@ -235,52 +159,60 @@ class Key(
     }
 
     fun repeating(curX: Int, curY: Int) {
-        if (!options.bool(KEY_REPEATABLE)) return
+        if (str(KEY_MODE) != KEY_MODE_JOY) return
         while (true) {
-            relX = if (curX - Settings.horTick > relX) swipeAction(relX, Settings.horTick, "right", true)
-            else if (curX + Settings.horTick < relX) swipeAction(relX, Settings.horTick, "left", false)
+            val ht = num(SENSE_HORIZONTAL_TICK)
+            if (ht < 1) return
+            relX = if (curX - ht > relX) swipeAction(relX, ht, KEY_RIGHT_ACTION, true)
+            else if (curX + ht < relX) swipeAction(relX, ht, KEY_LEFT_ACTION, false)
             else break
         }
         while (true) {
-            relY = if (curY - Settings.verTick > relY) swipeAction(relY, Settings.verTick, "bottom", true)
-            else if (curY + Settings.verTick < relY) swipeAction(relY, Settings.verTick, "top", false)
+            val vt = num(SENSE_VERTICAL_TICK)
+            if (vt < 1) return
+            relY = if (curY - vt > relY) swipeAction(relY, vt, KEY_BOTTOM_ACTION, true)
+            else if (curY + vt < relY) swipeAction(relY, vt, KEY_TOP_ACTION, false)
             else break
         }
     }
 
     fun procExtChars(curX: Int, curY: Int) {
-        if (extCharsRaw.isNotEmpty()) {
+        if (childCount() > 0) {
             relX = curX
             relY = curY
             val tmpPos = charPos
             charPos = getExtPos(curX, curY)
-            if (charPos != 0 && tmpPos != charPos) c.vibrate(this, KEY_VIBRATE_ON_EXT)
+            if (charPos != 0 && tmpPos != charPos) c.vibrate(this, KEY_VIBRATE_ADDIT)
         }
     }
 
     fun clipboardAction(): Boolean {
-        if (!options.bool(KEY_CLIPBOARD)) return false
+        if (!bool(KEY_CLIPBOARD)) return false
         try {
             if (c.ctrlPressed()) {
-                val tx = c.currentInputConnection.getSelectedText(0).toString()
-                if (c.shiftPressed()) {
-                    char2utfEscape(tx)
-                } else {
-                    if (tx.indexOf("u") >= 0) utf2char(tx)
-                    else if (tx.indexOf("b") >= 0) bin2char(tx)
-                    else if (tx.indexOf("x") >= 0) hex2char(tx)
-                    else if (tx.indexOf("0") >= 0) oct2char(" $tx") // " 0555 0456", " 0123"
-                    else if (tx.indexOf(" ") >= 0) dec2char(tx)
-                    else dec2char(tx)
+                val tx = (c.wrapper?.currentInputConnection ?: return true).getSelectedText(0).toString()
+                action.apply {
+                    if (c.shiftPressed()) {
+                        char2utfEscape(tx)
+                    } else {
+                        // TODO: refactor to modular
+                        if (tx.indexOf("\\u") >= 0) utf2char(tx)
+                        else if (tx.indexOf("0b") >= 0) bin2char(tx)
+                        else if (tx.indexOf("0x") >= 0) hex2char(tx)
+                        else if (tx.indexOf("0") >= 0) oct2char(" $tx")
+                        //else if (tx.indexOf(" ") >= 0) dec2char(tx)
+                        else dec2char(tx)
+                    }
                 }
                 return true
             }
             if (charPos < 1) return true
             if (c.shiftPressed()) {
-                extChars[charPos - 1] = c.currentInputConnection.getSelectedText(0)
+                this[charPos - 1] =
+                    (c.wrapper?.currentInputConnection ?: return true).getSelectedText(0).toString()
             } else {
-                if (extChars[charPos - 1] == null) return true
-                c.onText(extChars[charPos - 1].toString())
+                if (this.str(charPos - 1).isBlank()) return true
+                c.onText(this[charPos - 1].toString())
             }
         } catch (e: Exception) {
             c.prStack(e)
@@ -289,27 +221,27 @@ class Key(
     }
 
     fun modifierAction(): Boolean {
-        if (!options.has(KEY_MOD) or !options.has(KEY_MOD_META)) return false
+        if (!bool(KEY_MOD) or !has(KEY_CODE) or !has(KEY_MOD_META)) return false
 
-        if ((c.modifierState and options.num(KEY_MOD_META)) > 0) {
-            c.modifierState = c.modifierState and options.num(KEY_MOD_META).inv()
-            c.keyShiftable(KeyEvent.ACTION_UP, options.num(KEY_MOD_CODE))
+        if ((c.metaState and num(KEY_MOD_META)) > 0) {
+            c.metaState = c.metaState and num(KEY_MOD_META).inv()
+            c.keyShifted(KeyEvent.ACTION_UP, num(KEY_CODE))
         } else {
-            c.modifierState = c.modifierState or options.num(KEY_MOD_META)
-            c.keyShiftable(KeyEvent.ACTION_DOWN, options.num(KEY_MOD_CODE))
+            c.metaState = c.metaState or num(KEY_MOD_META)
+            c.keyShifted(KeyEvent.ACTION_DOWN, num(KEY_CODE))
         }
-        c.picture?.repMod()
+        c.view.repMod()
         return true
     }
 
     fun shiftAction(): Boolean {
-        if (!c.shiftPressed() || options.str(KEY_SHIFT).isBlank()) return false
+        if (!c.shiftPressed() || str(KEY_ACTION_SHIFT).isBlank()) return false
         try {
-            val tx = c.currentInputConnection.getSelectedText(0).toString()
+            val tx = (c.wrapper?.currentInputConnection ?: return true).getSelectedText(0).toString()
             c.log(tx)
-            val res = when (options.str(KEY_SHIFT)) {
-                "upperAll" -> tx.uppercase(Locale.ROOT)
-                "lowerAll" -> tx.lowercase(Locale.ROOT)
+            val res = when (str(KEY_ACTION_SHIFT)) {
+                KEY_SHIFTING_UPPER_ALL -> tx.uppercase(Locale.ROOT)
+                KEY_SHIFTING_LOWER_ALL -> tx.lowercase(Locale.ROOT)
                 else -> ""
             }
             if (res != "") c.setText(res)
@@ -321,77 +253,116 @@ class Key(
     fun press(curX: Int, curY: Int) {
         mediaPressed.play()
         if (modifierAction()) return
-        c.handler.postDelayed(longPressRunnable, Settings.longPressTime)
+        if (has(SENSE_HOLD_PRESS)) c.handler.postDelayed(longPressRunnable, num(SENSE_HOLD_PRESS).toLong())
+        pressed = true
         longPressed = false
         hardPressed = false
-        c.vibrate(this, KEY_VIBRATE_ON_PRESS)
+        c.vibrate(this, KEY_VIBRATE_PRESS)
         pressX = curX
         pressY = curY
         relX = -1
         relY = -1
         cursorMoved = false
         charPos = 0
-        if (repeat || extCharsRaw.isNotEmpty()) {
+        if (str(KEY_MODE) != KEY_MODE_META) {
             relX = curX
             relY = curY
         }
     }
 
     fun drag(curX: Int, curY: Int, me: MotionEvent, pid: Int) {
-        if (options.str(KEY_MOD).isNotBlank()) return
-        if (options.bool(KEY_CLIPBOARD)) {
+        if (str(KEY_MODE) == KEY_MODE_META) return
+        if (bool(KEY_CLIPBOARD)) {
             charPos = getExtPos(curX, curY)
             return
         }
 
-        if (longPressed || hardPressed) return // Not have alternative behavior
+        if (longPressed || hardPressed) return
         hardPress(me, pid)
-        if (relX < 0) return // Not have alternative behavior
+        if (relX < 0) return
         repeating(curX, curY)
         procExtChars(curX, curY)
     }
 
     fun release(curX: Int, curY: Int, pid: Int) {
+        pressed = false
         mediaReleased.play()
         if (longPressed || hardPressed) return
-        if (charPos == 0) c.vibrate(this, KEY_VIBRATE_ON_RELEASE)
-        if (options.str(KEY_MOD).isNotBlank()) {
+        if (charPos == 0) c.vibrate(this, KEY_VIBRATE_RELEASE)
+        if (str(KEY_MODE) == KEY_MODE_META) {
             if (c.lastPointerId != pid) modifierAction()
             return
+        } else if (str(KEY_MODE) == KEY_MODE_RANDOM && this[KEY_RANDOM].childCount() > 0) {
+            return c.onText(this[KEY_RANDOM].str(Random().nextInt(this[KEY_RANDOM].childCount())))
         }
+
         if (prExtChars() || curY == 0 || cursorMoved) return
-        if (recordAction(curX, curY) || /*clipboardAction() ||*/ shiftAction()) return
-        if (options.str(KEY_APP).isNotBlank()) c.startActivity(c.packageManager.getLaunchIntentForPackage(options.str(KEY_APP)))
-        if (options.str(KEY_SU_ACTION).isNotBlank()) suExec(options.str(KEY_SU_ACTION))
-        if (!rand.isNullOrEmpty()) return c.onText(rand!![Random().nextInt(rand!!.size)]!!)
+
+        if (recordAction(curX, curY) || shiftAction() || clipboardAction()) return
+
+        val actions = this[KEY_ACTION_APP]
+        if (actions.childCount() > 0) {
+            for (act in actions.childs) {
+                if (act is FxmlNode) {
+                    val content = act.str("type")
+                    if (content.isBlank()) continue
+                    when (act.str("type")) {
+                        KEY_ACTION_SU -> action.suExec(content)
+                        KEY_ACTION_APP -> c.ctx.startActivity(c.ctx.packageManager.getLaunchIntentForPackage(content))
+                    }
+                }
+            }
+            return
+        }
+
         if (langSwitch() || textInput()) return
-        if (repeat || relX < 0 || charPos == 0) return c.onKey(codes)
+        if (!cursorMoved && charPos == 0) return c.onKey(code())
+    }
+
+    private fun code() = when (inputMode) {
+        InputMode.CODE -> num(KEY_CODE)
+        InputMode.TEXT -> 0
+        else -> str(KEY_KEY)[0].code
+    }
+
+    private fun text() = when (inputMode) {
+        InputMode.TEXT -> str(KEY_TEXT)
+        InputMode.CODE -> ""
+        else -> str(KEY_KEY)
     }
 
     private fun textInput(): Boolean {
-        if (text.isNullOrEmpty()) return false
-        c.onText(if (text!!.length == 1) c.getShifted(text!![0].code, c.shiftPressed()).toChar().toString() else text!!)
-        if (options.str(CURSOR_OFFSET_POS).isBlank()) return true
-        val pos = options.num(CURSOR_OFFSET_POS)
-        for (i in 1..(-pos + if (pos < 0) 0 else text!!.length)) c.onKey(-21)
+        if (text().isEmpty()) return false
+        c.onText(if (text().length == 1) c.getShifted(text()[0].code, c.shiftPressed()).toChar().toString() else text())
+        if (str(KEY_TEXT_CURSOR_OFFSET).isBlank()) return true
+        val pos = num(KEY_TEXT_CURSOR_OFFSET)
+        for (i in 1..(-pos + if (pos < 0) 0 else text().length)) c.onKey(-21)
         return true
     }
 
-    private fun langSwitch(): Boolean = if (options.str(KEY_LANG_SWITCH).isNotBlank() && charPos == 0) {
-        c.apply { currentLayout = options.str(KEY_LANG_SWITCH); reloadLayout() }
-        true
-    } else false
+    private fun langSwitch(): Boolean {
+        val langStr = str(KEY_LAYOUT)
+        (langStr.isNotBlank() && charPos == 0) || return false
+        if (langStr[0] == '@') {
+            when (langStr) {
+                LAYOUT_PREV -> c.prevLayout()
+                LAYOUT_NEXT -> c.nextLayout()
+                LAYOUT_NUM -> c.numLayout()
+                LAYOUT_TEXT -> c.textLayout()
+                LAYOUT_EMOJI -> c.emojiLayout()
+            }
+        } else {
+            c.apply { currentLayout = langStr; reloadLayout() }
+        }
+        return true
+    }
 
     private fun prExtChars(): Boolean {
-        if (extCharsRaw.length < 1 || charPos < 1) return false
-        val textIndex = extChars[charPos - 1]
-        if (textIndex.isNullOrEmpty() || textIndex == " ") return true
+        if (childCount() == 0 || charPos < 1) return false
+        val textIndex = this.str(charPos - 1)
+        if (textIndex.isBlank()) return true
         if (textIndex.length > 1) c.onText(textIndex)
-        else c.onKey(c.getFromString(textIndex.toString())[0])
+        else c.onKey(c.getFromString(textIndex)[0])
         return true
     }
-
-    operator fun get(s: String): String = if (options.has(s)) options.str(s) else if (parent.has(s)) parent[s] else ""
-
-    fun has(s: String): Boolean = options.has(s) || parent.has(s)
 }

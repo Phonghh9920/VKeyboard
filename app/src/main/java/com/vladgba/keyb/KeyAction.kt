@@ -45,7 +45,7 @@ open class KeyAction(val ctx: KeybCtl) {
 
     fun split_for(tx: String, d: String, fn: (String) -> String) {
         val arr = tx.split(d)
-        for (i in 0 until arr.size) {
+        for (i in arr.indices) {
             if (arr[i].trim() == "") continue
             ctx.onText(fn(arr[i]))
         }
@@ -53,7 +53,7 @@ open class KeyAction(val ctx: KeybCtl) {
 
     fun suExec(cmd: String) {
         val p = Runtime.getRuntime().exec("su")
-        val dos = DataOutputStream(p!!.getOutputStream())
+        val dos = DataOutputStream((p ?: return).outputStream)
         dos.writeBytes(cmd)
         dos.writeBytes("\nexit\n")
         dos.flush()

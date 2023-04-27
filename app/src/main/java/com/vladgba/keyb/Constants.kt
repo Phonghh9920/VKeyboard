@@ -9,8 +9,8 @@ internal const val EMOJI_FILENAME = "emoji"
 internal const val LAYOUT_DEFAULT = "en"
 internal const val LAYOUT_EXT = "txt"
 internal const val BLANK_LAYOUT = "blank"
-internal const val LAYOUT_NAME_SUFFIX = ".vkeyb"
 internal const val SETTING_DEBUG = "debug"
+internal const val INPUT_DEVICE = "inputDevice"
 
 // Hardware Key
 internal const val SETTING_REDEFINE_HW_ACTION = "redefineHardwareActions"
@@ -37,6 +37,7 @@ internal const val KEY_MOD_META = "meta"
 internal const val KEY_MODE = "mode"
 internal const val KEY_MODE_JOY = "joy"
 internal const val KEY_MODE_META = "meta"
+internal const val KEY_MODE_RANDOM = "random"
 
 // Action
 internal const val KEY_ACTION_SHIFT = "shift"
@@ -44,7 +45,7 @@ internal const val KEY_ACTION_APP = "app"
 internal const val KEY_ACTION_SU = "sudo"
 internal const val KEY_CLIPBOARD = "clipboard"
 internal const val KEY_RECORD = "record"
-internal const val KEY_RANDOM = "rand"
+internal const val KEY_RANDOM = "random"
 internal const val KEY_SWITCH_LAYOUT = "switchKeyb"
 
 // Sound
