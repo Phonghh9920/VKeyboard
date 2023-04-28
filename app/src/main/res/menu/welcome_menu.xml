@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+            android:id="@+id/action_prebuilt_add"
+            android:icon="@android:drawable/ic_input_add"
+            android:title="Add prebuilt layouts"
+            android:showAsAction="ifRoom" />
+    <item
+            android:id="@+id/action_about"
+            android:icon="@android:drawable/ic_menu_help"
+            android:title="About app"
+            android:showAsAction="always" />
+</menu>
