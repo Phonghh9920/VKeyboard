@@ -460,12 +460,6 @@ open class Flexaml(val input: String) {
             params[pos] = value
         }
 
-        fun setStr(i: Int, text: String) {
-            // Add enough elements to the list to make the index within range
-            if (i >= childs.size) for (p in childs.size..i) childs.add("")
-            childs[i] = text
-        }
-
         fun append(data: FxmlNode) {
             Log.w("data", data.toString())
             Log.w("this", this.toString())
