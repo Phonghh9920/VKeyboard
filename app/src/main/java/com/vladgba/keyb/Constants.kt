@@ -10,7 +10,7 @@ internal const val LAYOUT_DEFAULT = "en"
 internal const val LAYOUT_EXT = "txt"
 internal const val BLANK_LAYOUT = "blank"
 internal const val SETTING_DEBUG = "debug"
-internal const val INPUT_DEVICE = "inputDevice"
+internal const val SETTING_INPUT_DEVICE = "inputDevice"
 
 // Hardware Key
 internal const val SETTING_REDEFINE_HW_ACTION = "redefineHardwareActions"

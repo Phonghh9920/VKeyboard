@@ -38,6 +38,7 @@ object Settings : Flexaml.FxmlNode(Flexaml("""
    "$SENSE_VERTICAL_TICK":60,
    "$SENSE_HOLD_PRESS":200,
    "$KEY_VISIBLE":1
+   "$SETTING_INPUT_DEVICE":"/dev/input/event4"
 }
 """).parse()) {
     var lastModified = 0L

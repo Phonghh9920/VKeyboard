@@ -3,7 +3,6 @@ package com.vladgba.keyb
 import java.io.DataOutputStream
 
 const val CMD = "sendevent"
-const val DEV = "/dev/input/event4" // TODO: switch between input devices
 
 const val DOWN = 1
 const val UP = 0
@@ -49,6 +48,7 @@ const val ABS_MT_TOOL_X = 0x3c    // Center X tool position
 const val ABS_MT_TOOL_Y = 0x3d    // Center Y tool position
 
 object InjectedEvent {
+    var DEV = "/dev/input/event4"
     fun press(x: Int, y: Int, tid: Int, btnTouch: Int = -1, slot: Int = -1) {
         val cmd = CmdList()
         if (slot >= 0) cmd += "$CMD $DEV $EV_ABS $ABS_MT_SLOT $slot"
