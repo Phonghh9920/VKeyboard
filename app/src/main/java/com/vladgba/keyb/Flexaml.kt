@@ -350,7 +350,7 @@ open class Flexaml(val input: String) {
             for (key in params.keys) {
                 if (params.keys.indexOf(key) != 0) {
                     if (minify) sb.append(",")
-                    else sb.append(", " + '\n')
+                    else sb.append(",\n")
                 }
                 if (!minify) sb.append(stepSpaces(spacing))
                 escapeString(key, sb)
@@ -364,7 +364,7 @@ open class Flexaml(val input: String) {
             for (i in childs.indices) {
                 if (i != 0) {
                     if (minify) sb.append(",")
-                    else sb.append(", " + '\n')
+                    else sb.append(",\n")
                 }
                 if (childs[i] is FxmlNode) {
                     sb.append((childs[i] as FxmlNode).toStr(spacing, true, minify))
@@ -452,6 +452,7 @@ open class Flexaml(val input: String) {
         }
 
         operator fun set(i: Int, value: Any) {
+            if (i >= childs.size) for (p in childs.size..i) childs.add("")
             childs[i] = value
         }
 
