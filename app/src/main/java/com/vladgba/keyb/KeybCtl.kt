@@ -2,8 +2,8 @@ package com.vladgba.keyb
 
 import android.content.ComponentCallbacks2
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
-import android.inputmethodservice.InputMethodService
 import android.os.*
 import android.text.InputType
 import android.util.Log
@@ -12,7 +12,6 @@ import android.view.KeyEvent
 import android.view.KeyEvent.*
 import android.view.MotionEvent
 import android.view.ViewGroup
-import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -67,10 +66,6 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
     private fun updateNightState(cfg: Configuration = ctx.resources.configuration) {
         isNight = (cfg.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         Log.d("night", isNight.toString())
-    }
-
-    fun showMethodPicker() {
-        (ctx.getSystemService(InputMethodService.INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
     }
 
     fun onConfigurationChanged(cfg: Configuration) {
@@ -211,7 +206,7 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
 
         keybLayout = loaded[currentLayout]
         view.reload()
-        loadVars()
+        Settings.loadVars(ctx)
         setKeyb()
         return true
     }
@@ -338,14 +333,6 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         }
     }
 
-
-    fun loadVars() {
-        val setFile = PFile(ctx, SETTINGS_FILENAME)
-        if (setFile.lastModified() == Settings.lastModified) return
-        Settings.lastModified = setFile.lastModified()
-        Settings.append(Flexaml(setFile.read()).parse())
-    }
-
     fun prStack(e: Throwable) {
         log(StringWriter().also { e.printStackTrace(PrintWriter(it)) }.toString())
     }
@@ -400,10 +387,17 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
     }
 
     fun reloadLayout() {
-        loadVars()
+        Settings.loadVars(ctx)
         pickLayout(currentLayout)
         if (!keybLayout!!.loaded) {
-            // TODO: handle not loaded layout
+            if (currentLayout.isBlank()) {
+                log("Current layout name is blank")
+            } else {
+                ctx.startActivity(Intent(ctx, KeybRawEditor::class.java).apply {
+                    putExtra("name", currentLayout)
+                    putExtra("new", true)
+                })
+            }
         }
         view.reload()
         setKeyb()
@@ -425,8 +419,7 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
 
     fun setKeyb() {
         if (keybLayout?.loaded == true) return
-        keybLayout = dLayout
-        loadVars()
+        Settings.loadVars(ctx)
         view.reload()
         //showMethodPicker() // TODO: show error instead this
     }

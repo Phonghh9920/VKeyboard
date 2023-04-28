@@ -1,5 +1,7 @@
 package com.vladgba.keyb
 
+import android.content.Context
+
 
 object Settings : Flexaml.FxmlNode(Flexaml("""
 {
@@ -42,4 +44,15 @@ object Settings : Flexaml.FxmlNode(Flexaml("""
 }
 """).parse()) {
     var lastModified = 0L
+    var restart = false
+    fun loadVars(ctx: Context) {
+        val setFile = PFile(ctx, SETTINGS_FILENAME)
+        if (setFile.lastModified() == lastModified) return
+        lastModified = setFile.lastModified()
+        this.append(Flexaml(setFile.read()).parse())
+    }
+
+    fun save(ctx: Context) {
+        PFile(ctx, SETTINGS_FILENAME).write(toString())
+    }
 }
