@@ -3,10 +3,12 @@ package com.vladgba.keyb
 internal val LATIN_KEYS = 97..122
 internal const val LATIN_OFFSET = 68
 internal const val MULTIBYTE_UTF = 56320
+
 internal const val SETTINGS_FILENAME = "settings"
 internal const val NUM_FILENAME = "123"
+internal const val NUM2_FILENAME = "$123e"
 internal const val EMOJI_FILENAME = "emoji"
-internal const val LAYOUT_DEFAULT = "en"
+
 internal const val LAYOUT_EXT = "txt"
 internal const val BLANK_LAYOUT = "blank"
 internal const val SETTING_DEBUG = "debug"
@@ -15,6 +17,9 @@ internal const val SETTING_INPUT_DEVICE = "inputDevice"
 // Hardware Key
 internal const val SETTING_REDEFINE_HW_ACTION = "redefineHardwareActions"
 internal const val KEY_DO_IF_HIDDEN = "doIfHidden"
+
+// Settings
+internal const val SETTING_DEF_LAYOUT = "defaultLayout"
 
 // Key
 internal const val KEY_KEY = "key"
@@ -51,6 +56,7 @@ internal const val KEY_SWITCH_LAYOUT = "switchKeyb"
 // Sound
 internal const val KEY_SOUND_PRESS = "soundPress"
 internal const val KEY_SOUND_RELEASE = "soundRelease"
+
 // TODO: sound (tick, ext)
 internal const val KEY_VIBRATE_TICK = "vibTick"
 internal const val KEY_VIBRATE_PRESS = "vibPress"

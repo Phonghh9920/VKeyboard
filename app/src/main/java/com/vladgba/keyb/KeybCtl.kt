@@ -26,10 +26,8 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
     var hardMetaState: Int = 0
     var vibrationMs: Long = 0
 
-    var dLayout: KeybLayout? = null
-
-    var currentLayout = LAYOUT_DEFAULT
-    var lastTextLayout = currentLayout
+    var currentLayout: String
+    var lastTextLayout: String
     val loaded: MutableMap<String, KeybLayout> = mutableMapOf()
     var keybLayout: KeybLayout? = null
     var view: KeybView
@@ -47,11 +45,12 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
     init {
         updateNightState()
         setOrientation()
-        loadVars()
-        InjectedEvent.DEV = Settings.str(INPUT_DEVICE)
+        Settings.loadVars(ctx)
+        InjectedEvent.DEV = Settings.str(SETTING_INPUT_DEVICE)
         setKeybTheme()
         view = KeybView(this)
-        initDefLayout()
+        currentLayout = Settings.str(SETTING_DEF_LAYOUT)
+        lastTextLayout = currentLayout
         refreshLayout()
         reloadLayout()
         metaState = 0
@@ -152,7 +151,7 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
                 log("Up:$keyCode;${event.device.name}/${event.deviceId};S${event.scanCode};M${event.metaState};'${event.unicodeChar}'")
             }
             if (inputKey(keyCode.toString(), ACTION_UP, false)) {
-                if (currentLayout != LAYOUT_DEFAULT) reloadLayout()
+                if (currentLayout != Settings.str(SETTING_DEF_LAYOUT)) reloadLayout()
                 view.invalidate()
                 return true
             } else {
@@ -206,9 +205,9 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         keyShifted(action, keyData.num(KEY_KEY))
         view.repMod()
 
-        if (currentLayout == LAYOUT_DEFAULT || !pressing || !keyData.has(KEY_SWITCH_LAYOUT)) return true
+        if (currentLayout == Settings.str(SETTING_DEF_LAYOUT) || !pressing || !keyData.has(KEY_SWITCH_LAYOUT)) return true
 
-        currentLayout = if (keyData.bool(KEY_SWITCH_LAYOUT)) LAYOUT_DEFAULT else keyData.str(KEY_SWITCH_LAYOUT)
+        currentLayout = if (keyData.bool(KEY_SWITCH_LAYOUT)) Settings.str(SETTING_DEF_LAYOUT) else keyData.str(KEY_SWITCH_LAYOUT)
 
         keybLayout = loaded[currentLayout]
         view.reload()
@@ -387,7 +386,7 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         if (Character.isLetter(code) && sh) code.toChar().uppercaseChar().code else code
 
     private fun refreshLayout() {
-        val layNm = LAYOUT_DEFAULT
+        val layNm = Settings.str(SETTING_DEF_LAYOUT)
         if (!loaded.containsKey(layNm) || layoutFileChanged(layNm)) {
             loaded[layNm] = loadLayout(layNm)
         }
@@ -398,13 +397,6 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         val layout = KeybLayout(this, Flexaml(file.read()).parse())
         layout.lastdate = file.lastModified()
         return layout
-    }
-
-    private fun initDefLayout() {
-        dLayout = KeybLayout(
-            this,
-            Flexaml(ctx.assets.open("$LAYOUT_DEFAULT.$LAYOUT_EXT").bufferedReader().use { it.readText() }).parse()
-        )
     }
 
     fun reloadLayout() {
