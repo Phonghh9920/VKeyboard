@@ -18,6 +18,17 @@ val escapeMap = mapOf(
     '\u000C' to "\\f"
 )
 
+val unescapeMap = mapOf(
+    '\\' to '\\',
+    '"' to '"',
+    'n' to "\n",
+    'r' to "\r",
+    't' to "\t",
+    'b' to "\b",
+    '0' to "\u0000",
+    'f' to "\u000C"
+)
+
 open class Flexaml(val input: String) {
     private val operatorChars = (BEGIN_TOKENS + END_TOKENS + ASSIGN_TOKENS + SEPARATOR_TOKENS).joinToString("")
 
@@ -56,15 +67,20 @@ open class Flexaml(val input: String) {
             if (isValue(tokenPos)) {
                 if (tokens.size <= tokenPos + 1) {
                     appendText(v)
-                    return warn("Expected at least one more token. We are in root without brackets?")
+                    return warn("Expected at least one more token. We are in root without brackets?", tokens[tokenPos])
                 }
                 if (tokens[tokenPos + 1].type == TokenType.COLON) assign(v)
                 else appendText(v)
             } else if (tokens[tokenPos].type == TokenType.BEGIN) {
-                if (tokens.size <= tokenPos + 1) return warn("Unexpected open tag")
+                if (tokens.size <= tokenPos + 1) return warn("Unexpected open tag", tokens[tokenPos])
                 appendObj(v)
             } else {
-                tokens[tokenPos].apply { warn("Unexpected token " + type + if (text.isEmpty()) "" else " with text `$text`") }
+                tokens[tokenPos].apply {
+                    warn(
+                        "Unexpected token " + type + if (text.isEmpty()) "" else " with text `$text`",
+                        tokens[tokenPos]
+                    )
+                }
                 tokenPos++ // ??? symbol
             }
         }
@@ -85,7 +101,7 @@ open class Flexaml(val input: String) {
     }
 
     private fun assign(v: FxmlNode) {
-        if (tokens.size <= tokenPos + 2) return warn("Unexpected assignment")
+        if (tokens.size <= tokenPos + 2) return warn("Unexpected assignment", tokens[tokenPos])
         if (isValue(tokenPos + 2)) {
             v.params[tokens[tokenPos].text] = tokens[tokenPos + 2].text
             tokenPos += 3 // "key" ":" "value"
@@ -121,13 +137,11 @@ open class Flexaml(val input: String) {
         while ("\r\n\u0000".indexOf(current) == -1) current = next()
     }
 
-    private fun isIdentifierStart(current: Char): Boolean {
-        return Character.isLetter(current) || current == '_' || current == '!'
-    }
+    private fun isIdentifierStart(current: Char) =
+        Character.isLetter(current) || current == '_' || current == '!'
 
-    private fun isIdentifierPart(current: Char): Boolean {
-        return Character.isLetter(current) || current == '_' || Character.isDigit(current)
-    }
+    private fun isIdentifierPart(current: Char) =
+        Character.isLetter(current) || current == '_' || Character.isDigit(current)
 
     private fun tokenizeWord() {
         clearBuffer()
@@ -165,57 +179,12 @@ open class Flexaml(val input: String) {
         while (true) {
             if (current == '\\') {
                 current = next()
-                when (current) {
-                    // TODO: use map or anything?
-                    '\\' -> {
-                        current = next()
-                        buffer.append('\\')
-                        continue
-                    }
-
-                    '"' -> {
-                        current = next()
-                        buffer.append('"')
-                        continue
-                    }
-
-                    '0' -> {
-                        current = next()
-                        buffer.append('\u0000')
-                        continue
-                    }
-
-                    'b' -> {
-                        current = next()
-                        buffer.append('\b')
-                        continue
-                    }
-
-                    'f' -> {
-                        current = next()
-                        buffer.append('\u000c')
-                        continue
-                    }
-
-                    'n' -> {
-                        current = next()
-                        buffer.append('\n')
-                        continue
-                    }
-
-                    'r' -> {
-                        current = next()
-                        buffer.append('\r')
-                        continue
-                    }
-
-                    't' -> {
-                        current = next()
-                        buffer.append('\t')
-                        continue
-                    }
-
-                    'u' -> {
+                val uns = unescapeMap[current]
+                if (uns != null) {
+                    buffer.append(uns)
+                    current = next()
+                } else buffer.append(
+                    if (current == 'u') {
                         val rollbackPosition = pos
                         while (current == 'u') current = next()
 
@@ -231,9 +200,8 @@ open class Flexaml(val input: String) {
                             pos = rollbackPosition
                         }
                         continue
-                    }
-                }
-                buffer.append('\\')
+                    } else "\\$current"
+                )
                 continue
             }
             if (current == '"') break
@@ -278,7 +246,7 @@ open class Flexaml(val input: String) {
             if (current != '_') buffer.append(current) // allow _ symbol
             current = next()
         }
-        if (buffer.length > 0) addToken(TokenType.HEX, buffer.toString())
+        if (buffer.isNotEmpty()) addToken(TokenType.HEX, buffer.toString())
     }
 
     private fun isHexNumber(current: Char) = Character.isDigit(current) || current in 'a'..'f' || current in 'A'..'F'
@@ -388,7 +356,7 @@ open class Flexaml(val input: String) {
                 is FxmlNode -> tmp
                 else -> FxmlNode()
             }
-        } catch(_: Exception) {
+        } catch (_: Exception) {
             FxmlNode()
         }
 
@@ -486,10 +454,11 @@ open class Flexaml(val input: String) {
         }
     }
 
-    private fun warn(msg: String) {/*val r = tokens[tokenPos].row
-        val c = tokens[tokenPos].col*/
-        Log.w("LayoutParser", /*"[$r:$c] $msg"*/msg)
-        warnings.add(ParseWarning(msg, /*r, c*/0, 0))
+    private fun warn(msg: String, token: Token) {
+        ParseWarning(msg, token.row, token.col).also {
+            Log.w("LayoutParser", it.toString())
+            warnings.add(it)
+        }
     }
 
     class ParseWarning(val msg: String, val line: Int, val col: Int) {
