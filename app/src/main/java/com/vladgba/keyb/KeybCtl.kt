@@ -30,7 +30,8 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
     val loaded: MutableMap<String, KeybLayout> = mutableMapOf()
     var keybLayout: KeybLayout? = null
     var view: KeybView
-    var layouts = layoutList()
+    val layouts:List<String>
+        get() = layoutList()
 
     val pointers = mutableMapOf<Int, Key>()
     val handler = Handler(Looper.getMainLooper())
@@ -79,8 +80,9 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         }
     }
 
-    private fun setKeybTheme() {
-        val theme = Settings[Settings.str(if (isNight) COLOR_NIGHT else COLOR_DAY)]
+    fun setKeybTheme() {
+        val themeName = Settings.str(if (isNight) COLOR_NIGHT else COLOR_DAY)
+        val theme = Flexaml(PFile(ctx, themeName, THEME_EXT).read()).parse()
         Settings.params.also {
             for ((i, color) in theme.params.entries) it[i] = color
         }
@@ -195,7 +197,7 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
             }
         }
 
-        val newModifierState = keyData.num(KEY_MOD)
+        val newModifierState = keyData.num(KEY_CODE)
         metaState = if (pressing) (metaState or newModifierState) else metaState and newModifierState.inv()
         keyShifted(action, keyData.num(KEY_KEY))
         view.repMod()
@@ -205,9 +207,9 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         currentLayout = if (keyData.bool(KEY_SWITCH_LAYOUT)) Settings.str(SETTING_DEF_LAYOUT) else keyData.str(KEY_SWITCH_LAYOUT)
 
         keybLayout = loaded[currentLayout]
-        view.reload()
         Settings.loadVars(ctx)
         setKeyb()
+        view.reload()
         return true
     }
 
@@ -388,6 +390,7 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
 
     fun reloadLayout() {
         Settings.loadVars(ctx)
+        setKeybTheme()
         pickLayout(currentLayout)
         if (!keybLayout!!.loaded) {
             if (currentLayout.isBlank()) {
@@ -399,8 +402,8 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
                 })
             }
         }
-        view.reload()
         setKeyb()
+        view.reload()
     }
 
     fun pickLayout(layNm: String) {
@@ -419,8 +422,6 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
 
     fun setKeyb() {
         if (keybLayout?.loaded == true) return
-        Settings.loadVars(ctx)
-        view.reload()
         //showMethodPicker() // TODO: show error instead this
     }
 

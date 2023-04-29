@@ -221,7 +221,7 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
     }
 
     fun modifierAction(): Boolean {
-        if (!bool(KEY_MOD) or !has(KEY_CODE) or !has(KEY_MOD_META)) return false
+        if (str(KEY_MODE) != KEY_MODE_META || !has(KEY_CODE) || !has(KEY_MOD_META)) return false
 
         if ((c.metaState and num(KEY_MOD_META)) > 0) {
             c.metaState = c.metaState and num(KEY_MOD_META).inv()

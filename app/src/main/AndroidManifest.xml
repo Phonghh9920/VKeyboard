@@ -1,42 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
     <application
             android:allowBackup="true"
             android:icon="@mipmap/ic_launcher"
             android:label="@string/app_name"
             android:theme="@android:style/Theme.Material.Light">
-        <activity android:name="Vkeyboard" android:exported="true">
+        <activity
+                android:name=".ThemeManage"
+                android:exported="false"/>
+        <activity
+                android:name=".Vkeyboard"
+                android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
+
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity android:name="com.vladgba.keyb.LayoutsManage"/>
-        <activity android:name="com.vladgba.keyb.KeybNewLayout"/>
-        <activity android:name="com.vladgba.keyb.LayoutEditor"/>
-        <activity android:name="com.vladgba.keyb.KeybRawEditor"/>
-        <activity android:name="com.vladgba.keyb.LayoutExport"/>
-        <activity android:name="com.vladgba.keyb.LayoutImporter" android:exported="true">
+        <activity android:name=".SetupLayouts"/>
+        <activity android:name=".LayoutsManage"/>
+        <activity android:name=".KeybNewLayout"/>
+        <activity android:name=".LayoutEditor"/>
+        <activity android:name=".KeybRawEditor"/>
+        <activity android:name=".LayoutExport"/>
+        <activity
+                android:name=".LayoutImporter"
+                android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="file" />
-                <data android:scheme="content" />
-                <data android:mimeType="text/plain" />
-                <data android:pathPattern=".*\\.txt" />
+                <action android:name="android.intent.action.VIEW"/>
+
+                <category android:name="android.intent.category.DEFAULT"/>
+
+                <data android:scheme="file"/>
+                <data android:scheme="content"/>
+                <data android:mimeType="text/plain"/>
+                <data android:pathPattern=".*\\.txt"/>
             </intent-filter>
         </activity>
+
         <service
-                android:windowSoftInputMode="stateAlwaysVisible"
                 android:name=".KeybWrapper"
+                android:configChanges="orientation|keyboardHidden"
+                android:directBootAware="true"
+                android:enabled="true"
+                android:exported="true"
                 android:label="@string/app_name"
                 android:permission="android.permission.BIND_INPUT_METHOD"
-                android:configChanges="orientation|keyboardHidden"
-                android:exported="true"
-                android:enabled="true"
-                android:directBootAware="true">
-            <meta-data android:name="android.view.im" android:resource="@xml/method"/>
+                android:windowSoftInputMode="stateAlwaysVisible">
+            <meta-data
+                    android:name="android.view.im"
+                    android:resource="@xml/method"/>
+
             <intent-filter>
                 <action android:name="android.view.InputMethod"/>
             </intent-filter>

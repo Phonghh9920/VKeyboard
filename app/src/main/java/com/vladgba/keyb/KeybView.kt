@@ -78,7 +78,7 @@ class KeybView(private val c: KeybCtl) : View(c.ctx), View.OnClickListener {
 
         for (row in c.keybLayout!!.rows) {
             for (key in row.keys) {
-                if (repMods && !key.has(KEY_MOD)) continue
+                if (repMods && key.str(KEY_MODE) != KEY_MODE_META) continue
                 canvas.save()
                 paint.color = getColor(COLOR_KEYBOARD_BACKGROUND, key)
                 val r = RectF(
@@ -126,7 +126,7 @@ class KeybView(private val c: KeybCtl) : View(c.ctx), View.OnClickListener {
                 paint.color = if (key.str(COLOR_KEY_STATIC_BG).isEmpty()) getColor(COLOR_KEY_BACKGROUND, key)
                 else Color.parseColor("#" + key.str(COLOR_KEY_STATIC_BG))
 
-                if (key.has(KEY_MOD) && (key.num(KEY_MOD_META) and c.metaState) > 0) paint.color =
+                if (key.str(KEY_MODE) == KEY_MODE_META && (key.num(KEY_MOD_META) and c.metaState) > 0) paint.color =
                     getColor(COLOR_KEY_MOD_BACKGROUND, key)
                 canvas.drawRoundRect(RectF(
                     (key.x + lpad + padding),
@@ -160,7 +160,6 @@ class KeybView(private val c: KeybCtl) : View(c.ctx), View.OnClickListener {
     }
 
     private fun getColor(styleName: String, node: Flexaml.FxmlNode = c.keybLayout!!): Int {
-        // TODO: inject themes to settings
         return if (node.has(styleName)) hexNum(node.str(styleName)) else randColor()
     }
 

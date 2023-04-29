@@ -146,7 +146,7 @@
     key:" "
     width:2
 	code: -62
-	repeat: 1
+    type: "joy"
 	left: -21
 	right: -22
 	top: 0
