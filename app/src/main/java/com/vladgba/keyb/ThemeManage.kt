@@ -12,31 +12,24 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import java.io.File
 
-class LayoutsManage : Activity() {
-    private var content: String = ""
+class ThemeManage : Activity() {
     var inflater: LayoutInflater? = null
     var parentLayout: LinearLayout? = null
 
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.layout_picker)
-        title = getString(R.string.settings)
+        setContentView(R.layout.theme_picker)
+        title = getString(R.string.themes)
         inflater = LayoutInflater.from(this)
         parentLayout = findViewById(R.id.picker_list)
 
-        findViewById<Button>(R.id.picker_settings).setOnClickListener {
-            startActivityForResult(Intent(this, KeybRawEditor::class.java).apply {
-                putExtra("name", SETTINGS_FILENAME)
-            }, 0)
-        }
-
-        findViewById<Button>(R.id.picker_themes).setOnClickListener {
-            startActivityForResult(Intent(this, ThemeManage::class.java), 0)
-        }
-
         findViewById<Button>(R.id.new_layout).setOnClickListener {
-            startActivityForResult(Intent(this, KeybNewLayout::class.java), 0)
+            startActivityForResult(Intent(this, KeybRawEditor::class.java).apply {
+                putExtra("name", THEME_BASE_NAME)
+                putExtra("base", THEME_BASE_NAME)
+                putExtra("ext", THEME_EXT)
+            }, 0)
         }
 
         layoutsList()
@@ -49,8 +42,8 @@ class LayoutsManage : Activity() {
 
         for (file in fileList) {
             var name = file.name
-            val ext = name.lastIndexOf(".$LAYOUT_EXT")
-            if (ext < 0 || name == "$SETTINGS_FILENAME.$LAYOUT_EXT") continue
+            val ext = name.lastIndexOf(".$THEME_EXT")
+            if (ext < 0) continue
 
             name = name.substring(0, ext)
 
@@ -59,11 +52,17 @@ class LayoutsManage : Activity() {
             val textView = fileView.findViewById<TextView>(R.id.layout_name)
 
             fileView.findViewById<ImageButton>(R.id.layout_backup).setOnClickListener {
-                startActivityForResult(Intent(this, LayoutExport::class.java).apply { putExtra("name", name) }, 0)
+                startActivityForResult(Intent(this, LayoutExport::class.java).apply {
+                    putExtra("name", name)
+                    putExtra("ext", THEME_EXT)
+                }, 0)
             }
 
             fileView.findViewById<ImageButton>(R.id.layout_edit).setOnClickListener {
-                startActivityForResult(Intent(this, LayoutEditor::class.java).apply { putExtra("name", name) }, 0)
+                startActivityForResult(Intent(this, KeybRawEditor::class.java).apply {
+                    putExtra("name", name)
+                    putExtra("ext", THEME_EXT)
+                }, 0)
             }
 
             fileView.findViewById<ImageButton>(R.id.layout_delete).setOnClickListener {
@@ -72,7 +71,7 @@ class LayoutsManage : Activity() {
                 builder.setTitle("Delete file")
                 builder.setMessage("Are you sure you want to delete this file?")
                 builder.setPositiveButton(R.string.delete) { _, _ ->
-                    "$name.$LAYOUT_EXT".let { File(filesDir, it).apply { if (exists()) delete(); layoutsList() } }
+                    "$name.$THEME_EXT".let { File(filesDir, it).apply { if (exists()) delete(); layoutsList() } }
                     Settings.restart = true
                 }
                 builder.setNegativeButton(R.string.cancel) { a, b ->
