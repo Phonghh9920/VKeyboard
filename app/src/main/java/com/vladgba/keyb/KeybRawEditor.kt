@@ -51,5 +51,16 @@ class KeybRawEditor : Activity() {
         }
     }
 
+    override fun onBackPressed() {
+        var dialog: AlertDialog? = null
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle(R.string.confirm_title)
+        builder.setMessage(R.string.confirm_unsaved)
+        builder.setPositiveButton(R.string.yes) { _, _ -> finish() }
+        builder.setNegativeButton(R.string.no) { _, _ -> dialog?.cancel() }
+        dialog = builder.create()
+        dialog.show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.RED)
+    }
 
 }

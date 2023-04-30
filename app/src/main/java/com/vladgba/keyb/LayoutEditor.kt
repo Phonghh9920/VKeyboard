@@ -79,6 +79,18 @@ class LayoutEditor : Activity() {
         custKeyb.addView(ctrl!!.view)
     }
 
+    override fun onBackPressed() {
+        var dialog: AlertDialog? = null
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Confirm")
+        builder.setMessage("All unsaved changes will be lost. Are you sure?")
+        builder.setPositiveButton(R.string.yes) { _, _ -> finish() }
+        builder.setNegativeButton(R.string.no) { _, _ -> dialog?.cancel() }
+        dialog = builder.create()
+        dialog.show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.RED)
+    }
+
     override fun onResume() {
         super.onResume()
         if (ctrl != null) ctrl!!.reloadLayout()
