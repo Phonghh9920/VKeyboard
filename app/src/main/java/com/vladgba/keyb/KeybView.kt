@@ -178,7 +178,7 @@ class KeybView(private val c: KeybCtl) : View(c.ctx), View.OnClickListener {
     }
 
     private fun drawModifierCode(canvas: Canvas) {
-        if (Settings.bool(SETTING_DEBUG)) return
+        if (!Settings.bool(SETTING_DEBUG)) return
         paint.color = hexNum(Settings.str(COLOR_TEXT_PRIMARY))
         paint.textSize = 20f
         canvas.drawText(c.metaState.toString(2), 10f, 95f, paint)
