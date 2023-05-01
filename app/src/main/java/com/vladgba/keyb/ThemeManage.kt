@@ -14,8 +14,8 @@ import android.widget.TextView
 import java.io.File
 
 class ThemeManage : Activity() {
-    var inflater: LayoutInflater? = null
-    var parentLayout: LinearLayout? = null
+    private var inflater: LayoutInflater? = null
+    private var parentLayout: LinearLayout? = null
 
 
     public override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,18 +87,13 @@ class ThemeManage : Activity() {
                 dialog.show()
             }
 
-            fileView.findViewById<ImageButton>(R.id.layout_edit).setOnClickListener {
-                startActivityForResult(Intent(this, KeybRawEditor::class.java).apply {
-                    putExtra("name", name)
-                    putExtra("ext", THEME_EXT)
-                }, 0)
-            }
+            colorSettings(fileView, name)
 
             fileView.findViewById<ImageButton>(R.id.layout_delete).setOnClickListener {
                 var dialog: AlertDialog? = null
                 val builder = AlertDialog.Builder(this)
-                builder.setTitle("Delete file")
-                builder.setMessage("Are you sure you want to delete this file?")
+                builder.setTitle(R.string.delete_file_title)
+                builder.setMessage(R.string.delete_file_confirmation)
                 builder.setPositiveButton(R.string.delete) { _, _ ->
                     "$name.$THEME_EXT".let { File(filesDir, it).apply { if (exists()) delete(); layoutsList() } }
                 }
@@ -111,6 +106,69 @@ class ThemeManage : Activity() {
             }
             textView.text = name
             parentLayout!!.addView(fileView)
+        }
+    }
+
+    private fun colorSettings(v: View, name: String) {
+        val file = PFile(this, name, THEME_EXT)
+        val node = Flexaml(file.read()).parse()
+        val btn = v.findViewById<ImageButton>(R.id.layout_edit)
+        btn.setOnClickListener {
+
+            val dialogBuilder = AlertDialog.Builder(this)
+
+            dialogBuilder.setTitle(String.format(getString(R.string.theme_editing_title), name))
+            dialogBuilder.setView(R.layout.color_settings)
+            dialogBuilder.setPositiveButton(android.R.string.ok) { _, _ ->
+                file.write(node.toString())
+            }
+            dialogBuilder.setNeutralButton(R.string.edit_raw) { _, _ ->
+                startActivityForResult(Intent(this, KeybRawEditor::class.java).apply {
+                    putExtra("name", name)
+                    putExtra("ext", THEME_EXT)
+                }, 0)
+            }
+            dialogBuilder.setNegativeButton(android.R.string.cancel) { d, _ -> d.dismiss() }
+
+            val dialog = dialogBuilder.create()
+
+            dialog.show()
+
+            for (i in COLORS) {
+                val item = View.inflate(this, R.layout.color_settings_item, null)
+                item.findViewById<TextView>(R.id.color_name).text = i
+                val currColorValue = node.str(i)
+                val hexColor = try {
+                    Color.parseColor("#$currColorValue")
+                } catch (_: Exception) {
+                    0
+                }
+                val itemPreview = item.findViewById<View>(R.id.color_preview).apply { setBackgroundColor(hexColor) }
+                dialog.findViewById<LinearLayout>(R.id.scroll_colors).addView(item)
+
+                bindColorPicker(item, i, hexColor, node, itemPreview)
+            }
+        }
+    }
+
+    private fun bindColorPicker(
+        item: View,
+        i: String,
+        hexColor: Int,
+        node: Flexaml.FxmlNode,
+        preview: View
+    ) {
+        item.setOnClickListener {
+            ColorPicker(this, hexColor, true, object : ColorPicker.ColorPickerListener {
+                override fun onOk(dialog: ColorPicker, color: Int) {
+                    val newColor = color.toUInt().toString(16)
+                    node[i] = newColor
+                    preview.setBackgroundColor(color)
+                    bindColorPicker(item, i, color, node, preview)
+                }
+
+                override fun onCancel(dialog: ColorPicker) {}
+            }).show()
         }
     }
 

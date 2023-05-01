@@ -69,8 +69,8 @@ class LayoutsManage : Activity() {
             fileView.findViewById<ImageButton>(R.id.layout_delete).setOnClickListener {
                 var dialog: AlertDialog? = null
                 val builder = AlertDialog.Builder(this)
-                builder.setTitle("Delete file")
-                builder.setMessage("Are you sure you want to delete this file?")
+                builder.setTitle(R.string.delete_file_title)
+                builder.setMessage(R.string.delete_file_confirmation)
                 builder.setPositiveButton(R.string.delete) { _, _ ->
                     "$name.$LAYOUT_EXT".let { File(filesDir, it).apply { if (exists()) delete(); layoutsList() } }
                 }
