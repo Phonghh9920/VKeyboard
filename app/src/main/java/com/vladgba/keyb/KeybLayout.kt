@@ -30,13 +30,6 @@ class KeybLayout(val c: KeybCtl, glob: Flexaml.FxmlNode) : Flexaml.FxmlNode(glob
         }
     }
 
-
-    fun loadKeybLayout(name: String): String {
-        val file = PFile(c.ctx, name)
-        lastdate = file.lastModified()
-        return file.read()
-    }
-
     fun getKey(x: Int, y: Int): Key? {
         var startHeight = 0
         for (row in rows) {
@@ -77,9 +70,34 @@ class KeybLayout(val c: KeybCtl, glob: Flexaml.FxmlNode) : Flexaml.FxmlNode(glob
     private fun posOnLine(parent: Flexaml.FxmlNode, index: Int, first: Int, middle: Int, last: Int) =
         if (index == 0) first else if (index == parent.childCount() - 1) last else middle
 
+    fun calcY() {
+        var startY = 0
+        val rowCount = rows.size
+        for (i in 0 until rowCount) {
+            rows[i].moveVertical(startY)
+            startY += rows[i].height
+        }
+        height = startY
+    }
+
     class Row(val layout: KeybLayout, val options: Flexaml.FxmlNode, var y: Int) : Flexaml.FxmlNode(options, layout) {
-        val refSize = if (layout.dm.heightPixels > layout.dm.widthPixels) layout.dm.heightPixels / 18f else layout.dm.widthPixels / 8f
-        var height = (this.float(ROW_HEIGHT, 1f) * refSize).toInt()
+        private val refSize = layout.float(ROW_HEIGHT, 1f) *
+                if (layout.dm.heightPixels > layout.dm.widthPixels) layout.dm.heightPixels / 18f
+                else layout.dm.widthPixels / 8f
+
+        var height = 0
+        init {
+            calcHeight()
+        }
+
+        fun calcHeight() {
+            height = (refSize * try {
+                (params[ROW_HEIGHT] as String).toFloat()
+            } catch (_: Exception) {
+                1f
+            }).toInt()
+        }
+
         var keys = ArrayList<Key>()
 
         fun calcWidth() {

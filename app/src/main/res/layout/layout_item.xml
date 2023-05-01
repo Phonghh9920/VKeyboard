@@ -11,6 +11,14 @@
             android:id="@+id/layout_backup"
             android:contentDescription="@string/share"/>
     <ImageButton
+            android:visibility="gone"
+            android:layout_width="48sp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:src="@android:drawable/ic_menu_manage"
+            android:id="@+id/layout_set_theme"
+            android:contentDescription="@string/set_theme"/>
+    <ImageButton
             android:layout_width="48sp"
             android:layout_height="48dp"
             android:gravity="center"

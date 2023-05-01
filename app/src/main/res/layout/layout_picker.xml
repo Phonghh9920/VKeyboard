@@ -15,6 +15,11 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
         <Button
+                android:text="@string/themes"
+                android:id="@+id/picker_themes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+        <Button
                 android:text="@string/new_layout"
                 android:id="@+id/new_layout"
                 android:layout_width="wrap_content"
