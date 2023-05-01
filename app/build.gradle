@@ -8,7 +8,7 @@ def calendar = Calendar.getInstance()
 def year = calendar.get(Calendar.YEAR) - 2022
 def month = calendar.get(Calendar.MONTH) + 1
 def day = calendar.get(Calendar.DAY_OF_MONTH)
-def versCode = year * 10000 + month * 100 + day
+def versCode = year * 1200 + month * 100 + day
 
 android {
     compileSdk 33
@@ -29,6 +29,7 @@ android {
         versionCode versCode
         versionName "2.$versionCode"
         resValue "string", "app_name", "VKeyboard 2"
+        resValue "string", "version", "2.$versionCode"
         targetSdkVersion 33
         minSdkVersion 22
         signingConfig signingConfigs.release
@@ -45,6 +46,7 @@ android {
             applicationIdSuffix ".debug"
             versionNameSuffix "d"
             resValue "string", "app_name", "@VKeyb`" + versCode
+            resValue "string", "version", "2.$versCode"
         }
     }
 
