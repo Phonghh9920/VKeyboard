@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -26,8 +27,8 @@ class ThemeManage : Activity() {
 
         findViewById<Button>(R.id.new_layout).setOnClickListener {
             startActivityForResult(Intent(this, KeybRawEditor::class.java).apply {
-                putExtra("name", THEME_BASE_NAME)
-                putExtra("base", THEME_BASE_NAME)
+                putExtra("name", BLANK_THEME)
+                putExtra("base", BLANK_THEME)
                 putExtra("ext", THEME_EXT)
             }, 0)
         }
@@ -58,6 +59,34 @@ class ThemeManage : Activity() {
                 }, 0)
             }
 
+            fileView.findViewById<ImageButton>(R.id.layout_set_theme).apply {
+                visibility = View.VISIBLE
+            }.setOnClickListener {
+                var dialog: AlertDialog? = null
+                val builder = AlertDialog.Builder(this)
+                builder.setTitle(R.string.theme_set_title)
+                builder.setMessage(
+                    String.format(
+                        getString(R.string.themes_curently_in_use),
+                        Settings.str(THEME_DAY),
+                        Settings.str(THEME_NIGHT)
+                    )
+                )
+                builder.setPositiveButton(R.string.theme_day) { _, _ ->
+                    Settings[THEME_DAY] = name
+                    Settings.save(this)
+                }
+                builder.setNeutralButton(android.R.string.cancel) { _, _ ->
+                    dialog?.cancel()
+                }
+                builder.setNegativeButton(R.string.theme_night) { _, _ ->
+                    Settings[THEME_NIGHT] = name
+                    Settings.save(this)
+                }
+                dialog = builder.create()
+                dialog.show()
+            }
+
             fileView.findViewById<ImageButton>(R.id.layout_edit).setOnClickListener {
                 startActivityForResult(Intent(this, KeybRawEditor::class.java).apply {
                     putExtra("name", name)
@@ -72,14 +101,13 @@ class ThemeManage : Activity() {
                 builder.setMessage("Are you sure you want to delete this file?")
                 builder.setPositiveButton(R.string.delete) { _, _ ->
                     "$name.$THEME_EXT".let { File(filesDir, it).apply { if (exists()) delete(); layoutsList() } }
-                    Settings.restart = true
                 }
-                builder.setNegativeButton(R.string.cancel) { a, b ->
+                builder.setNegativeButton(android.R.string.cancel) { _, _ ->
                     dialog?.cancel()
                 }
                 dialog = builder.create()
-                dialog.show()
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.RED)
+                dialog!!.show()
+                dialog!!.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.RED)
             }
             textView.text = name
             parentLayout!!.addView(fileView)

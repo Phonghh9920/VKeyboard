@@ -48,7 +48,6 @@ class Vkeyboard : Activity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_about -> {
-
                 val dialog = Dialog(this)
                 dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
                 dialog.setContentView(R.layout.about_app)
@@ -56,8 +55,20 @@ class Vkeyboard : Activity() {
                 true
             }
 
+            R.id.action_prebuilt_add_theme -> {
+                startActivity(
+                    Intent(this, SetupLayouts::class.java)
+                        .putExtra("layouts", false)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+                true
+            }
+
             R.id.action_prebuilt_add_layouts -> {
-                startActivity(Intent(this, SetupLayouts::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                startActivity(
+                    Intent(this, SetupLayouts::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
                 true
             }
 

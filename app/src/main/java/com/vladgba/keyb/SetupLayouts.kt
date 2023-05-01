@@ -11,11 +11,14 @@ import android.widget.TextView
 class SetupLayouts : Activity() {
     var inflater: LayoutInflater? = null
     var parentLayout: LinearLayout? = null
+    var isLayouts = true
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.layout_prebuilt_picker)
 
-        title = getString(R.string.prebuilt_list)
+        isLayouts = intent.getBooleanExtra("layouts", true)
+        title = getString(if (isLayouts) R.string.prebuilt_layouts else R.string.prebuilt_themes)
+
         inflater = LayoutInflater.from(this)
         parentLayout = findViewById(R.id.picker_list)
 
@@ -33,34 +36,34 @@ class SetupLayouts : Activity() {
                 assets.open("baseDark.$THEME_EXT").bufferedReader().use { it.readText() })
         }
 
-        layoutsList()
+        prebuiltList()
     }
 
-    private fun layoutsList() {
+    private fun prebuiltList() {
         if (inflater == null || parentLayout == null) return
         val list: Array<String>? = assets.list("")
         parentLayout!!.removeAllViews()
 
+        val fileExt = if (isLayouts) LAYOUT_EXT else THEME_EXT
         for (file in list!!) {
             var name = file
-            val ext = name.lastIndexOf(".$LAYOUT_EXT")
-            if (ext < 0) continue
-            name = name.substring(0, ext)
-            if (PFile(this, name).exists() || name == BLANK_LAYOUT) continue
+            val extIndex = name.lastIndexOf(".$fileExt")
+            if (extIndex < 0) continue
+            name = name.substring(0, extIndex)
+            val blankFile = if (isLayouts) BLANK_LAYOUT else BLANK_THEME
+            if (PFile(this, name, fileExt).exists() || (name == blankFile)) continue
 
             val fileView = inflater!!.inflate(R.layout.prebuilt_item, parentLayout, false)
-
             val textView = fileView.findViewById<TextView>(R.id.layout_name)
 
             fileView.findViewById<ImageButton>(R.id.layout_add_prebuilt).setOnClickListener {
-                PFile(this, name).write(
-                    assets.open("$name.$LAYOUT_EXT").bufferedReader().use { it.readText() })
+                PFile(this, name, fileExt).write(
+                    assets.open("$name.$fileExt").bufferedReader().use { it.readText() })
                 Settings.loadVars(this)
                 if (!Settings.has(SETTING_DEF_LAYOUT)) {
                     Settings[SETTING_DEF_LAYOUT] = name
                     Settings.save(this)
                 }
-                Settings.restart = true
                 parentLayout!!.removeView(fileView)
             }
 
@@ -71,6 +74,6 @@ class SetupLayouts : Activity() {
 
     override fun onResume() {
         super.onResume()
-        layoutsList()
+        prebuiltList()
     }
 }
