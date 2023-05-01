@@ -24,7 +24,7 @@ class KeybRawEditor : Activity() {
         name = intent.getStringExtra("name") ?: return finish()
         base = intent.getStringExtra("base") ?: ""
         ext = intent.getStringExtra("ext") ?: ext
-        title = getString(R.string.editor_title)
+        title = getString(if (ext == LAYOUT_EXT) R.string.editor_title_layout else R.string.editor_title_theme)
         file = PFile(this, name, ext)
         editText = findViewById(R.id.edit_text)
 

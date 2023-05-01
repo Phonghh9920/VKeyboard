@@ -271,7 +271,6 @@ class KeybEditInterface(private val c: KeybCtl) {
         preview: View
     ) {
         item.setOnClickListener {
-            c.log("$i: " + hexColor.toUInt().toString(16))
             ColorPicker(c.ctx, hexColor, true, object : ColorPicker.ColorPickerListener {
                 override fun onOk(dialog: ColorPicker, color: Int) {
                     val newColor = color.toUInt().toString(16)
