@@ -404,8 +404,8 @@ open class Flexaml(val input: String) {
             return d
         }
 
-        fun bool(s: String) =
-            (if (has(s)) str(s).run { listOf("1", "true", "yes").contains(lowercase().trim()) } else false)
+        fun bool(s: String, d: Boolean = false) =
+            (if (has(s)) str(s).run { listOf("1", "true", "yes").contains(lowercase().trim()) } else d)
 
         fun childCount() = childs.size
 

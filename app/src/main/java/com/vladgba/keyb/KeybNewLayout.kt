@@ -34,7 +34,7 @@ class KeybNewLayout : Activity(),  AdapterView.OnItemSelectedListener {
             if (text.text.isBlank()) {
                 val builder = AlertDialog.Builder(this)
                 builder.setMessage("Name can not be empty!")
-                builder.setPositiveButton("OK") { d, _ -> d.cancel() }
+                builder.setPositiveButton(android.R.string.ok) { d, _ -> d.cancel() }
                 builder.show()
             } else {
                 startActivityForResult(Intent(this, KeybRawEditor::class.java).apply {

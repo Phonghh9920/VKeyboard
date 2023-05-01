@@ -56,13 +56,13 @@ class LayoutImporter : Activity() {
         input.inputType = InputType.TYPE_CLASS_TEXT
         builder.setView(input)
 
-        builder.setPositiveButton("OK") { _, _ ->
+        builder.setPositiveButton(android.R.string.ok) { _, _ ->
             Toast.makeText(this, R.string.file_importing, Toast.LENGTH_SHORT).show()
             Toast.makeText(this, if(PFile(this, input.text.toString()).write(content)) R.string.file_imported else R.string.file_import_fail, Toast.LENGTH_LONG).show()
             finish()
         }
 
-        builder.setNegativeButton("Cancel") { dialog, _ ->
+        builder.setNegativeButton(android.R.string.cancel) { dialog, _ ->
             dialog.cancel()
             finish()
         }

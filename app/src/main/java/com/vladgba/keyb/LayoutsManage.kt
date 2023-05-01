@@ -73,9 +73,8 @@ class LayoutsManage : Activity() {
                 builder.setMessage("Are you sure you want to delete this file?")
                 builder.setPositiveButton(R.string.delete) { _, _ ->
                     "$name.$LAYOUT_EXT".let { File(filesDir, it).apply { if (exists()) delete(); layoutsList() } }
-                    Settings.restart = true
                 }
-                builder.setNegativeButton(R.string.cancel) { a, b ->
+                builder.setNegativeButton(android.R.string.cancel) { _, _ ->
                     dialog?.cancel()
                 }
                 dialog = builder.create()

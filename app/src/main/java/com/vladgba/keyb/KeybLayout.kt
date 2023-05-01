@@ -58,14 +58,13 @@ class KeybLayout(val c: KeybCtl, glob: Flexaml.FxmlNode) : Flexaml.FxmlNode(glob
         keys.add(loadkey)
         cRow.keys.add(loadkey)
         loadx += loadkey.width
-        //if (loadx > width) width = loadx
     }
 
     private fun loadAllRows(json: Flexaml.FxmlNode) {
-        for (i in 0 until json.childCount()) loadRow(json[i], posOnLine(json, i, 0, 3, 6))
+        for (i in 0 until json.childCount()) loadRow(json[i])
     }
 
-    private fun loadRow(row: Flexaml.FxmlNode, pos: Int) {
+    private fun loadRow(row: Flexaml.FxmlNode) {
         loadx = 0
         val lNewRow = Row(this, row, loady)
         rows.add(lNewRow)

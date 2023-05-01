@@ -7,14 +7,16 @@ import java.io.IOException
 
 class LayoutExport : Activity() {
     var name = ""
+    var ext = ""
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        name = intent.getStringExtra("name")!!
+        name = intent.getStringExtra("name")?: return finish()
+        ext = intent.getStringExtra("ext")?: LAYOUT_EXT
         startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TITLE, "$name.$LAYOUT_EXT")
+            type = "application/textedit"
+            putExtra(Intent.EXTRA_TITLE, "$name.$ext")
             putExtra("name", name)
         }, 1)
     }

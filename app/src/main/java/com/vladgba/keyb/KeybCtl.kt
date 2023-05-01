@@ -43,6 +43,9 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
     var editInterface: KeybEditInterface? = null
 
     init {
+        if (!PFile(ctx, SETTINGS_FILENAME).exists())
+            ctx.startActivity(Intent(ctx, SetupLayouts::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+
         updateNightState()
         setOrientation()
         Settings.loadVars(ctx)
@@ -81,7 +84,7 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
     }
 
     fun setKeybTheme() {
-        val themeName = Settings.str(if (isNight) COLOR_NIGHT else COLOR_DAY)
+        val themeName = Settings.str(if (isNight) THEME_NIGHT else THEME_DAY)
         val theme = Flexaml(PFile(ctx, themeName, THEME_EXT).read()).parse()
         Settings.params.also {
             for ((i, color) in theme.params.entries) it[i] = color
@@ -208,14 +211,13 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
 
         keybLayout = loaded[currentLayout]
         Settings.loadVars(ctx)
-        setKeyb()
         view.reload()
         return true
     }
 
     private fun injectedEvent(kd: Flexaml.FxmlNode, pressing: Boolean): Boolean {
         if (!kd.has("inject")) return false
-        if (kd.str(KEY_ACTION_SU).isNotBlank()) KeyAction(this).suExec(kd.str(KEY_ACTION_SU))
+        if (kd.str(ACTION_SU).isNotBlank()) KeyAction(this).suExec(kd.str(ACTION_SU))
 
         if (kd.bool("inject")) {
             if (pressing) {
@@ -398,11 +400,9 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
             } else {
                 ctx.startActivity(Intent(ctx, KeybRawEditor::class.java).apply {
                     putExtra("name", currentLayout)
-                    putExtra("new", true)
                 })
             }
         }
-        setKeyb()
         view.reload()
     }
 
@@ -419,11 +419,6 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
 
     fun layoutFileChanged(s: String) =
         loaded[s]?.lastdate == 0L || PFile(ctx, s).lastModified().let { it == 0L || it != loaded[s]!!.lastdate }
-
-    fun setKeyb() {
-        if (keybLayout?.loaded == true) return
-        //showMethodPicker() // TODO: show error instead this
-    }
 
     fun onLowMemory() {
         //loaded.clear() // TODO: clear = app crash

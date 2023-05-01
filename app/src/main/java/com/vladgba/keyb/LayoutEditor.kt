@@ -1,7 +1,9 @@
 package com.vladgba.keyb
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -61,7 +63,7 @@ class LayoutEditor : Activity() {
         layoutSave.setOnClickListener {
             Log.d("file", name!!)
             Log.d("data", ctrl!!.keybLayout!!.toString())
-            if (ctrl != null) PFile(this, name!!).write(ctrl!!.keybLayout!!.toString())
+            if (ctrl != null) PFile(this, name).write(ctrl!!.keybLayout!!.toString())
         }
 
         layoutRaw.setOnClickListener {

@@ -1,5 +1,8 @@
 package com.vladgba.keyb
 
+import android.content.ComponentName
+import android.content.Intent
+import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.media.MediaPlayer
 import android.os.SystemClock
 import android.view.KeyEvent
@@ -21,7 +24,8 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
     var inputMode = InputMode.LABEL
 
     var width: Int = 0
-    var height: Int = 0
+    val height
+        get() = row.height
 
     var record: ArrayList<Record> = ArrayList()
     var recording: Boolean = false
@@ -73,7 +77,6 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         try {
             if (num(KEY_CODE) != 0) inputMode = InputMode.CODE
             if (str(KEY_TEXT).isNotEmpty()) inputMode = InputMode.TEXT
-            height = row.height
             mediaPressed.setSound(c, this, KEY_SOUND_PRESS)
             mediaReleased.setSound(c, this, KEY_SOUND_RELEASE)
 
@@ -182,7 +185,7 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
             relY = curY
             val tmpPos = charPos
             charPos = getExtPos(curX, curY)
-            if (charPos != 0 && tmpPos != charPos) c.vibrate(this, KEY_VIBRATE_ADDIT)
+            if (charPos != 0 && tmpPos != charPos) c.vibrate(this, KEY_VIBRATE_ADDITIONAL)
         }
     }
 
@@ -235,13 +238,13 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
     }
 
     fun shiftAction(): Boolean {
-        if (!c.shiftPressed() || str(KEY_ACTION_SHIFT).isBlank()) return false
+        if (!c.shiftPressed() || str(KEY_ACTION_ON_SHIFT).isBlank()) return false
         try {
             val tx = (c.wrapper?.currentInputConnection ?: return true).getSelectedText(0).toString()
             c.log(tx)
-            val res = when (str(KEY_ACTION_SHIFT)) {
-                KEY_SHIFTING_UPPER_ALL -> tx.uppercase(Locale.ROOT)
-                KEY_SHIFTING_LOWER_ALL -> tx.lowercase(Locale.ROOT)
+            val res = when (str(KEY_ACTION_ON_SHIFT)) {
+                ACTION_UPPER_ALL -> tx.uppercase(Locale.ROOT)
+                ACTION_LOWER_ALL -> tx.lowercase(Locale.ROOT)
                 else -> ""
             }
             if (res != "") c.setText(res)
@@ -300,15 +303,20 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
 
         if (recordAction(curX, curY) || shiftAction() || clipboardAction()) return
 
-        val actions = this[KEY_ACTION_APP]
+        val actions = this[KEY_ACTION]
         if (actions.childCount() > 0) {
             for (act in actions.childs) {
                 if (act is FxmlNode) {
-                    val content = act.str("type")
-                    if (content.isBlank()) continue
+                    if (act.params.isEmpty()) continue
                     when (act.str("type")) {
-                        KEY_ACTION_SU -> action.suExec(content)
-                        KEY_ACTION_APP -> c.ctx.startActivity(c.ctx.packageManager.getLaunchIntentForPackage(content))
+                        ACTION_SU -> action.suExec(act.str("cmd"))
+                        ACTION_APP -> c.ctx.startActivity(
+                            Intent(Intent.ACTION_MAIN).addFlags(FLAG_ACTIVITY_NEW_TASK).apply {
+                                component = ComponentName(
+                                    act.str("pkg"),
+                                    act.str("class")
+                                )
+                            })
                     }
                 }
             }

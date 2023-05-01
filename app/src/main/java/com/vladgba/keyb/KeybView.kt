@@ -123,8 +123,7 @@ class KeybView(private val c: KeybCtl) : View(c.ctx), View.OnClickListener {
                     (key.y + bpad + key.height - padding + shadow)
                 )
                 canvas.drawRoundRect(recty, radius, radius, paint)
-                paint.color = if (key.str(COLOR_KEY_STATIC_BG).isEmpty()) getColor(COLOR_KEY_BACKGROUND, key)
-                else Color.parseColor("#" + key.str(COLOR_KEY_STATIC_BG))
+                paint.color = getColor(COLOR_KEY_BACKGROUND, key)
 
                 if (key.str(KEY_MODE) == KEY_MODE_META && (key.num(KEY_MOD_META) and c.metaState) > 0) paint.color =
                     getColor(COLOR_KEY_MOD_BACKGROUND, key)
@@ -135,8 +134,7 @@ class KeybView(private val c: KeybCtl) : View(c.ctx), View.OnClickListener {
                     (key.y + bpad + key.height - padding)
                 ), radius, radius, paint)
 
-                paint.textSize = key.height / key.float(KEY_TEXT_SIZE_SECONDARY) // TODO: Secondary-Primary? WTF?!?
-                paint.color = getColor(COLOR_TEXT_PRIMARY, key)
+                paint.textSize = key.height / key.float(KEY_TEXT_SIZE_SECONDARY)
                 viewExtChars(key, canvas, paint, sh, x1, x2, x3, y1, y2, y3, false)
 
                 paint.color = getColor(COLOR_TEXT_PRIMARY, key)

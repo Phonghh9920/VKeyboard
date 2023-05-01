@@ -98,23 +98,23 @@ class Vkeyboard : Activity() {
         }
     }
 
-    fun openMail(view: View) {
+    fun openMail(v: View) {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("mailto:vladgba@gmail.com")))
     }
 
-    fun openWiki(view: View) {
+    fun openWiki(v: View) {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/vladgba/VKeyboard/wiki")))
     }
 
-    fun openGithub(view: View) {
+    fun openGithub(v: View) {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/vladgba/VKeyboard")))
     }
 
-    fun openPrivacyPolicy(view: View) {
+    fun openPrivacyPolicy(v: View) {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://zcxv.icu/vkeyb/privacy.html")))
     }
 
-    fun openTermsOfUse(view: View) {
+    fun openTermsOfUse(v: View) {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://zcxv.icu/vkeyb/terms.html")))
     }
 }

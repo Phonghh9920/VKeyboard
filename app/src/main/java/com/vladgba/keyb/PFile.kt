@@ -10,7 +10,7 @@ import java.io.*
  * @param ctx the Context object to use for accessing the application's private storage area
  * @param fileName the name of the file to read from or write to (without the file extension)
  */
-class PFile(ctx: Context, fileName: String) : File(ctx.filesDir, "$fileName.$LAYOUT_EXT") {
+class PFile(ctx: Context, fileName: String, ext: String = LAYOUT_EXT) : File(ctx.filesDir, "$fileName.$ext") {
 
     /**
      * Reads the contents of the file as a single String.
