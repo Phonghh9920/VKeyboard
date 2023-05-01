@@ -149,9 +149,13 @@ class KeybEditInterface(private val c: KeybCtl) {
                 dialogStyle.show()
                 dialogStyle.findViewById<EditText>(R.id.text_width).text = edit(editingKey!!.str(KEY_WIDTH))
                 dialogStyle.findViewById<EditText>(R.id.text_height).text = edit(editingKey!!.row.str(ROW_HEIGHT))
+                dialogStyle.findViewById<EditText>(R.id.text_padding).text = edit(editingKey!!.str(KEY_PADDING))
+                dialogStyle.findViewById<EditText>(R.id.text_radius).text = edit(editingKey!!.row.str(KEY_BORDER_RADIUS))
                 dialogStyle.setOnDismissListener {
                     bindTextarea(dialogStyle, R.id.text_width, KEY_WIDTH, editingKey!!)
                     bindTextarea(dialogStyle, R.id.text_height, ROW_HEIGHT, editingKey!!.row)
+                    bindTextarea(dialogStyle, R.id.text_padding, KEY_PADDING, editingKey!!)
+                    bindTextarea(dialogStyle, R.id.text_radius, KEY_BORDER_RADIUS, editingKey!!)
                     editingKey!!.row.calcHeight()
                     c.keybLayout!!.calcY()
                     c.view.reload()

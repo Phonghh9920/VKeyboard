@@ -40,24 +40,66 @@
                 android:layout_height="wrap_content"
                 android:id="@+id/checkbox_border_right"/>
     </LinearLayout>
+    <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
     <TextView
             android:paddingTop="10dp"
             android:text="@string/style_width_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
     <EditText
+            android:inputType="number"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:id="@+id/text_width"/>
-    <TextView
-            android:paddingTop="10dp"
-            android:text="@string/style_height_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-    <EditText
+    </LinearLayout>
+    <LinearLayout
+            android:orientation="horizontal"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:id="@+id/text_height"/>
+            android:layout_height="match_parent">
+        <TextView
+                android:paddingTop="10dp"
+                android:text="@string/style_height_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+        <EditText
+                android:inputType="number"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/text_height"/>
+    </LinearLayout>
+    <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+        <TextView
+                android:paddingTop="10dp"
+                android:text="@string/style_padding_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+        <EditText
+                android:inputType="number"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/text_padding"/>
+    </LinearLayout>
+    <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+        <TextView
+                android:paddingTop="10dp"
+                android:text="@string/style_radius_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+        <EditText
+                android:inputType="number"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/text_radius"/>
+    </LinearLayout>
     <LinearLayout
             android:orientation="horizontal"
             android:layout_width="match_parent"

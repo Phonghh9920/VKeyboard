@@ -16,7 +16,7 @@ class LayoutEditor : Activity() {
         setContentView(R.layout.layout_edit)
 
         val name = intent.getStringExtra("name")
-
+        title = name
         val custKeyb = findViewById<LinearLayout>(R.id.keyb_layout)
         val addRow = findViewById<Button>(R.id.add_row)
         val addKey = findViewById<Button>(R.id.add_key)

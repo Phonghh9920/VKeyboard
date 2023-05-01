@@ -8,28 +8,28 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
         <Button
-                android:text="Add Row"
+                android:text="@string/add_row"
                 android:id="@+id/add_row"
                 android:textAllCaps="false"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"/>
         <Button
-                android:text="Add Button"
+                android:text="@string/add_key"
                 android:id="@+id/add_key"
                 android:textAllCaps="false"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"/>
         <Button
-                android:text="Save"
+                android:text="@string/save"
                 android:id="@+id/layout_save"
                 android:textAllCaps="false"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"/>
         <Button
-                android:text="RAW"
+                android:text="@string/raw"
                 android:id="@+id/layout_raw"
                 android:textAllCaps="false"
                 android:layout_width="0dp"
@@ -43,4 +43,5 @@
             android:layout_height="wrap_content">
 
     </LinearLayout>
+    <EditText android:layout_width="match_parent" android:layout_height="wrap_content"/>
 </LinearLayout>
