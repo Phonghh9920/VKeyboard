@@ -23,7 +23,6 @@
             android:textStyle="bold"/>
 
     <TextView
-            android:id="@+id/app_version"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
@@ -43,13 +42,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content">
         <Button
-                android:id="@+id/github"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:onClick="openGithub"
                 android:text="Open in Github"/>
         <Button
-                android:id="@+id/faq"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:onClick="openWiki"
@@ -60,13 +57,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content">
         <Button
-                android:id="@+id/privacy_policy"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:onClick="openPrivacyPolicy"
                 android:text="Privacy policy"/>
         <Button
-                android:id="@+id/contact_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:onClick="openTermsOfUse"
