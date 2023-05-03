@@ -89,9 +89,9 @@ class KeybLayout(val c: KeybCtl, glob: Flexaml.FxmlNode) : Flexaml.FxmlNode(glob
     }
 
     class Row(val layout: KeybLayout, val options: Flexaml.FxmlNode, var y: Int) : Flexaml.FxmlNode(options, layout) {
-        private val refSize = layout.float(ROW_HEIGHT, 1f) *
-                if (layout.dm.heightPixels > layout.dm.widthPixels) layout.dm.heightPixels / 18f
-                else layout.dm.widthPixels / 8f
+        private val refSize = layout.float(ROW_HEIGHT, 1f) / 18f *
+                if (layout.dm.heightPixels > layout.dm.widthPixels) layout.dm.heightPixels
+                else layout.dm.widthPixels
 
         var height = 0
         init {
