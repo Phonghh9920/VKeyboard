@@ -86,9 +86,11 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
     }
 
     fun longPress() {
-        if (str(KEY_HOLD).isBlank()) return
+        val holdStr = str(KEY_HOLD)
+        if (holdStr.isBlank() && !bool(KEY_HOLD_REPEAT)) return
+        if (bool(KEY_HOLD_REPEAT)) c.handler.postDelayed(longPressRunnable, num(SENSE_HOLD_PRESS_REPEAT).toLong())
         longPressed = true
-        c.onText(str(KEY_HOLD))
+        c.onText(holdStr.ifBlank { text() })
     }
 
     fun hardPress(me: MotionEvent, pid: Int) {
