@@ -253,7 +253,6 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         if (!c.shiftPressed() || str(KEY_ACTION_ON_SHIFT).isBlank()) return false
         try {
             val tx = (c.wrapper?.currentInputConnection ?: return true).getSelectedText(0).toString()
-            c.log(tx)
             val res = when (str(KEY_ACTION_ON_SHIFT)) {
                 ACTION_UPPER_ALL -> tx.uppercase(Locale.ROOT)
                 ACTION_LOWER_ALL -> tx.lowercase(Locale.ROOT)
