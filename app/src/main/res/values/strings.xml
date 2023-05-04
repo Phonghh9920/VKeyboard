@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings">Settings</string>
     <string name="you_can_test">You can test keyboard here</string>
@@ -25,7 +26,7 @@
     <string name="file_name">File name</string>
     <string name="key_mode">Key mode</string>
     <string name="mode_popup">Popup</string>
-    <string name="mode_joy">Joy</string>
+    <string name="mode_joy">Joystick</string>
     <string name="mode_meta">Meta</string>
     <string name="key_label">Label</string>
     <string name="keycode">KeyCode</string>
