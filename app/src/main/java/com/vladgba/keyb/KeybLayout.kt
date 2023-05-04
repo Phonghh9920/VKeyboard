@@ -38,6 +38,7 @@ class KeybLayout(val c: KeybCtl, glob: Flexaml.FxmlNode) : Flexaml.FxmlNode(glob
             if (y <= startHeight + row.height) {
                 var keyOffset = 0
                 for (key in row.keys) {
+                    if (key.width == 0) continue
                     if (x <= keyOffset + key.width) return key
                     keyOffset += key.width
                 }
@@ -94,6 +95,7 @@ class KeybLayout(val c: KeybCtl, glob: Flexaml.FxmlNode) : Flexaml.FxmlNode(glob
                 else layout.dm.widthPixels
 
         var height = 0
+
         init {
             calcHeight()
         }
@@ -110,12 +112,16 @@ class KeybLayout(val c: KeybCtl, glob: Flexaml.FxmlNode) : Flexaml.FxmlNode(glob
 
         fun calcWidth() {
             var fullWidth = 0f
-            for (key in keys) fullWidth += key.float(KEY_WIDTH, 1f)
+            for (key in keys) if (!key.bool(KEY_DO_NOT_SHOW)) fullWidth += key.float(KEY_WIDTH, 1f)
 
             var x = 0
             for (key in keys) {
                 key.x = x
-                key.width = (layout.dm.widthPixels * key.float(KEY_WIDTH, 1f) / fullWidth).roundToInt()
+                key.width =
+                    if (!key.bool(KEY_DO_NOT_SHOW))
+                        (layout.dm.widthPixels * key.float(KEY_WIDTH, 1f) / fullWidth).roundToInt()
+                    else 0
+
                 x += key.width
             }
         }

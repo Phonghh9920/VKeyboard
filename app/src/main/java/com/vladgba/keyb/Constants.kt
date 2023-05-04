@@ -79,6 +79,7 @@ internal const val COLOR_KEYBOARD_BACKGROUND = "keyboardBackgroundColor"
 
 // Style
 internal const val KEY_VISIBLE = "visible"
+internal const val KEY_DO_NOT_SHOW = "doNotShow"
 internal const val ROW_HEIGHT = "height"
 internal const val KEY_WIDTH = "width"
 internal const val KEY_TEXT_SIZE_PRIMARY = "sizePrimary"
