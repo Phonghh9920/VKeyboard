@@ -104,12 +104,22 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
 
     fun getExtPos(x: Int, y: Int): Int {
         val ofs = num(SENSE_ADDITIONAL_CHARS)
+        if ((pressY > 0 && y == 0) ||
+            (pressX > 0 && x == 0) ||
+            (pressX < c.view.width && x == c.view.width) ||
+            (pressY < c.view.height && y == c.view.height)
+        ) return calcPos(x, y)
+
         if (abs(pressX - x) < ofs && abs(pressY - y) < ofs) return 0
         if (charPos == 0) c.handler.removeCallbacks(longPressRunnable)
-        val angle = Math.toDegrees(atan2((pressY - y).toDouble(), (pressX - x).toDouble()))
-        return arrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)[
-            ceil(((if (angle < 0) 360.0 else 0.0) + angle + 22.5) / 45.0).toInt() - 1
-        ]
+        return calcPos(x, y)
+    }
+
+    private fun calcPos(x: Int, y: Int): Int {
+        Math.toDegrees(atan2((pressY - y).toDouble(), (pressX - x).toDouble())).also {
+            return arrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)[
+                ceil(((if (it < 0) 360.0 else 0.0) + it + 22.5) / 45.0).toInt() - 1]
+        }
     }
 
 
@@ -245,9 +255,9 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
             val res = when (str(KEY_ACTION_ON_SHIFT)) {
                 ACTION_UPPER_ALL -> tx.uppercase(Locale.ROOT)
                 ACTION_LOWER_ALL -> tx.lowercase(Locale.ROOT)
-                else -> ""
+                else -> null
             }
-            if (res != "") c.setText(res)
+            if (res != null) c.setText(res)
         } catch (_: Exception) {
         }
         return true
