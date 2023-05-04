@@ -351,7 +351,7 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
     }
 
     private fun textInput(): Boolean {
-        if (text().isEmpty()) return false
+        if (text().length < 2) return false // 1 = keycode
         c.onText(if (text().length == 1) c.getShifted(text()[0].code, c.shiftPressed()).toChar().toString() else text())
         if (str(KEY_TEXT_CURSOR_OFFSET).isBlank()) return true
         val pos = num(KEY_TEXT_CURSOR_OFFSET)
