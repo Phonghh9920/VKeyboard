@@ -106,12 +106,6 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
 
     fun getExtPos(x: Int, y: Int): Int {
         val ofs = num(SENSE_ADDITIONAL_CHARS)
-        if ((pressY > 0 && y == 0) ||
-            (pressX > 0 && x == 0) ||
-            (pressX < c.view.width && x == c.view.width) ||
-            (pressY < c.view.height && y == c.view.height)
-        ) return calcPos(x, y)
-
         if (abs(pressX - x) < ofs && abs(pressY - y) < ofs) return 0
         if (charPos == 0) c.handler.removeCallbacks(longPressRunnable)
         return calcPos(x, y)
