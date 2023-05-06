@@ -309,7 +309,7 @@
             "layout": "@NUM"
         ),
         (
-            "key": "\ud83c\uddec\ud83c\udde7",
+            "key": "\ud83c\uddf7\ud83c\uddfa",
             "layout": "@NEXT"
         ),
         (
