@@ -27,7 +27,7 @@
     <string name="key_mode">Режим клавіші</string>
     <string name="mode_popup">Спливний</string>
     <string name="mode_joy">Джойстик</string>
-    <string name="mode_meta">Метаключ</string>
+    <string name="mode_meta">Модифікатор</string>
     <string name="key_label">Позначка</string>
     <string name="keycode">Код клавіші</string>
     <string name="meta_mask">Маска метаключа</string>
