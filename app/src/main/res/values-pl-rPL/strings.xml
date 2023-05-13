@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings">Settings</string>
-    <string name="you_can_test">You can test keyboard here</string>
-    <string name="welcome_to_keyb">Welcome to VKeyboard!</string>
+    <string name="settings">Ustawienia</string>
+    <string name="you_can_test">Tutaj możesz testować klawiaturę</string>
+    <string name="welcome_to_keyb">Witamy w VKeyboard!</string>
     <string name="welcome_cta">Customize your keyboard with VKeyboard! Choose from a variety of themes and layouts to
         create a keyboard that is uniquely you.
     </string>
