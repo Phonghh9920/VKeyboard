@@ -28,6 +28,7 @@ object Settings : Flexaml.FxmlNode(Flexaml("""
     "$SENSE_HORIZONTAL_TICK":70,
     "$SENSE_VERTICAL_TICK":60,
     "$SENSE_HOLD_PRESS":200,
+    "$SENSE_HOLD_PRESS_REPEAT":50,
     "$KEY_VISIBLE":1
     "$SETTING_INPUT_DEVICE":"/dev/input/event4"
 }

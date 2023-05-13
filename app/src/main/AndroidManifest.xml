@@ -24,7 +24,8 @@
         <activity android:name=".LayoutsManage"/>
         <activity android:name=".KeybNewLayout"/>
         <activity android:name=".LayoutEditor"/>
-        <activity android:name=".KeybRawEditor"/>
+        <activity android:name=".KeybRawEditor"
+                  android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".LayoutExport"/>
         <activity
                 android:name=".LayoutImporter"

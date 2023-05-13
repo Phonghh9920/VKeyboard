@@ -87,7 +87,7 @@ class KeybEditInterface(private val c: KeybCtl) {
                 builder.setMessage(R.string.confirm_delete_key)
                 builder.setPositiveButton(R.string.yes) { _, _ ->
                     val row = editingKey!!.row
-                    row.keys.remove(editingKey)
+                    row.remove(editingKey!!)
                     row.calcWidth()
                     c.view.reload()
                     dialog.cancel()
@@ -96,7 +96,7 @@ class KeybEditInterface(private val c: KeybCtl) {
                 builder.setNeutralButton(R.string.delete_row) { _, _ ->
                     val row = editingKey!!.row
                     val layout = row.layout
-                    layout.rows.remove(row)
+                    layout.remove(row)
 
                     layout.calcY()
                     c.view.repaintKeyb()
@@ -123,8 +123,8 @@ class KeybEditInterface(private val c: KeybCtl) {
                     builderDel.setTitle(R.string.confirm_title)
                     builderDel.setMessage(R.string.confirm_delete_row)
                     builderDel.setPositiveButton(R.string.yes) { _, _ ->
-                        val layout = editingKey!!.row.layout
-                        layout.rows.remove(editingKey!!.row)
+                        val layout = c.keybLayout!!
+                        layout.remove(editingKey!!.row)
                         layout.calcY()
                         c.view.reload()
                         dialog.cancel() // close all
@@ -410,7 +410,7 @@ class KeybEditInterface(private val c: KeybCtl) {
     private fun moveRight() {
         val row = editingKey!!.row
         val keyIndex = row.keys.indexOf(editingKey)
-        if (row.keys.size > keyIndex + 1) moveHorizontally(row, keyIndex + 1, keyIndex)
+        if (row.keys.lastIndex > keyIndex) moveHorizontally(row, keyIndex + 1, keyIndex)
     }
 
     private fun moveLeft() {
@@ -422,38 +422,36 @@ class KeybEditInterface(private val c: KeybCtl) {
     private fun moveBottom() {
         val row = editingKey!!.row
         val rowIndex = c.keybLayout!!.rows.indexOf(row)
-        if (c.keybLayout!!.rows.size > rowIndex + 1) moveVertically(
+        if (c.keybLayout!!.rows.lastIndex > rowIndex) moveVertically(
             row,
             c.keybLayout!!.rows[rowIndex + 1],
-            row.keys.indexOf(editingKey)
+            editingKey!!
         )
     }
 
     private fun moveTop() {
         val row = editingKey!!.row
         val rowIndex = c.keybLayout!!.rows.indexOf(row)
-        if (rowIndex > 0) moveVertically(row, c.keybLayout!!.rows[rowIndex - 1], row.keys.indexOf(editingKey))
+        if (rowIndex > 0) moveVertically(row, c.keybLayout!!.rows[rowIndex - 1], editingKey!!)
     }
 
     private fun moveHorizontally(row: KeybLayout.Row, prev: Int, keyIndex: Int) {
-        row.keys[keyIndex] = row.keys[prev]
-        row.keys[prev] = editingKey!!
-
         val tmp = row[keyIndex]
+
         row[keyIndex] = row[prev]
+        row.keys[keyIndex] = row.keys[prev]
+
+        row.keys[prev] = editingKey!!
         row[prev] = tmp
+
         row.calcWidth()
     }
 
-    private fun moveVertically(row: KeybLayout.Row, otherRow: KeybLayout.Row, keyIndex: Int) {
+    private fun moveVertically(row: KeybLayout.Row, otherRow: KeybLayout.Row, key: Key) {
         editingKey!!.y = otherRow.y
 
-        otherRow.keys.add(min(keyIndex, max(otherRow.keys.lastIndex, 0)), editingKey!!)
-        row.keys.removeAt(keyIndex)
-
-        otherRow.childs.add(min(keyIndex, max(otherRow.keys.lastIndex, 0)), row.childs[keyIndex])
-        row.childs.removeAt(keyIndex)
-
+        otherRow.add(editingKey!!, row.keys.indexOf(key))
+        row.remove(key)
         editingKey!!.row = otherRow
         otherRow.calcWidth()
         row.calcWidth()

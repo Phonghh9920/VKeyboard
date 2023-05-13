@@ -200,9 +200,9 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
             }
         }
 
-        val newModifierState = keyData.num(KEY_CODE)
+        val newModifierState = keyData.num(KEY_MOD_META)
         metaState = if (pressing) (metaState or newModifierState) else metaState and newModifierState.inv()
-        keyShifted(action, keyData.num(KEY_KEY))
+        keyShifted(action, keyData.num(KEY_CODE))
         view.repMod()
 
         if (currentLayout == Settings.str(SETTING_DEF_LAYOUT) || !pressing || !keyData.has(KEY_SWITCH_LAYOUT)) return true

@@ -86,9 +86,11 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
     }
 
     fun longPress() {
-        if (str(KEY_HOLD).isBlank()) return
+        val holdStr = str(KEY_HOLD)
+        if (holdStr.isBlank() && !bool(KEY_HOLD_REPEAT)) return
+        if (bool(KEY_HOLD_REPEAT)) c.handler.postDelayed(longPressRunnable, num(SENSE_HOLD_PRESS_REPEAT).toLong())
         longPressed = true
-        c.onText(str(KEY_HOLD))
+        c.onText(holdStr.ifBlank { text() })
     }
 
     fun hardPress(me: MotionEvent, pid: Int) {
@@ -104,12 +106,22 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
 
     fun getExtPos(x: Int, y: Int): Int {
         val ofs = num(SENSE_ADDITIONAL_CHARS)
+        if ((pressY > 0 && y == 0) ||
+            (pressX > 0 && x == 0) ||
+            (pressX < c.view.width && x == c.view.width) ||
+            (pressY < c.view.height && y == c.view.height)
+        ) return calcPos(x, y)
+
         if (abs(pressX - x) < ofs && abs(pressY - y) < ofs) return 0
         if (charPos == 0) c.handler.removeCallbacks(longPressRunnable)
-        val angle = Math.toDegrees(atan2((pressY - y).toDouble(), (pressX - x).toDouble()))
-        return arrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)[
-            ceil(((if (angle < 0) 360.0 else 0.0) + angle + 22.5) / 45.0).toInt() - 1
-        ]
+        return calcPos(x, y)
+    }
+
+    private fun calcPos(x: Int, y: Int): Int {
+        Math.toDegrees(atan2((pressY - y).toDouble(), (pressX - x).toDouble())).also {
+            return arrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)[
+                ceil(((if (it < 0) 360.0 else 0.0) + it + 22.5) / 45.0).toInt() - 1]
+        }
     }
 
 
@@ -241,13 +253,12 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         if (!c.shiftPressed() || str(KEY_ACTION_ON_SHIFT).isBlank()) return false
         try {
             val tx = (c.wrapper?.currentInputConnection ?: return true).getSelectedText(0).toString()
-            c.log(tx)
             val res = when (str(KEY_ACTION_ON_SHIFT)) {
                 ACTION_UPPER_ALL -> tx.uppercase(Locale.ROOT)
                 ACTION_LOWER_ALL -> tx.lowercase(Locale.ROOT)
-                else -> ""
+                else -> null
             }
-            if (res != "") c.setText(res)
+            if (res != null) c.setText(res)
         } catch (_: Exception) {
         }
         return true
@@ -340,7 +351,7 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
     }
 
     private fun textInput(): Boolean {
-        if (text().isEmpty()) return false
+        if (text().length < 2) return false // 1 = keycode
         c.onText(if (text().length == 1) c.getShifted(text()[0].code, c.shiftPressed()).toChar().toString() else text())
         if (str(KEY_TEXT_CURSOR_OFFSET).isBlank()) return true
         val pos = num(KEY_TEXT_CURSOR_OFFSET)

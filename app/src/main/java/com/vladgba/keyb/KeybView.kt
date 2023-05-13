@@ -78,7 +78,7 @@ class KeybView(private val c: KeybCtl) : View(c.ctx), View.OnClickListener {
 
         for (row in c.keybLayout!!.rows) {
             for (key in row.keys) {
-                if (repMods && key.str(KEY_MODE) != KEY_MODE_META) continue
+                if (key.bool(KEY_DO_NOT_SHOW) || (repMods && key.str(KEY_MODE) != KEY_MODE_META)) continue
                 canvas.save()
                 paint.color = getColor(COLOR_KEYBOARD_BACKGROUND, key)
                 val r = RectF(

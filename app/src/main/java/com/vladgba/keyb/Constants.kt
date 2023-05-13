@@ -27,6 +27,7 @@ internal const val SETTING_DEF_LAYOUT = "defaultLayout"
 internal const val KEY_KEY = "key"
 internal const val KEY_CODE = "code"
 internal const val KEY_HOLD = "hold"
+internal const val KEY_HOLD_REPEAT = "holdRepeat"
 internal const val KEY_HARD_PRESS = "hard"
 internal const val KEY_TOP_ACTION = "top"
 internal const val KEY_BOTTOM_ACTION = "bottom"
@@ -75,14 +76,14 @@ internal const val KEY_VIBRATE_ADDITIONAL = "soundAdditional"
 internal const val THEME_SWITCH = "themeSwitch"
 internal const val THEME_DAY = "dayTheme"
 internal const val THEME_NIGHT = "nightTheme"
-internal const val COLOR_KEYBOARD_BACKGROUND = "keyboardBackgroundColor"
 
 // Style
 internal const val KEY_VISIBLE = "visible"
+internal const val KEY_DO_NOT_SHOW = "doNotShow"
 internal const val ROW_HEIGHT = "height"
 internal const val KEY_WIDTH = "width"
-internal const val KEY_TEXT_SIZE_PRIMARY = "sizePrimary"
-internal const val KEY_TEXT_SIZE_SECONDARY = "sizeSecondary"
+internal const val KEY_TEXT_SIZE_PRIMARY = "fontSizePrimary"
+internal const val KEY_TEXT_SIZE_SECONDARY = "fontSizeSecondary"
 internal const val KEY_PADDING = "padding"
 internal const val KEY_HIDE_BORDERS = "borderHide"
 internal const val KEY_BORDER_RADIUS = "radius"
@@ -90,16 +91,16 @@ internal const val KEY_SHADOW = "shadow"
 
 // Color
 internal const val COLOR_TEXT_PRIMARY = "primaryTextColor"
+internal const val COLOR_KEY_SECONDARY = "secondaryTextColor"
 internal const val COLOR_TEXT_PREVIEW = "previewTextColor"
 internal const val COLOR_KEY_BORDER = "keyBorderColor"
-internal const val COLOR_KEY_STATIC_BG = "bg"
+internal const val COLOR_KEYBOARD_BACKGROUND = "keyboardBackgroundColor"
 internal const val COLOR_KEY_BACKGROUND = "keyBackgroundColor"
 internal const val COLOR_KEY_MOD_BACKGROUND = "modBackgroundColor"
 internal const val COLOR_KEY_SHADOW = "shadowColor"
 internal const val COLOR_KEY_PREVIEW_SELECTED = "previewSelectedColor"
-internal const val COLOR_KEY_SECONDARY = "secondaryTextColor"
 internal val COLORS = listOf(
-    COLOR_TEXT_PRIMARY, COLOR_TEXT_PREVIEW, COLOR_KEY_SECONDARY,
+    COLOR_TEXT_PRIMARY, COLOR_KEY_SECONDARY, COLOR_TEXT_PREVIEW,
     COLOR_KEY_BORDER, COLOR_KEYBOARD_BACKGROUND, COLOR_KEY_BACKGROUND,
     COLOR_KEY_MOD_BACKGROUND, COLOR_KEY_SHADOW, COLOR_KEY_PREVIEW_SELECTED
 )
@@ -107,6 +108,7 @@ internal val COLORS = listOf(
 // Sensitivity
 internal const val SENSE_HARD_PRESS = "hardSense"
 internal const val SENSE_HOLD_PRESS = "longPressTime"
+internal const val SENSE_HOLD_PRESS_REPEAT = "longPressRepeatTime"
 internal const val SENSE_ADDITIONAL_CHARS = "extSense"
 internal const val SENSE_HORIZONTAL_TICK = "horTick"
 internal const val SENSE_VERTICAL_TICK = "verTick"
