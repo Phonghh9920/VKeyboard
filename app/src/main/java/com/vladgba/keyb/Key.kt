@@ -17,6 +17,7 @@ import kotlin.math.ceil
 
 class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: FxmlNode) : FxmlNode(opts, row) {
 
+    class Point(var x: Int, var y: Int)
     enum class InputMode {
         LABEL, CODE, TEXT
     }
@@ -31,11 +32,9 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
     var recording: Boolean = false
     private val mediaPressed = Media()
     private val mediaReleased = Media()
-
-    var pressX = 0
-    var pressY = 0
-    var relX = -1
-    var relY = -1
+    
+    var press = Point(0, 0)
+    private var relative: Point? = null
     var cursorMoved = false
     var charPos = 0
     var pressed = false
@@ -106,13 +105,13 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
 
     fun getExtPos(x: Int, y: Int): Int {
         val ofs = num(SENSE_ADDITIONAL_CHARS)
-        if (abs(pressX - x) < ofs && abs(pressY - y) < ofs) return 0
+        if (abs(press.x - x) < ofs && abs(press.y - y) < ofs) return 0
         if (charPos == 0) c.handler.removeCallbacks(longPressRunnable)
         return calcPos(x, y)
     }
 
     private fun calcPos(x: Int, y: Int): Int {
-        Math.toDegrees(atan2((pressY - y).toDouble(), (pressX - x).toDouble())).also {
+        Math.toDegrees(atan2((press.y - y).toDouble(), (press.x - x).toDouble())).also {
             return arrayOf(4, 1, 2, 3, 5, 8, 7, 6, 4)[
                 ceil(((if (it < 0) 360.0 else 0.0) + it + 22.5) / 45.0).toInt() - 1]
         }
@@ -172,23 +171,23 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         while (true) {
             val ht = num(SENSE_HORIZONTAL_TICK)
             if (ht < 1) return
-            relX = if (curX - ht > relX) swipeAction(relX, ht, KEY_RIGHT_ACTION, true)
-            else if (curX + ht < relX) swipeAction(relX, ht, KEY_LEFT_ACTION, false)
+            relative!!.x = if (curX - ht > relative!!.x) swipeAction(relative!!.x, ht, KEY_RIGHT_ACTION, true)
+            else if (curX + ht < relative!!.x) swipeAction(relative!!.x, ht, KEY_LEFT_ACTION, false)
             else break
         }
         while (true) {
             val vt = num(SENSE_VERTICAL_TICK)
             if (vt < 1) return
-            relY = if (curY - vt > relY) swipeAction(relY, vt, KEY_BOTTOM_ACTION, true)
-            else if (curY + vt < relY) swipeAction(relY, vt, KEY_TOP_ACTION, false)
+            relative!!.y = if (curY - vt > relative!!.y) swipeAction(relative!!.y, vt, KEY_BOTTOM_ACTION, true)
+            else if (curY + vt < relative!!.y) swipeAction(relative!!.y, vt, KEY_TOP_ACTION, false)
             else break
         }
     }
 
     fun procExtChars(curX: Int, curY: Int) {
         if (childCount() > 0) {
-            relX = curX
-            relY = curY
+            relative!!.x = curX
+            relative!!.y = curY
             val tmpPos = charPos
             charPos = getExtPos(curX, curY)
             if (charPos != 0 && tmpPos != charPos) c.vibrate(this, KEY_VIBRATE_ADDITIONAL)
@@ -266,16 +265,10 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         longPressed = false
         hardPressed = false
         c.vibrate(this, KEY_VIBRATE_PRESS)
-        pressX = curX
-        pressY = curY
-        relX = -1
-        relY = -1
+        press = Point(curX, curY)
         cursorMoved = false
         charPos = 0
-        if (str(KEY_MODE) != KEY_MODE_META) {
-            relX = curX
-            relY = curY
-        }
+        relative = if (str(KEY_MODE) == KEY_MODE_META) null else Point(curX, curY)
     }
 
     fun drag(curX: Int, curY: Int, me: MotionEvent, pid: Int) {
@@ -287,7 +280,7 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
 
         if (longPressed || hardPressed) return
         hardPress(me, pid)
-        if (relX < 0) return
+        if (relative == null) return
         repeating(curX, curY)
         procExtChars(curX, curY)
     }
