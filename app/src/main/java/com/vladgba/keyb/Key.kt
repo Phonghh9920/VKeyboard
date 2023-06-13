@@ -32,16 +32,21 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
     var recording: Boolean = false
     private val mediaPressed = Media()
     private val mediaReleased = Media()
-    
+
     var press = Point(0, 0)
     private var relative: Point? = null
-    var cursorMoved = false
     var charPos = 0
-    var pressed = false
-    var longPressed = false
-    var hardPressed = false
     val longPressRunnable = Runnable { longPress() }
     val action = KeyAction(c)
+
+    var state = State.RELEASED
+
+    enum class State {
+        PRESSED, LONG_PRESSED,
+        MOVED, HARD_PRESSED,
+        HOLD_MOVED, HOLD_HARD_PRESSED,
+        RELEASED,
+    }
 
     class Media {
         enum class State { NOT_LOADED, READY, PLAYING }
@@ -88,7 +93,7 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         val holdStr = str(KEY_HOLD)
         if (holdStr.isBlank() && !bool(KEY_HOLD_REPEAT)) return
         if (bool(KEY_HOLD_REPEAT)) c.handler.postDelayed(longPressRunnable, num(SENSE_HOLD_PRESS_REPEAT).toLong())
-        longPressed = true
+        if (state == State.PRESSED) state = State.LONG_PRESSED
         c.onText(holdStr.ifBlank { text() })
     }
 
@@ -96,7 +101,11 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         if (str(KEY_HARD_PRESS).isBlank() || str(SENSE_HARD_PRESS).isBlank()) return
         try {
             if ((me.getPressure(pid) * 1000).toInt() > num(SENSE_HARD_PRESS)) {
-                hardPressed = true
+                state = when (state) {
+                    State.PRESSED -> State.HARD_PRESSED
+                    State.LONG_PRESSED -> State.HOLD_HARD_PRESSED
+                    else -> state
+                }
                 c.onText(str(KEY_HARD_PRESS))
             }
         } catch (_: Exception) {
@@ -155,14 +164,14 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
 
     private fun swipeAction(r: Int, t: Int, s: String, add: Boolean): Int {
         preventLongPressOnMoved()
+        if (state == State.PRESSED) state = State.MOVED
         c.onKey(if (has(s)) num(s) else code())
         c.vibrate(this, KEY_VIBRATE_TICK)
         return if (add) r + t else r - t
     }
 
     private fun preventLongPressOnMoved() {
-        if (cursorMoved) return
-        cursorMoved = true
+        if (state == State.MOVED || state == State.HOLD_MOVED) return
         c.handler.removeCallbacks(longPressRunnable)
     }
 
@@ -190,7 +199,10 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
             relative!!.y = curY
             val tmpPos = charPos
             charPos = getExtPos(curX, curY)
-            if (charPos != 0 && tmpPos != charPos) c.vibrate(this, KEY_VIBRATE_ADDITIONAL)
+            if (charPos != 0 && tmpPos != charPos) {
+                if (state == State.PRESSED) state = State.MOVED
+                c.vibrate(this, KEY_VIBRATE_ADDITIONAL)
+            }
         }
     }
 
@@ -261,12 +273,11 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         mediaPressed.play()
         if (modifierAction()) return
         if (has(SENSE_HOLD_PRESS)) c.handler.postDelayed(longPressRunnable, num(SENSE_HOLD_PRESS).toLong())
-        pressed = true
-        longPressed = false
-        hardPressed = false
+
+        state = State.PRESSED
+
         c.vibrate(this, KEY_VIBRATE_PRESS)
         press = Point(curX, curY)
-        cursorMoved = false
         charPos = 0
         relative = if (str(KEY_MODE) == KEY_MODE_META) null else Point(curX, curY)
     }
@@ -278,7 +289,7 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
             return
         }
 
-        if (longPressed || hardPressed) return
+        if (state == State.HARD_PRESSED || state == State.HOLD_HARD_PRESSED || state == State.LONG_PRESSED) return
         hardPress(me, pid)
         if (relative == null) return
         repeating(curX, curY)
@@ -286,21 +297,34 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
     }
 
     fun release(curX: Int, curY: Int, pid: Int) {
-        pressed = false
         mediaReleased.play()
-        if (longPressed || hardPressed) return
         if (charPos == 0) c.vibrate(this, KEY_VIBRATE_RELEASE)
-        if (str(KEY_MODE) == KEY_MODE_META) {
-            if (c.lastPointerId != pid) modifierAction()
-            return
-        } else if (str(KEY_MODE) == KEY_MODE_RANDOM && this[KEY_RANDOM].childCount() > 0) {
-            return c.onText(this[KEY_RANDOM].str(Random().nextInt(this[KEY_RANDOM].childCount())))
+        when (state) {
+            State.PRESSED -> {
+                if (str(KEY_MODE) == KEY_MODE_META) {
+                    if (c.lastPointerId != pid) modifierAction()
+                } else if (str(KEY_MODE) == KEY_MODE_RANDOM && this[KEY_RANDOM].childCount() > 0) {
+                    return c.onText(this[KEY_RANDOM].str(Random().nextInt(this[KEY_RANDOM].childCount())))
+                } else if (!(recordAction(curX, curY) || shiftAction() || clipboardAction() || langSwitch() || textInput())) c.onKey(code())
+            }
+
+            State.MOVED -> {
+                prExtChars()
+            }
+
+            State.HOLD_MOVED -> prExtChars(this[KEY_HOLD])
+            State.HARD_PRESSED -> c.onKey(code(this[KEY_HARD_PRESS]))
+            State.LONG_PRESSED -> c.onKey(code(this[KEY_HOLD]))
+            State.HOLD_HARD_PRESSED -> c.onKey(code(this[KEY_HOLD][KEY_HARD_PRESS]))
+            else -> {}
         }
 
-        if (prExtChars() || curY == 0 || cursorMoved) return
+        state = State.RELEASED //TODO: set at the end
 
-        if (recordAction(curX, curY) || shiftAction() || clipboardAction()) return
+        doActions()
+    }
 
+    private fun doActions() {
         val actions = this[KEY_ACTION]
         if (actions.childCount() > 0) {
             for (act in actions.childs) {
@@ -320,21 +344,18 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
             }
             return
         }
-
-        if (langSwitch() || textInput()) return
-        if (!cursorMoved && charPos == 0) return c.onKey(code())
     }
 
-    fun code() = when (inputMode) {
-        InputMode.CODE -> num(KEY_CODE)
-        InputMode.TEXT -> str(KEY_TEXT)[0].code
-        else -> str(KEY_KEY)[0].code
+    fun code(node: FxmlNode = this) = when (inputMode) {
+        InputMode.CODE -> node.num(KEY_CODE)
+        InputMode.TEXT -> node.str(KEY_TEXT)[0].code
+        else -> node.str(KEY_KEY)[0].code
     }
 
-    private fun text() = when (inputMode) {
-        InputMode.TEXT -> str(KEY_TEXT)
-        InputMode.CODE -> num(KEY_CODE).toChar().toString()
-        else -> str(KEY_KEY)
+    private fun text(node: FxmlNode = this) = when (inputMode) {
+        InputMode.TEXT -> node.str(KEY_TEXT)
+        InputMode.CODE -> node.num(KEY_CODE).toChar().toString()
+        else -> node.str(KEY_KEY)
     }
 
     private fun textInput(): Boolean {
@@ -363,9 +384,9 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         return true
     }
 
-    private fun prExtChars(): Boolean {
+    private fun prExtChars(node: FxmlNode = this): Boolean {
         if (childCount() == 0 || charPos < 1) return false
-        val textIndex = this.str(charPos - 1)
+        val textIndex = node.str(charPos - 1)
         if (textIndex.isBlank()) return true
         if (textIndex.length > 1) c.onText(textIndex)
         else c.onKey(c.getFromString(textIndex)[0])
