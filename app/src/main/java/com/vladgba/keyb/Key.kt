@@ -332,20 +332,20 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         if (!cursorMoved && charPos == 0) return c.onKey(code())
     }
 
-    private fun code() = when (inputMode) {
+    fun code() = when (inputMode) {
         InputMode.CODE -> num(KEY_CODE)
-        InputMode.TEXT -> 0
+        InputMode.TEXT -> str(KEY_TEXT)[0].code
         else -> str(KEY_KEY)[0].code
     }
 
     private fun text() = when (inputMode) {
         InputMode.TEXT -> str(KEY_TEXT)
-        InputMode.CODE -> ""
+        InputMode.CODE -> num(KEY_CODE).toChar().toString()
         else -> str(KEY_KEY)
     }
 
     private fun textInput(): Boolean {
-        if (text().length < 2) return false // 1 = keycode
+        if (inputMode != InputMode.TEXT) return false
         c.onText(if (text().length == 1) c.getShifted(text()[0].code, c.shiftPressed()).toChar().toString() else text())
         if (str(KEY_TEXT_CURSOR_OFFSET).isBlank()) return true
         val pos = num(KEY_TEXT_CURSOR_OFFSET)
