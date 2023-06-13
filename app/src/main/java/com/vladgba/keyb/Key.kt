@@ -37,13 +37,14 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
     private var relative: Point? = null
     var charPos = 0
     val longPressRunnable = Runnable { longPress() }
+    val hardRepeatRunnable = Runnable { hardPressAction() }
     val action = KeyAction(c)
 
     var state = State.RELEASED
 
     enum class State {
-        PRESSED, LONG_PRESSED,
-        MOVED, HARD_PRESSED,
+        PRESSED, LONG_PRESSED, HOLD_REPEAT,
+        MOVED, HARD_PRESSED, HARD_REPEAT,
         HOLD_MOVED, HOLD_HARD_PRESSED,
         RELEASED,
     }
@@ -93,22 +94,34 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         val holdStr = str(KEY_HOLD)
         if (holdStr.isBlank() && !bool(KEY_HOLD_REPEAT)) return
         if (bool(KEY_HOLD_REPEAT)) c.handler.postDelayed(longPressRunnable, num(SENSE_HOLD_PRESS_REPEAT).toLong())
+
         if (state == State.PRESSED) state = State.LONG_PRESSED
+        else if (state == State.LONG_PRESSED) state = State.HOLD_REPEAT
+
         c.onText(holdStr.ifBlank { text() })
     }
 
     fun hardPress(me: MotionEvent, pid: Int) {
+        if (state == State.HARD_PRESSED) return
         if (str(KEY_HARD_PRESS).isBlank() || str(SENSE_HARD_PRESS).isBlank()) return
         try {
-            if ((me.getPressure(pid) * 1000).toInt() > num(SENSE_HARD_PRESS)) {
-                state = when (state) {
-                    State.PRESSED -> State.HARD_PRESSED
-                    State.LONG_PRESSED -> State.HOLD_HARD_PRESSED
-                    else -> state
-                }
-                c.onText(str(KEY_HARD_PRESS))
-            }
+            if ((me.getPressure(pid) * 1000).toInt() > num(SENSE_HARD_PRESS) && state == State.PRESSED)
+                hardPressAction()
         } catch (_: Exception) {
+        }
+    }
+
+    private fun hardPressAction() {
+        state = when (state) {
+            State.PRESSED -> State.HARD_PRESSED
+            State.HARD_PRESSED -> State.HARD_REPEAT
+            State.LONG_PRESSED -> State.HOLD_HARD_PRESSED
+            else -> state
+        }
+        if (bool(KEY_HARD_REPEAT) && (state == State.HARD_PRESSED || state == State.HARD_REPEAT)) c.handler.postDelayed(hardRepeatRunnable, num(SENSE_HOLD_PRESS).toLong())
+
+        if (state != State.RELEASED) {
+            c.onText(str(KEY_HARD_PRESS))
         }
     }
 
@@ -313,9 +326,9 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
             }
 
             State.HOLD_MOVED -> prExtChars(this[KEY_HOLD])
-            State.HARD_PRESSED -> c.onKey(code(this[KEY_HARD_PRESS]))
-            State.LONG_PRESSED -> c.onKey(code(this[KEY_HOLD]))
-            State.HOLD_HARD_PRESSED -> c.onKey(code(this[KEY_HOLD][KEY_HARD_PRESS]))
+            //State.HARD_PRESSED -> c.onKey(code(this[KEY_HARD_PRESS]))
+            //State.LONG_PRESSED -> c.onKey(code(this[KEY_HOLD]))
+            //State.HOLD_HARD_PRESSED -> c.onKey(code(this[KEY_HOLD][KEY_HARD_PRESS]))
             else -> {}
         }
 
