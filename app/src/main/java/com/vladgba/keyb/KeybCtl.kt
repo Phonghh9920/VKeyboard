@@ -4,41 +4,42 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.*
 import android.os.*
 import android.text.InputType
 import android.util.Log
-import android.view.KeyCharacterMap
-import android.view.KeyEvent
+import android.view.*
 import android.view.KeyEvent.*
-import android.view.MotionEvent
-import android.view.ViewGroup
+import android.view.MotionEvent.*
 import android.widget.Toast
 import java.io.PrintWriter
 import java.io.StringWriter
+import java.util.*
 import kotlin.math.min
 
 
-class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
+class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?): View(ctx), View.OnClickListener {
     var isPortrait = true
     var isNight = false
     var metaState: Int = 0
     var hardMetaState: Int = 0
     var vibrationMs: Long = 0
 
-    var currentLayout: String
+    var currentLayoutName: String
     var lastTextLayout: String
     val loaded: MutableMap<String, KeybLayout> = mutableMapOf()
-    var keybLayout: KeybLayout? = null
-    var view: KeybView
+    lateinit var currentLayout: KeybLayout
+    val paint = Paint()
     val layouts:List<String>
         get() = layoutList()
 
     val pointers = mutableMapOf<Int, Key>()
-    val handler = Handler(Looper.getMainLooper())
+    val keyboardHandler = Handler(Looper.getMainLooper())
     var lastPointerId = 0
     var recKey: Key? = null
 
     internal var keybType = KeybType.NORMAL
+    internal var keybAction = KeybAction.NONE
 
     var editInterface: KeybEditInterface? = null
 
@@ -51,36 +52,50 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         Settings.loadVars(ctx)
         InjectedEvent.DEV = Settings.str(SETTING_INPUT_DEVICE)
         setKeybTheme()
-        view = KeybView(this)
-        currentLayout = Settings.str(SETTING_DEF_LAYOUT)
-        lastTextLayout = currentLayout
+        currentLayoutName = Settings.str(SETTING_DEF_LAYOUT)
+        lastTextLayout = currentLayoutName
         refreshLayout()
         reloadLayout()
         metaState = 0
         if (wrapper == null) editInterface = KeybEditInterface(this)
     }
 
-    fun getInputView() = view.apply { if (parent != null) (parent as ViewGroup).removeAllViews() }
-
     private fun setOrientation() {
         val orientation = ctx.resources.configuration.orientation
         isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
     }
 
-    private fun updateNightState(cfg: Configuration = ctx.resources.configuration) {
+    private fun updateNightState(cfg: Configuration = ctx.resources.configuration): Boolean {
         isNight = (cfg.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         Log.d("night", isNight.toString())
+        return isNight
     }
 
-    fun onConfigurationChanged(cfg: Configuration) {
-        if (changeOrientation(cfg)) reloadLayout()
+    public override fun onConfigurationChanged(cfg: Configuration) = updateHardwareConfiguration(cfg)
 
-        if (Settings.bool(THEME_SWITCH)) {
-            val prevNightState = isNight
-            updateNightState(cfg)
-            setKeybTheme()
-            if (prevNightState != isNight) view.repaintKeyb()
+    fun updateHardwareConfiguration(cfg: Configuration = ctx.resources.configuration) {
+        if (updateOrientation(cfg) || updateNightState(cfg)) updateView()
+    }
+
+    fun updateView() {
+        invalidate()
+    }
+
+    private fun updateOrientation(cfg: Configuration): Boolean {
+        (cfg.orientation == Configuration.ORIENTATION_PORTRAIT).also {
+            return if (it != isPortrait) {
+                isPortrait = it
+                true
+            } else false
         }
+    }
+
+    public override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        var width = currentLayout.width
+        if (MeasureSpec.getSize(widthMeasureSpec) < width + 10) {
+            width = MeasureSpec.getSize(widthMeasureSpec)
+        }
+        setMeasuredDimension(width, currentLayout.height)
     }
 
     fun setKeybTheme() {
@@ -106,15 +121,14 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         }
     }
 
-    fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (wrapper == null) return true
         if (keyCode < 0) return true
         try {
             if (Settings.bool(SETTING_DEBUG)) {
                 log("Down:$keyCode;${event.device.name}/${event.deviceId};S${event.scanCode};M${event.metaState};'${event.unicodeChar}'")
             }
-            if (inputKey(keyCode.toString(), ACTION_DOWN, true)) {
-                view.invalidate()
+            if (inputKey(keyCode.toString(), KeyEvent.ACTION_DOWN, true)) {
                 return true
             } else {
 
@@ -131,28 +145,26 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
                         hardMetaState = event.metaState
                         metaState = (metaState or hardMetaState)
                         keyShifted(event.action, keyCode, metaState)
-                        view.repMod()
                     }
 
                 }
-                view.invalidate()
             }
+            invalidate()
         } catch (e: Exception) {
             prStack(e)
         }
         return false
     }
 
-    fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (wrapper == null) return true
         try {
 
             if (Settings.bool(SETTING_DEBUG)) {
                 log("Up:$keyCode;${event.device.name}/${event.deviceId};S${event.scanCode};M${event.metaState};'${event.unicodeChar}'")
             }
-            if (inputKey(keyCode.toString(), ACTION_UP, false)) {
-                if (currentLayout != Settings.str(SETTING_DEF_LAYOUT)) reloadLayout()
-                view.invalidate()
+            if (inputKey(keyCode.toString(), KeyEvent.ACTION_UP, false)) {
+                if (currentLayoutName != Settings.str(SETTING_DEF_LAYOUT)) reloadLayout()
                 return true
             } else {
 
@@ -172,12 +184,11 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
                         hardMetaState = event.metaState
                         metaState = (metaState or hardMetaState)
                         keyShifted(event.action, keyCode, metaState)
-                        view.repMod()
                     }
 
                 }
-                view.invalidate()
             }
+            invalidate()
         } catch (e: Exception) {
             prStack(e)
         }
@@ -185,10 +196,10 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
     }
 
     fun inputKey(key: String, action: Int, pressing: Boolean): Boolean {
-        if (keybLayout == null || !keybLayout!!.bool(SETTING_REDEFINE_HW_ACTION) || !keybLayout!!.has(key)) return false
-        val keyData = keybLayout!![key]
+        if (!currentLayout.bool(SETTING_REDEFINE_HW_ACTION) || !currentLayout.has(key)) return false
+        val keyData = currentLayout[key]
 
-        if (!keyData.bool(KEY_DO_IF_HIDDEN) && !view.isShown) return false
+        if (!keyData.bool(KEY_DO_IF_HIDDEN) && !isShown) return false
 
         if (injectedEvent(keyData, pressing)) return true
 
@@ -203,15 +214,14 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         val newModifierState = keyData.num(KEY_MOD_META)
         metaState = if (pressing) (metaState or newModifierState) else metaState and newModifierState.inv()
         keyShifted(action, keyData.num(KEY_CODE))
-        view.repMod()
 
-        if (currentLayout == Settings.str(SETTING_DEF_LAYOUT) || !pressing || !keyData.has(KEY_SWITCH_LAYOUT)) return true
+        if (currentLayoutName == Settings.str(SETTING_DEF_LAYOUT) || !pressing || !keyData.has(KEY_SWITCH_LAYOUT)) return true
 
-        currentLayout = if (keyData.bool(KEY_SWITCH_LAYOUT)) Settings.str(SETTING_DEF_LAYOUT) else keyData.str(KEY_SWITCH_LAYOUT)
+        currentLayoutName = if (keyData.bool(KEY_SWITCH_LAYOUT)) Settings.str(SETTING_DEF_LAYOUT) else keyData.str(KEY_SWITCH_LAYOUT)
 
-        keybLayout = loaded[currentLayout]
+        currentLayout = loaded[currentLayoutName]!!
         Settings.loadVars(ctx)
-        view.reload()
+        invalidate()
         return true
     }
 
@@ -258,8 +268,8 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
      * @param meta the meta state to be used for the click (defaults to current meta state if not provided)
      */
     fun clickShifted(key: Int, meta: Int = metaState) {
-        keyShifted(ACTION_DOWN, key, meta)
-        keyShifted(ACTION_UP, key, meta)
+        keyShifted(KeyEvent.ACTION_DOWN, key, meta)
+        keyShifted(KeyEvent.ACTION_UP, key, meta)
     }
 
     fun onKey(i: Int) {
@@ -291,19 +301,17 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         setText(chars.toString())
     }
 
-    fun onTouchEvent(me: MotionEvent) {
+    override fun onTouchEvent(me: MotionEvent): Boolean {
         val action = me.actionMasked
         val pointerIndex: Int = me.actionIndex
         val pid: Int = me.getPointerId(pointerIndex)
         val x = me.getX(pointerIndex).toInt()
         val y = me.getY(pointerIndex).toInt()
 
-        //val currentKey = pointers[pid] ?: keybLayout?.getKey(x, y) ?: return
-
         try {
             when (action) {
-                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                    pointers[pid] = keybLayout?.getKey(x, y) ?: return
+                KeyEvent.ACTION_DOWN, ACTION_POINTER_DOWN -> {
+                    pointers[pid] = currentLayout.getKey(x, y) ?: return super.onTouchEvent(me)
                     if (wrapper == null) {
                         editInterface?.onPress(pointers[pid]!!, x, y)
                     } else {
@@ -312,7 +320,7 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
                     }
                 }
 
-                MotionEvent.ACTION_MOVE -> {
+                ACTION_MOVE -> {
                     if (wrapper != null) {
                         for (i in 0 until me.pointerCount) {
                             val id = me.getPointerId(i)
@@ -321,20 +329,22 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
                     }
                 }
 
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
+                KeyEvent.ACTION_UP, ACTION_POINTER_UP, ACTION_CANCEL -> {
                     if (wrapper == null) {
                         editInterface?.onRelease(x, y)
                     } else {
-                        if (pointers[pid] == null) return
-                        handler.removeCallbacks(pointers[pid]!!.longPressRunnable)
+                        if (pointers[pid] == null) return super.onTouchEvent(me)
+                        keyboardHandler.removeCallbacks(pointers[pid]!!.longPressRunnable)
                         pointers[pid]!!.release(x, y, pid)
                         pointers.remove(pid)
                     }
                 }
             }
+            invalidate()
         } catch (e: Exception) {
             prStack(e)
         }
+        return true
     }
 
     fun prStack(e: Throwable) {
@@ -371,7 +381,9 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
 
     fun ctrlPressed() = metaState and META_CTRL_MASK != 0
 
+    fun altPressed() = metaState and META_ALT_MASK != 0
     fun shiftPressed() = metaState and META_SHIFT_MASK != 0
+    fun metaPressed() = metaState and META_META_MASK != 0
 
     fun getShifted(code: Int, sh: Boolean) =
         if (Character.isLetter(code) && sh) code.toChar().uppercaseChar().code else code
@@ -393,27 +405,27 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
     fun reloadLayout() {
         Settings.loadVars(ctx)
         setKeybTheme()
-        pickLayout(currentLayout)
-        if (!keybLayout!!.loaded) {
-            if (currentLayout.isBlank()) {
+        pickLayout(currentLayoutName)
+        if (!currentLayout!!.loaded) {
+            if (currentLayoutName.isBlank()) {
                 log("Current layout name is blank")
             } else {
                 ctx.startActivity(Intent(ctx, KeybRawEditor::class.java).apply {
-                    putExtra("name", currentLayout)
+                    putExtra("name", currentLayoutName)
                 })
             }
         }
-        view.reload()
+        invalidate()
     }
 
     fun pickLayout(layNm: String) {
         if (loaded.containsKey(layNm) && !layoutFileChanged(layNm)) {
-            keybLayout = loaded.getValue(layNm)
-            keybLayout!!.parent = Settings
+            currentLayout = loaded.getValue(layNm)
+            currentLayout!!.parent = Settings
         } else {
-            keybLayout = loadLayout(layNm)
-            keybLayout!!.parent = Settings
-            if (keybLayout!!.loaded) loaded[layNm] = keybLayout!!
+            currentLayout = loadLayout(layNm)
+            currentLayout!!.parent = Settings
+            if (currentLayout!!.loaded) loaded[layNm] = currentLayout!!
         }
     }
 
@@ -422,14 +434,14 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
 
     fun onLowMemory() {
         //loaded.clear() // TODO: clear = app crash
-        view.clearBuffers()
+        //clearBuffers()
     }
 
     fun onTrimMemory(level: Int) {
         if (level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL || level == ComponentCallbacks2.TRIM_MEMORY_COMPLETE) {
             onLowMemory()
         } else if (level == ComponentCallbacks2.TRIM_MEMORY_MODERATE || level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
-            view.clearBuffers()
+            //clearBuffers()
         }
     }
 
@@ -483,12 +495,12 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         while (true) {
             if (pos < 0) pos += layouts.size - 1
             if (pos == currPos) return
-            currentLayout = layouts[pos]
+            currentLayoutName = layouts[pos]
 
-            if (currentLayout.indexOf("$") == 0) pos++
+            if (currentLayoutName.indexOf("$") == 0) pos++
             else break
         }
-        lastTextLayout = currentLayout
+        lastTextLayout = currentLayoutName
         reloadLayout()
     }
 
@@ -499,27 +511,49 @@ class KeybCtl(val ctx: Context, val wrapper: KeybWrapper?) {
         while (true) {
             if (pos >= layouts.size) pos -= layouts.size
             if (pos == currPos) return
-            currentLayout = layouts[pos]
+            currentLayoutName = layouts[pos]
 
-            if (currentLayout.indexOf("$") == 0) pos++
+            if (currentLayoutName.indexOf("$") == 0) pos++
             else break
         }
-        lastTextLayout = currentLayout
+        lastTextLayout = currentLayoutName
         reloadLayout()
     }
 
     fun numLayout() {
-        currentLayout = NUM_FILENAME
+        currentLayoutName = NUM_FILENAME
         reloadLayout()
     }
 
     fun textLayout() {
-        currentLayout = lastTextLayout
+        currentLayoutName = lastTextLayout
         reloadLayout()
     }
 
     fun emojiLayout() {
-        currentLayout = EMOJI_FILENAME
+        currentLayoutName = EMOJI_FILENAME
         reloadLayout()
+    }
+
+    override fun onClick(v: View?) { }
+
+    fun getColor(styleName: String, node: Flexaml.FxmlNode = currentLayout): Int {
+        return if (node.has(styleName)) hexNum(node.str(styleName)) else randColor()
+    }
+
+    private fun randColor(): Int {
+        val a = arrayOf(0xffff0000, 0xffffff00, 0xffffffff, 0xff00ff00, 0xffff00ff, 0xff00ffff, 0xff0000ff, 0xff000000)
+        return (a[Random().nextInt(8)]).toInt()
+    }
+
+    private fun hexNum(s: String) = s.toLong(16).toInt()
+
+    public override fun onDraw(canvas: Canvas) {
+        try {
+            currentLayout.onDraw(canvas)
+            if (wrapper != null) for ((_, point) in pointers.entries) point.drawKey(canvas)
+        } catch (e: Exception) {
+            prStack(e)
+        }
     }
 }

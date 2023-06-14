@@ -97,13 +97,21 @@ internal const val COLOR_TEXT_PREVIEW = "previewTextColor"
 internal const val COLOR_KEY_BORDER = "keyBorderColor"
 internal const val COLOR_KEYBOARD_BACKGROUND = "keyboardBackgroundColor"
 internal const val COLOR_KEY_BACKGROUND = "keyBackgroundColor"
-internal const val COLOR_KEY_MOD_BACKGROUND = "modBackgroundColor"
+internal const val COLOR_KEY_BACKGROUND_META = "metaBackgroundColor"
 internal const val COLOR_KEY_SHADOW = "shadowColor"
 internal const val COLOR_KEY_PREVIEW_SELECTED = "previewSelectedColor"
+
+internal const val COLOR_KEY_PRESSED_BACKGROUND = "keyPressedBackgroundColor" // TODO: add
+internal const val COLOR_KEY_PRESSED_MOD_BACKGROUND = "metaPressedBackgroundColor"
+internal const val COLOR_KEY_POPUP_BACKGROUND = "keyPreviewBackgroundColor"
+internal const val COLOR_KEY_POPUP_SELECTED = "previewSelectedColor"
+
 internal val COLORS = listOf(
     COLOR_TEXT_PRIMARY, COLOR_KEY_SECONDARY, COLOR_TEXT_PREVIEW,
     COLOR_KEY_BORDER, COLOR_KEYBOARD_BACKGROUND, COLOR_KEY_BACKGROUND,
-    COLOR_KEY_MOD_BACKGROUND, COLOR_KEY_SHADOW, COLOR_KEY_PREVIEW_SELECTED
+    COLOR_KEY_BACKGROUND_META, COLOR_KEY_SHADOW, COLOR_KEY_PREVIEW_SELECTED,
+    COLOR_KEY_PRESSED_BACKGROUND, COLOR_KEY_PRESSED_MOD_BACKGROUND,
+    COLOR_KEY_POPUP_BACKGROUND, COLOR_KEY_POPUP_SELECTED
 )
 
 // Sensitivity
@@ -123,4 +131,7 @@ internal const val LAYOUT_EMOJI = "@EMOJI"
 
 internal enum class KeybType {
     NORMAL, NUMBER, PHONE, URI, EMAIL, DATETIME, DATE, TIME
+}
+internal enum class KeybAction {
+    NONE, GO, SEARCH, SEND, NEXT, DONE, PREVIOUS
 }

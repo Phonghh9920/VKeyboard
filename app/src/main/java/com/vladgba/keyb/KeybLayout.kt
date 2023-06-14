@@ -1,9 +1,8 @@
 package com.vladgba.keyb
 
+import android.graphics.Canvas
 import android.util.DisplayMetrics
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
+import kotlin.math.*
 
 class KeybLayout(val c: KeybCtl, glob: Flexaml.FxmlNode) : Flexaml.FxmlNode(glob, Settings) {
     val dm: DisplayMetrics = c.ctx.resources.displayMetrics
@@ -88,6 +87,10 @@ class KeybLayout(val c: KeybCtl, glob: Flexaml.FxmlNode) : Flexaml.FxmlNode(glob
         rows.remove(row)
         this.childs.removeAt(rowIndex)
     }
+    
+    fun onDraw(canvas: Canvas) {
+        for (row in rows) row.onDraw(canvas)
+    }
 
     class Row(val layout: KeybLayout, val options: Flexaml.FxmlNode, var y: Int) : Flexaml.FxmlNode(options, layout) {
         private val refSize = layout.float(ROW_HEIGHT, 1f) / 18f *
@@ -141,6 +144,10 @@ class KeybLayout(val c: KeybCtl, glob: Flexaml.FxmlNode) : Flexaml.FxmlNode(glob
             val rowIndex = keys.indexOf(key)
             keys.remove(key)
             this.childs.removeAt(rowIndex)
+        }
+
+        fun onDraw(canvas: Canvas) {
+            for (key in keys) key.onDraw(canvas)
         }
     }
 

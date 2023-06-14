@@ -21,7 +21,7 @@ class KeybWrapper : InputMethodService() {
         ctrl = KeybCtl(this, this)
     }
 
-    override fun onCreateInputView() = KeybContainerView(this).apply { addView(ctrl.getInputView()) }
+    override fun onCreateInputView() = ctrl.apply { if (parent != null) (parent as ViewGroup).removeAllViews() }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent) =
         ctrl.onKeyDown(keyCode, event) || super.onKeyDown(keyCode, event)

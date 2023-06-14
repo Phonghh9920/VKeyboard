@@ -3,6 +3,7 @@ package com.vladgba.keyb
 import android.content.ComponentName
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+import android.graphics.*
 import android.media.MediaPlayer
 import android.os.SystemClock
 import android.view.KeyEvent
@@ -11,9 +12,7 @@ import android.widget.Toast
 import com.vladgba.keyb.Flexaml.FxmlNode
 import com.vladgba.keyb.KeybLayout.Row
 import java.util.*
-import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.ceil
+import kotlin.math.*
 
 class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: FxmlNode) : FxmlNode(opts, row) {
 
@@ -80,20 +79,26 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
 
     init {
         try {
-            if (num(KEY_CODE) != 0) inputMode = InputMode.CODE
-            if (str(KEY_TEXT).isNotEmpty()) inputMode = InputMode.TEXT
-            mediaPressed.setSound(c, this, KEY_SOUND_PRESS)
-            mediaReleased.setSound(c, this, KEY_SOUND_RELEASE)
-
+            detectInputSource()
+            loadSounds()
         } catch (e: Exception) {
             c.prStack(e)
         }
+    }
+    private fun loadSounds() {
+        mediaPressed.setSound(c, this, KEY_SOUND_PRESS)
+        mediaReleased.setSound(c, this, KEY_SOUND_RELEASE)
+        /*sound[KEY_FEEDBACK_PRESS] = Media().apply { setSound(c, this@Key, KEY_FEEDBACK_PRESS)}*/
+    }
+    private fun detectInputSource() {
+        if (num(KEY_CODE) != 0) inputMode = InputMode.CODE
+        if (str(KEY_TEXT).isNotEmpty()) inputMode = InputMode.TEXT
     }
 
     fun longPress() {
         val holdStr = str(KEY_HOLD)
         if (holdStr.isBlank() && !bool(KEY_HOLD_REPEAT)) return
-        if (bool(KEY_HOLD_REPEAT)) c.handler.postDelayed(longPressRunnable, num(SENSE_HOLD_PRESS_REPEAT).toLong())
+        if (bool(KEY_HOLD_REPEAT)) c.keyboardHandler.postDelayed(longPressRunnable, num(SENSE_HOLD_PRESS_REPEAT).toLong())
 
         if (state == State.PRESSED) state = State.LONG_PRESSED
         else if (state == State.LONG_PRESSED) state = State.HOLD_REPEAT
@@ -118,7 +123,7 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
             State.LONG_PRESSED -> State.HOLD_HARD_PRESSED
             else -> state
         }
-        if (bool(KEY_HARD_REPEAT) && (state == State.HARD_PRESSED || state == State.HARD_REPEAT)) c.handler.postDelayed(hardRepeatRunnable, num(SENSE_HOLD_PRESS).toLong())
+        if (bool(KEY_HARD_REPEAT) && (state == State.HARD_PRESSED || state == State.HARD_REPEAT)) c.keyboardHandler.postDelayed(hardRepeatRunnable, num(SENSE_HOLD_PRESS).toLong())
 
         if (state != State.RELEASED) {
             c.onText(str(KEY_HARD_PRESS))
@@ -128,7 +133,7 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
     fun getExtPos(x: Int, y: Int): Int {
         val ofs = num(SENSE_ADDITIONAL_CHARS)
         if (abs(press.x - x) < ofs && abs(press.y - y) < ofs) return 0
-        if (charPos == 0) c.handler.removeCallbacks(longPressRunnable)
+        if (charPos == 0) c.keyboardHandler.removeCallbacks(longPressRunnable)
         return calcPos(x, y)
     }
 
@@ -185,25 +190,23 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
 
     private fun preventLongPressOnMoved() {
         if (state == State.MOVED || state == State.HOLD_MOVED) return
-        c.handler.removeCallbacks(longPressRunnable)
+        c.keyboardHandler.removeCallbacks(longPressRunnable)
     }
 
     fun repeating(curX: Int, curY: Int) {
         if (str(KEY_MODE) != KEY_MODE_JOY) return
-        while (true) {
-            val ht = num(SENSE_HORIZONTAL_TICK)
-            if (ht < 1) return
-            relative!!.x = if (curX - ht > relative!!.x) swipeAction(relative!!.x, ht, KEY_RIGHT_ACTION, true)
-            else if (curX + ht < relative!!.x) swipeAction(relative!!.x, ht, KEY_LEFT_ACTION, false)
-            else break
-        }
-        while (true) {
-            val vt = num(SENSE_VERTICAL_TICK)
-            if (vt < 1) return
-            relative!!.y = if (curY - vt > relative!!.y) swipeAction(relative!!.y, vt, KEY_BOTTOM_ACTION, true)
-            else if (curY + vt < relative!!.y) swipeAction(relative!!.y, vt, KEY_TOP_ACTION, false)
-            else break
-        }
+        while (true) relative!!.x =
+            procRepeating(curX, relative!!.x, SENSE_HORIZONTAL_TICK, KEY_RIGHT_ACTION, KEY_LEFT_ACTION) ?: break
+        while (true) relative!!.y =
+            procRepeating(curY, relative!!.y, SENSE_VERTICAL_TICK, KEY_BOTTOM_ACTION, KEY_TOP_ACTION) ?: break
+    }
+
+    private fun procRepeating(cur: Int, initial: Int, pname: String, pos: String, neg: String): Int? {
+        val ht = num(pname)
+        if (ht < 1) return null
+        return if (cur - ht > initial) swipeAction(initial, ht, pos, true)
+        else if (cur + ht < initial) swipeAction(initial, ht, neg, false)
+        else null
     }
 
     fun procExtChars(curX: Int, curY: Int) {
@@ -263,12 +266,18 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
             c.metaState = c.metaState or num(KEY_MOD_META)
             c.keyShifted(KeyEvent.ACTION_DOWN, num(KEY_CODE))
         }
-        c.view.repMod()
+        c.invalidate()
         return true
     }
 
     fun shiftAction(): Boolean {
         if (!c.shiftPressed() || str(KEY_ACTION_ON_SHIFT).isBlank()) return false
+
+
+        if (c.ctrlPressed() && this[KEY_ACTION_ON_CTRL].paramCount() != 0) handleAction(this[KEY_ACTION_ON_CTRL])
+        if (c.altPressed() && this[KEY_ACTION_ON_ALT].paramCount() != 0) handleAction(this[KEY_ACTION_ON_ALT])
+        if (c.shiftPressed() && this[KEY_ACTION_ON_SHIFT].paramCount() != 0) handleAction(this[KEY_ACTION_ON_SHIFT])
+
         try {
             val tx = (c.wrapper?.currentInputConnection ?: return true).getSelectedText(0).toString()
             val res = when (str(KEY_ACTION_ON_SHIFT)) {
@@ -282,10 +291,14 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         return true
     }
 
+    private fun handleAction(node: FxmlNode) {
+
+    }
+
     fun press(curX: Int, curY: Int) {
         mediaPressed.play()
         if (modifierAction()) return
-        if (has(SENSE_HOLD_PRESS)) c.handler.postDelayed(longPressRunnable, num(SENSE_HOLD_PRESS).toLong())
+        if (has(SENSE_HOLD_PRESS)) c.keyboardHandler.postDelayed(longPressRunnable, num(SENSE_HOLD_PRESS).toLong())
 
         state = State.PRESSED
 
@@ -318,7 +331,7 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
                     if (c.lastPointerId != pid) modifierAction()
                 } else if (str(KEY_MODE) == KEY_MODE_RANDOM && this[KEY_RANDOM].childCount() > 0) {
                     return c.onText(this[KEY_RANDOM].str(Random().nextInt(this[KEY_RANDOM].childCount())))
-                } else if (!(recordAction(curX, curY) || shiftAction() || clipboardAction() || langSwitch() || textInput())) c.onKey(code())
+                } else if (!(recordAction(curX, curY) || modifiedAction() || clipboardAction() || langSwitch() || textInput())) c.onKey(code())
             }
 
             State.MOVED -> {
@@ -332,7 +345,7 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
             else -> {}
         }
 
-        state = State.RELEASED //TODO: set at the end
+        state = State.RELEASED
 
         doActions()
     }
@@ -392,7 +405,7 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
                 LAYOUT_EMOJI -> c.emojiLayout()
             }
         } else {
-            c.apply { currentLayout = langStr; reloadLayout() }
+            c.apply { currentLayoutName = langStr; reloadLayout() }
         }
         return true
     }
@@ -404,5 +417,202 @@ class Key(private var c: KeybCtl, var row: Row, var x: Int, var y: Int, opts: Fx
         if (textIndex.length > 1) c.onText(textIndex)
         else c.onKey(c.getFromString(textIndex)[0])
         return true
+    }
+
+    fun onDraw(canvas: Canvas) {
+        canvas.save()
+        if (bool(KEY_DO_NOT_SHOW)) return
+        c.paint.color = c.getColor(COLOR_KEYBOARD_BACKGROUND, this)
+        val r = RectF(
+            x.toFloat(),
+            y.toFloat(),
+            x.toFloat() + width.toFloat(),
+            y.toFloat() + height.toFloat()
+        )
+        canvas.drawRect(r, c.paint)
+
+        if (!bool(KEY_VISIBLE)) return
+
+        // Positions for subsymbols
+        val x1 = width / 5f
+        val x2 = width / 2f
+        val x3 = width - x1
+        val y1 = height / 5f
+        val y2 = height / 2f
+        val y3 = height - y1
+
+        canvas.clipRect(Rect(x, y, x + width, y + height))
+        c.paint.isAntiAlias = true
+        c.paint.textAlign = Paint.Align.CENTER
+        c.paint.color = c.getColor(COLOR_KEY_BORDER, this)
+        val padding = float(KEY_PADDING, height / 16f)
+        val radius = float(KEY_BORDER_RADIUS, height / 6f)
+        val shadow = float(KEY_SHADOW, height / 36f)
+
+
+        val margin = padding + radius + 2
+        val hb = str(KEY_HIDE_BORDERS)
+        val lpad = if (hb.contains("l")) -margin else 0f
+        val rpad = if (hb.contains("r")) margin else 0f
+        val tpad = if (hb.contains("t")) -margin else 0f
+        val bpad = if (hb.contains("b")) margin else 0f
+
+        val recty = RectF(
+            (x + lpad + padding - shadow / 3),
+            (y + tpad + padding),
+            (x + rpad + width - padding + shadow / 3),
+            (y + bpad + height - padding + shadow)
+        )
+        canvas.drawRoundRect(recty, radius, radius, c.paint)
+        c.paint.color = c.getColor(COLOR_KEY_BACKGROUND, this)
+
+        if (str(KEY_MODE) == KEY_MODE_META && (num(KEY_MOD_META) and c.metaState) > 0) c.paint.color =
+            c.getColor(COLOR_KEY_BACKGROUND_META, this)
+        canvas.drawRoundRect(RectF(
+            (x + lpad + padding),
+            (y + tpad + padding),
+            (x + rpad + width - padding),
+            (y + bpad + height - padding)
+        ), radius, radius, c.paint)
+
+        c.paint.textSize = height / float(KEY_TEXT_SIZE_SECONDARY)
+        viewExtChars(canvas, c.paint, c.shiftPressed(), x1, x2, x3, y1, y2, y3, false)
+
+        c.paint.color = c.getColor(COLOR_TEXT_PRIMARY, this)
+        c.paint.textSize = height / float(KEY_TEXT_SIZE_PRIMARY)
+
+        drawLabel(canvas, c.paint)
+        canvas.restore()
+    }
+
+    fun drawKey(canvas: Canvas) {
+        canvas.save()
+
+        if (childCount() == 0 && !bool(KEY_CLIPBOARD)) return
+        val paint = Paint()
+        paint.isAntiAlias = true
+        paint.textAlign = Paint.Align.CENTER
+        paint.textSize = height / float(KEY_TEXT_SIZE_PRIMARY)
+
+        val rectShadow = RectF(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat())
+        paint.color = c.getColor(COLOR_KEY_SHADOW, this)
+        canvas.drawRect(rectShadow, paint)
+
+        paint.color = c.getColor(COLOR_TEXT_PREVIEW, this)
+
+        val x1 = -width / 2f
+        val x2 = width / 2f
+        val x3 = width * 1.5f
+
+        val y1 = -height / 2f
+        val y2 = height / 2f
+        val y3 = height * 1.5f
+
+
+        if (!bool(KEY_CLIPBOARD) || charPos < 1 || str(charPos - 1).isEmpty()) {
+            val rect = Rect(
+                x - width,
+                y - height,
+                x + width * 2,
+                y + height * 2
+            )
+            canvas.clipRect(rect)
+        }
+        val padding = float(KEY_PADDING, height / 16f)
+        val radius = float(KEY_BORDER_RADIUS, height / 16f)
+        paint.color = c.getColor(COLOR_KEY_BORDER, this)
+        var recty = RectF(
+            x + x1 * 2,
+            y + y1 * 2,
+            x - x1 + x3,
+            y - y1 + y3
+        )
+        canvas.drawRoundRect(recty, radius, radius, paint)
+        paint.color = c.getColor(COLOR_KEY_BACKGROUND, this)
+        recty = RectF(
+            x + x1 * 2 + padding / 3,
+            y + y1 * 2,
+            x - x1 + x3 - padding / 3,
+            y - y1 + y3 - padding
+        )
+        canvas.drawRoundRect(recty, radius, radius, paint)
+        paint.color = c.getColor(COLOR_TEXT_PRIMARY, this)
+        val sh = c.shiftPressed()
+        if (bool(KEY_CLIPBOARD) && charPos > 0 && str(charPos - 1).isNotEmpty()) {
+            paint.textSize = height / float(KEY_TEXT_SIZE_SECONDARY)
+            canvas.drawText(
+                str(charPos - 1),
+                width / 2f,
+                height / 5 + (paint.textSize - paint.descent()) / 2,
+                paint
+            )
+        }
+        viewExtChars(canvas, paint, sh, x1, x2, x3, y1, y2, y3, true)
+        canvas.restore()
+    }
+
+    private fun drawLabel(cv: Canvas, p: Paint) {
+        if (str(KEY_KEY).isBlank()) return
+        cv.drawText(shiftedLabel(), x + width / 2f, y + (height + p.textSize - p.descent()) / 2, p)
+    }
+
+    private fun viewExtChars(
+        cv: Canvas,
+        p: Paint,
+        sh: Boolean,
+        x1: Float,
+        x2: Float,
+        x3: Float,
+        y1: Float,
+        y2: Float,
+        y3: Float,
+        h: Boolean
+    ) {
+        if (childCount() == 0) return
+        val xi = floatArrayOf(x1, x2, x3, x1, x3, x1, x2, x3)
+        val yi = floatArrayOf(y1, y1, y1, y2, y2, y3, y3, y3)
+        for (i in 0..7) {
+            p.color = c.getColor(COLOR_KEY_POPUP_SELECTED, this)
+            if (h) {
+                if (charPos == i + 1) drawCircle(cv, xi[i], yi[i], p)
+                p.color = c.getColor(COLOR_TEXT_PREVIEW, this)
+            } else {
+                p.color = c.getColor(COLOR_KEY_SECONDARY, this)
+            }
+            viewChar(i, xi[i], yi[i], cv, p, sh)
+        }
+        if (!h) return
+        if (charPos == 0) {
+            p.color = c.getColor(COLOR_KEY_POPUP_SELECTED, this)
+            drawCircle(cv, x2, y2, p)
+        }
+        p.color = c.getColor(COLOR_TEXT_PREVIEW, this)
+        cv.drawText(shiftedLabel(), (x + x2), y + y2 + (p.textSize - p.descent()) / 2, p)
+    }
+
+    private fun drawCircle(cv: Canvas, xi: Float, yi: Float, p: Paint) {
+        cv.drawCircle((x + xi), (y + yi), min(width, height) * 0.6f, p)
+    }
+    private fun viewChar(
+        pos: Int,
+        ox: Float,
+        oy: Float,
+        canvas: Canvas,
+        paint: Paint,
+        sh: Boolean
+    ) {
+        if (str(pos).isBlank()) return
+        canvas.drawText(
+            str(pos).also { if (it.length == 1) c.getShifted(it[0].code, sh).toChar().toString() },
+            (x + ox),
+            y + oy + (paint.textSize - paint.descent()) / 2,
+            paint
+        )
+    }
+
+    private fun shiftedLabel(): String {
+        val lb = str(KEY_KEY)
+        return if (c.shiftPressed() && lb.length < 2) c.getShifted(lb[0].code, true).toChar().toString()
+        else lb
     }
 }

@@ -26,8 +26,8 @@ class LayoutEditor : Activity() {
 
         addRow.setOnClickListener {
             val dn = Flexaml.FxmlNode()
-            val newRow = KeybLayout.Row(ctrl!!.keybLayout!!, dn, 0)
-            ctrl!!.keybLayout!!.rows.let {
+            val newRow = KeybLayout.Row(ctrl!!.currentLayout!!, dn, 0)
+            ctrl!!.currentLayout!!.rows.let {
                 val rowCount = it.size
                 it.add(0, newRow)
 
@@ -35,15 +35,15 @@ class LayoutEditor : Activity() {
                     it[i].moveVertical(it[i-1].height + it[i-1].y)
                 }
             }
-            ctrl!!.keybLayout!!.childs.add(0, dn)
-            ctrl!!.keybLayout!!.height += newRow.height
-            ctrl!!.view.repaintKeyb()
+            ctrl!!.currentLayout!!.childs.add(0, dn)
+            ctrl!!.currentLayout!!.height += newRow.height
+            ctrl!!.requestLayout()
             custKeyb.removeAllViews()
-            custKeyb.addView(ctrl!!.view)
+            custKeyb.addView(ctrl!!)
         }
 
         addKey.setOnClickListener {
-            ctrl!!.keybLayout!!.rows.let {
+            ctrl!!.currentLayout!!.rows.let {
                 val rowCount = it.size
                 if (rowCount > 0) {
                     it[0].apply {
@@ -52,8 +52,7 @@ class LayoutEditor : Activity() {
                         options.childs.add(0, fxn)
                         calcWidth()
 
-                        ctrl!!.view.repaintKeyb()
-                        ctrl!!.view.invalidate()
+                        ctrl!!.invalidate()
                     }
                 }
             }
@@ -62,8 +61,8 @@ class LayoutEditor : Activity() {
 
         layoutSave.setOnClickListener {
             Log.d("file", name!!)
-            Log.d("data", ctrl!!.keybLayout!!.toString())
-            if (ctrl != null) PFile(this, name).write(ctrl!!.keybLayout!!.toString())
+            Log.d("data", ctrl!!.currentLayout!!.toString())
+            if (ctrl != null) PFile(this, name).write(ctrl!!.currentLayout!!.toString())
         }
 
         layoutRaw.setOnClickListener {
@@ -71,14 +70,14 @@ class LayoutEditor : Activity() {
         }
 
         if (name != null && name.indexOf("settings") < 0) {
-            ctrl!!.currentLayout = name
+            ctrl!!.currentLayoutName = name
             ctrl!!.reloadLayout()
         } else {
             startActivityForResult(Intent(this, KeybRawEditor::class.java).apply { putExtra("name", name) }, 0)
             finish()
         }
 
-        custKeyb.addView(ctrl!!.view)
+        custKeyb.addView(ctrl!!)
     }
 
     override fun onBackPressed() {

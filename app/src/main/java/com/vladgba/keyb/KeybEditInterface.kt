@@ -8,8 +8,6 @@ import android.text.InputType
 import android.util.Log
 import android.view.View
 import android.widget.*
-import kotlin.math.max
-import kotlin.math.min
 
 class KeybEditInterface(private val c: KeybCtl) {
     private var ePressX: Int = -1
@@ -89,7 +87,7 @@ class KeybEditInterface(private val c: KeybCtl) {
                     val row = editingKey!!.row
                     row.remove(editingKey!!)
                     row.calcWidth()
-                    c.view.reload()
+                    c.invalidate()
                     dialog.cancel()
                 }
 
@@ -99,9 +97,8 @@ class KeybEditInterface(private val c: KeybCtl) {
                     layout.remove(row)
 
                     layout.calcY()
-                    c.view.repaintKeyb()
 
-                    c.view.reload()
+                    c.invalidate()
                     dialog.cancel()
                 }
                 builder.setNegativeButton(R.string.no) { _, _ -> dialogDel?.cancel() }
@@ -115,7 +112,7 @@ class KeybEditInterface(private val c: KeybCtl) {
                 val builder = AlertDialog.Builder(c.ctx)
                 builder.setTitle(R.string.row_preferences)
                 builder.setView(R.layout.row_edit)
-                builder.setOnDismissListener { c.view.reload() }
+                builder.setOnDismissListener { c.invalidate() }
                 val dialogRow = builder.create()
                 dialogRow.show()
                 dialogRow.findViewById<ImageButton>(R.id.button_delete).setOnClickListener {
@@ -123,10 +120,10 @@ class KeybEditInterface(private val c: KeybCtl) {
                     builderDel.setTitle(R.string.confirm_title)
                     builderDel.setMessage(R.string.confirm_delete_row)
                     builderDel.setPositiveButton(R.string.yes) { _, _ ->
-                        val layout = c.keybLayout!!
+                        val layout = c.currentLayout!!
                         layout.remove(editingKey!!.row)
                         layout.calcY()
-                        c.view.reload()
+                        c.invalidate()
                         dialog.cancel() // close all
                     }
 
@@ -157,8 +154,8 @@ class KeybEditInterface(private val c: KeybCtl) {
                     bindTextarea(dialogStyle, R.id.text_padding, KEY_PADDING, editingKey!!)
                     bindTextarea(dialogStyle, R.id.text_radius, KEY_BORDER_RADIUS, editingKey!!)
                     editingKey!!.row.calcHeight()
-                    c.keybLayout!!.calcY()
-                    c.view.reload()
+                    c.currentLayout!!.calcY()
+                    c.invalidate()
                 }
                 borderCheckbox(dialogStyle, R.id.checkbox_border_top, "t")
                 borderCheckbox(dialogStyle, R.id.checkbox_border_left, "l")
@@ -218,8 +215,7 @@ class KeybEditInterface(private val c: KeybCtl) {
 
                     builder.setPositiveButton(android.R.string.ok) { _, _ ->
                         editingKey!![i] = input.text.toString()
-                        c.view.repaintKeyb()
-                        c.view.invalidate()
+                        c.invalidate()
                         ext.text = input.text.toString()
                     }
                     builder.setNegativeButton(android.R.string.cancel) { dialog, _ -> dialog.cancel() }
@@ -229,8 +225,7 @@ class KeybEditInterface(private val c: KeybCtl) {
             dialog.show()
         }
 
-        c.view.repaintKeyb()
-        c.view.invalidate()
+        c.invalidate()
         Log.d("move", "$xMove; $yMove")
     }
 
@@ -281,7 +276,7 @@ class KeybEditInterface(private val c: KeybCtl) {
                     node[i] = newColor
                     preview.setBackgroundColor(color)
                     bindColorPicker(item, i, color, node, preview)
-                    c.view.reload()
+                    c.invalidate()
                 }
 
                 override fun onCancel(dialog: ColorPicker) {}
@@ -342,8 +337,7 @@ class KeybEditInterface(private val c: KeybCtl) {
 
         builder.setPositiveButton(android.R.string.ok) { _, _ ->
             editingKey!![node] = input.text.toString()
-            c.view.repaintKeyb()
-            c.view.invalidate()
+            c.invalidate()
             btn?.text = input.text.toString()
         }
         builder.setNegativeButton(android.R.string.cancel) { dialog, _ -> dialog.cancel() }
@@ -377,8 +371,7 @@ class KeybEditInterface(private val c: KeybCtl) {
                 editingKey!![KEY_KEY] = label
                 editingKey!![KEY_CODE] = midcode.text.toString()
                 et.text = edit(label)
-                c.view.repaintKeyb()
-                c.view.invalidate()
+                c.invalidate()
             }
 
             builder.setNegativeButton(android.R.string.cancel) { dialog, _ -> dialog.cancel() }
@@ -421,18 +414,18 @@ class KeybEditInterface(private val c: KeybCtl) {
 
     private fun moveBottom() {
         val row = editingKey!!.row
-        val rowIndex = c.keybLayout!!.rows.indexOf(row)
-        if (c.keybLayout!!.rows.lastIndex > rowIndex) moveVertically(
+        val rowIndex = c.currentLayout!!.rows.indexOf(row)
+        if (c.currentLayout!!.rows.lastIndex > rowIndex) moveVertically(
             row,
-            c.keybLayout!!.rows[rowIndex + 1],
+            c.currentLayout!!.rows[rowIndex + 1],
             editingKey!!
         )
     }
 
     private fun moveTop() {
         val row = editingKey!!.row
-        val rowIndex = c.keybLayout!!.rows.indexOf(row)
-        if (rowIndex > 0) moveVertically(row, c.keybLayout!!.rows[rowIndex - 1], editingKey!!)
+        val rowIndex = c.currentLayout!!.rows.indexOf(row)
+        if (rowIndex > 0) moveVertically(row, c.currentLayout!!.rows[rowIndex - 1], editingKey!!)
     }
 
     private fun moveHorizontally(row: KeybLayout.Row, prev: Int, keyIndex: Int) {
